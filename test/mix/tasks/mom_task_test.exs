@@ -32,4 +32,18 @@ defmodule Mix.Tasks.MomTaskTest do
                "invalid"
              ])
   end
+
+  test "parse_args accepts github repo allowlist flag" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--github-repo",
+        "acme/mom",
+        "--allowed-github-repos",
+        "acme/mom,acme/other"
+      ])
+
+    assert config.github_repo == "acme/mom"
+    assert config.allowed_github_repos == ["acme/mom", "acme/other"]
+  end
 end

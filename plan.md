@@ -323,17 +323,17 @@ Out of scope (for this phase):
 - [x] Add `Mom.WorkerSupervisor` and bounded dispatch by `max_concurrency`.
 - [x] Route `Mom.Runner` events through pipeline enqueue path.
 - [x] Add per-job timeout/cancellation handling.
-- [ ] Add in-flight signature guard for concurrent dedupe safety.
+- [x] Add in-flight signature guard for concurrent dedupe safety.
 
 ### Config and Controls
 - [x] Add config keys: `max_concurrency`, `queue_max_size`, `job_timeout_ms`, `overflow_policy`.
 - [x] Validate and enforce overflow behavior (`:drop_newest` / `:drop_oldest`).
-- [ ] Add optional repo allowlist control (`allowed_github_repos`).
+- [x] Add optional repo allowlist control (`allowed_github_repos`).
 - [ ] Add branch naming policy support for Mom-generated branches.
 
 ### Observability and Audit
-- [ ] Emit pipeline telemetry for enqueued/dropped/started/completed/failed jobs.
-- [ ] Include queue depth, active worker count, job type, duration, and failure reason.
+- [x] Emit pipeline telemetry for enqueued/dropped/started/completed/failed jobs.
+- [x] Include queue depth, active worker count, job type, duration, and failure reason.
 - [ ] Log Codex invocation + outcome for each run.
 - [ ] Emit structured git/GitHub audit events (repo, issue/branch/PR, merge attempt, actor id).
 
@@ -351,7 +351,7 @@ Out of scope (for this phase):
 - [ ] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
 
 ### Coverage and Validation
-- [ ] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
+- [x] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
 - [ ] Add integration burst tests for mixed diagnostics/error events.
 - [ ] Add stress script/mix task for rapid local event generation.
 - [ ] Validate readiness gate before enabling automated PR creation.
@@ -380,3 +380,4 @@ Out of scope (for this phase):
 - [ ] Add customer identity and enterprise access controls (SSO/SAML, SCIM provisioning, enforced MFA).
 - [ ] Add data lifecycle controls (tenant-scoped export, retention windows, hard-delete workflow, legal hold support).
 - [ ] Add billing-grade usage metering and reconciliation (LLM, CI, and repo actions) with invoice/audit traceability.
+- [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, key rotation, and optional BYOK support).

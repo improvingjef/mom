@@ -154,3 +154,57 @@ test("pipeline emits telemetry lifecycle events with queue visibility metadata",
   expect(result.event_has_fields).toBeTruthy();
   expect(result.failed_count).toBe(1);
 });
+
+test("pipeline drops duplicate in-flight incidents and allows retry after completion", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/pipeline_inflight_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.first).toBe("ok");
+  expect(result.started_id).toBe(41);
+  expect(result.duplicate).toEqual(["dropped", "inflight"]);
+  expect(result.dropped_before_release).toBe(1);
+  expect(result.queue_depth_before_release).toBe(0);
+  expect(result.active_before_release).toBe(1);
+  expect(result.after_release_completed).toBe(1);
+  expect(result.after_completion).toBe("ok");
+  expect(result.restart_id).toBe(41);
+  expect(result.final_completed).toBe(2);
+  expect(result.final_failed).toBe(0);
+});
+
+test("mom CLI enforces allowed github repo allowlist", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_allowlist_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.allowed_repo).toBe("acme/mom");
+  expect(result.allowed_list).toEqual(["acme/mom", "acme/other"]);
+  expect(result.blocked_result).toEqual(["error", "github_repo is not allowed"]);
+});

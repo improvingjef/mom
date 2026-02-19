@@ -58,6 +58,7 @@ mix mom /path/to/repo --mode inproc
 - `--queue-max-size` Max queued jobs before overflow policy applies. Default `200`.
 - `--job-timeout-ms` Per-job timeout budget in milliseconds. Default `120000`.
 - `--overflow-policy` `drop_newest` or `drop_oldest`. Default `drop_newest`.
+- `--allowed-github-repos` Comma-separated allowlist of permitted `owner/name` repositories for `--github-repo` / `MOM_GITHUB_REPO`.
 - `--min-level` Minimum logger level to capture. Default `error`.
 - `--github-repo` GitHub repo in `owner/name` format.
 - `--github-token` Fine-grained PAT or GitHub App token.
@@ -81,6 +82,7 @@ You can set defaults via environment variables:
 - `MOM_QUEUE_MAX_SIZE`
 - `MOM_JOB_TIMEOUT_MS`
 - `MOM_OVERFLOW_POLICY`
+- `MOM_ALLOWED_GITHUB_REPOS`
 - `MOM_REDACT_KEYS`
 
 ## How It Works

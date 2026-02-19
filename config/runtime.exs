@@ -16,5 +16,6 @@ if config_env() in [:dev, :prod] do
     queue_max_size: System.get_env("MOM_QUEUE_MAX_SIZE"),
     job_timeout_ms: System.get_env("MOM_JOB_TIMEOUT_MS"),
     overflow_policy: System.get_env("MOM_OVERFLOW_POLICY"),
+    allowed_github_repos: System.get_env("MOM_ALLOWED_GITHUB_REPOS"),
     redact_keys: System.get_env("MOM_REDACT_KEYS")
 end

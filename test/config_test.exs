@@ -74,4 +74,30 @@ defmodule Mom.ConfigTest do
     assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
              Config.from_opts(repo: "/tmp/repo", overflow_policy: :drop_middle)
   end
+
+  test "enforces github repo allowlist when configured" do
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               allowed_github_repos: ["acme/mom", "acme/other"]
+             )
+
+    assert config.allowed_github_repos == ["acme/mom", "acme/other"]
+  end
+
+  test "rejects github repo not in allowlist" do
+    assert {:error, "github_repo must be set when allowed_github_repos is configured"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               allowed_github_repos: ["acme/mom"]
+             )
+
+    assert {:error, "github_repo is not allowed"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "evil/repo",
+               allowed_github_repos: ["acme/mom"]
+             )
+  end
 end

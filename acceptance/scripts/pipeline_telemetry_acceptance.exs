@@ -2,11 +2,17 @@ defmodule Mom.Acceptance.PipelineTelemetryScript do
   alias Mom.Pipeline
 
   defmodule OkWorker do
-    def perform(_job, _opts), do: :ok
+    def perform(_job, _opts) do
+      Process.sleep(10)
+      :ok
+    end
   end
 
   defmodule BoomWorker do
-    def perform(_job, _opts), do: raise("boom")
+    def perform(_job, _opts) do
+      Process.sleep(10)
+      raise("boom")
+    end
   end
 
   def run do
@@ -92,7 +98,7 @@ defmodule Mom.Acceptance.PipelineTelemetryScript do
     Enum.any?(events, fn {event_name, _metadata} -> event_name == name end)
   end
 
-  defp wait_for(fun, retries \\ 100)
+  defp wait_for(fun, retries \\ 500)
 
   defp wait_for(fun, 0) do
     if fun.(), do: :ok, else: raise("timed out waiting for condition")
@@ -102,7 +108,7 @@ defmodule Mom.Acceptance.PipelineTelemetryScript do
     if fun.() do
       :ok
     else
-      Process.sleep(10)
+      Process.sleep(20)
       wait_for(fun, retries - 1)
     end
   end

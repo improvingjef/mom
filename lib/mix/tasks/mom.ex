@@ -131,6 +131,7 @@ defmodule Mix.Tasks.Mom do
       queue_max_size: :integer,
       job_timeout_ms: :integer,
       overflow_policy: :string,
+      allowed_github_repos: :string,
       min_level: :string,
       dry_run: :boolean,
       github_token: :string,

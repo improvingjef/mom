@@ -30,6 +30,7 @@ defmodule Mom.Config do
     :queue_max_size,
     :job_timeout_ms,
     :overflow_policy,
+    :allowed_github_repos,
     :min_level,
     :dry_run,
     :github_token,
@@ -64,6 +65,7 @@ defmodule Mom.Config do
           queue_max_size: pos_integer(),
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
+          allowed_github_repos: [String.t()],
           min_level: :error | :warning | :info,
           dry_run: boolean(),
           github_token: String.t() | nil,
@@ -85,7 +87,9 @@ defmodule Mom.Config do
         with {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
-             {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime) do
+             {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
+             {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
+             {:ok, github_repo} <- parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
           {:ok,
            %__MODULE__{
              repo: repo,
@@ -120,10 +124,11 @@ defmodule Mom.Config do
              queue_max_size: queue_max_size,
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
+             allowed_github_repos: allowed_github_repos,
              min_level: Keyword.get(opts, :min_level, :error),
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: Keyword.get(opts, :github_token) || runtime[:github_token],
-             github_repo: Keyword.get(opts, :github_repo) || runtime[:github_repo],
+             github_repo: github_repo,
              workdir: Keyword.get(opts, :workdir)
         }}
         end
@@ -166,6 +171,30 @@ defmodule Mom.Config do
     ]
   end
 
+  defp parse_allowed_github_repos(opts, runtime) do
+    value = Keyword.get(opts, :allowed_github_repos, runtime[:allowed_github_repos])
+    {:ok, normalize_allowed_repos(value)}
+  end
+
+  defp normalize_allowed_repos(nil), do: []
+  defp normalize_allowed_repos([]), do: []
+
+  defp normalize_allowed_repos(value) when is_binary(value) do
+    value
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp normalize_allowed_repos(values) when is_list(values) do
+    values
+    |> Enum.map(&to_string/1)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+  end
+
+  defp normalize_allowed_repos(_), do: []
+
   defp parse_non_neg_int(opts, runtime, key, default) do
     value = Keyword.get(opts, key, runtime[key])
 
@@ -194,6 +223,24 @@ defmodule Mom.Config do
       "drop_newest" -> {:ok, :drop_newest}
       "drop_oldest" -> {:ok, :drop_oldest}
       _other -> {:error, "overflow_policy must be :drop_newest or :drop_oldest"}
+    end
+  end
+
+  defp parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
+    github_repo = Keyword.get(opts, :github_repo) || runtime[:github_repo]
+
+    cond do
+      allowed_github_repos == [] ->
+        {:ok, github_repo}
+
+      is_nil(github_repo) ->
+        {:error, "github_repo must be set when allowed_github_repos is configured"}
+
+      github_repo in allowed_github_repos ->
+        {:ok, github_repo}
+
+      true ->
+        {:error, "github_repo is not allowed"}
     end
   end
 end
