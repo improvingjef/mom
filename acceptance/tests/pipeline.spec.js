@@ -243,7 +243,10 @@ test("mom harness task confirms baseline harness scenarios and records private r
   expect(result.baseline_diagnostics_path).toBe(
     "priv/replay/diagnostics_path.ex"
   );
+  expect(result.traceability_path).toContain("mom-harness-traceability-acceptance-");
+  expect(result.traceability_mapped_capability_count).toBe(10);
   expect(result.loaded_matches).toBeTruthy();
+  expect(result.loaded_count_matches).toBeTruthy();
 });
 
 test("mom CLI enforces allowed github repo allowlist", async () => {

@@ -115,7 +115,8 @@ defmodule Mom.RunnerTest do
       send(pid, {:mom_log, %{id: id}})
     end)
 
-    {error_seen, diagnostics_seen} = await_burst_results(MapSet.new(), 0, 120)
+    {error_seen, diagnostics_seen} =
+      collect_burst_results(MapSet.new(), 0, MapSet.new(error_ids), 10_000)
 
     assert MapSet.subset?(MapSet.new(error_ids), error_seen)
     assert diagnostics_seen >= 1
@@ -145,21 +146,44 @@ defmodule Mom.RunnerTest do
     end
   end
 
-  defp await_burst_results(error_seen, diagnostics_seen, 0), do: {error_seen, diagnostics_seen}
+  defp collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, timeout_ms) do
+    deadline_ms = System.monotonic_time(:millisecond) + timeout_ms
+    do_collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)
+  end
 
-  defp await_burst_results(error_seen, diagnostics_seen, attempts) do
+  defp do_collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, deadline_ms) do
+    cond do
+      MapSet.subset?(expected_error_ids, error_seen) and diagnostics_seen >= 1 ->
+        {error_seen, diagnostics_seen}
+
+      System.monotonic_time(:millisecond) >= deadline_ms ->
+        flunk(
+          "timed out waiting for burst results: missing_error_ids=#{inspect(MapSet.difference(expected_error_ids, error_seen))} diagnostics_seen=#{diagnostics_seen}"
+        )
+
+      true ->
+        do_collect_burst_results_receive(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)
+    end
+  end
+
+  defp do_collect_burst_results_receive(error_seen, diagnostics_seen, expected_error_ids, deadline_ms) do
     receive do
       {:worker_job, :error_event, id} ->
-        await_burst_results(MapSet.put(error_seen, id), diagnostics_seen, attempts - 1)
+        do_collect_burst_results(
+          MapSet.put(error_seen, id),
+          diagnostics_seen,
+          expected_error_ids,
+          deadline_ms
+        )
 
       {:worker_job, :diagnostics_event, _seq} ->
-        await_burst_results(error_seen, diagnostics_seen + 1, attempts - 1)
+        do_collect_burst_results(error_seen, diagnostics_seen + 1, expected_error_ids, deadline_ms)
 
       _other ->
-        await_burst_results(error_seen, diagnostics_seen, attempts - 1)
+        do_collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)
     after
-      50 ->
-        await_burst_results(error_seen, diagnostics_seen, attempts - 1)
+      25 ->
+        do_collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)
     end
   end
 end

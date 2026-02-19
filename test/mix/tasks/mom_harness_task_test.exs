@@ -1,7 +1,7 @@
 defmodule Mix.Tasks.Mom.HarnessTaskTest do
   use ExUnit.Case, async: true
 
-  test "parse_args accepts repo, record path, and baseline scenario paths" do
+  test "parse_args accepts repo, record path, baseline scenario paths, and traceability path" do
     assert {:ok, opts} =
              Mix.Tasks.Mom.Harness.parse_args([
                "--repo",
@@ -11,13 +11,30 @@ defmodule Mix.Tasks.Mom.HarnessTaskTest do
                "--baseline-error-path",
                "priv/replay/error_path.ex",
                "--baseline-diagnostics-path",
-               "priv/replay/diagnostics_path.ex"
+               "priv/replay/diagnostics_path.ex",
+               "--traceability-path",
+               "acceptance/harness_traceability.json"
              ])
 
     assert opts.repo == "acme/harness"
     assert opts.record_path == "acceptance/harness_repo.json"
     assert opts.baseline_error_path == "priv/replay/error_path.ex"
     assert opts.baseline_diagnostics_path == "priv/replay/diagnostics_path.ex"
+    assert opts.traceability_path == "acceptance/harness_traceability.json"
+  end
+
+  test "parse_args defaults traceability path" do
+    assert {:ok, opts} =
+             Mix.Tasks.Mom.Harness.parse_args([
+               "--repo",
+               "acme/harness",
+               "--baseline-error-path",
+               "priv/replay/error_path.ex",
+               "--baseline-diagnostics-path",
+               "priv/replay/diagnostics_path.ex"
+             ])
+
+    assert opts.traceability_path == "acceptance/harness_traceability.json"
   end
 
   test "parse_args requires repo" do

@@ -1,0 +1,74 @@
+{
+  "capabilities": [
+    {
+      "capability_id": "pipeline_concurrency",
+      "capability_name": "Concurrent pipeline dispatch",
+      "scenario_path": "priv/replay/concurrency/pipeline_concurrency.exs",
+      "playwright_spec_path": "playwright/tests/pipeline_concurrency.spec.ts",
+      "mode": "burst"
+    },
+    {
+      "capability_id": "job_timeout_cancellation",
+      "capability_name": "Timed out jobs release capacity",
+      "scenario_path": "priv/replay/concurrency/job_timeout_cancellation.exs",
+      "playwright_spec_path": "playwright/tests/job_timeout_cancellation.spec.ts",
+      "mode": "burst"
+    },
+    {
+      "capability_id": "inflight_signature_dedupe",
+      "capability_name": "In-flight signature dedupe",
+      "scenario_path": "priv/replay/concurrency/inflight_signature_dedupe.exs",
+      "playwright_spec_path": "playwright/tests/inflight_signature_dedupe.spec.ts",
+      "mode": "burst"
+    },
+    {
+      "capability_id": "pipeline_telemetry_visibility",
+      "capability_name": "Pipeline telemetry visibility",
+      "scenario_path": "priv/replay/observability/pipeline_telemetry_visibility.exs",
+      "playwright_spec_path": "playwright/tests/pipeline_telemetry_visibility.spec.ts",
+      "mode": "baseline"
+    },
+    {
+      "capability_id": "durable_queue_replay",
+      "capability_name": "Durable queue replay on restart",
+      "scenario_path": "priv/replay/reliability/durable_queue_replay.exs",
+      "playwright_spec_path": "playwright/tests/durable_queue_replay.spec.ts",
+      "mode": "burst"
+    },
+    {
+      "capability_id": "multi_tenant_fairness",
+      "capability_name": "Multi-tenant fair scheduling",
+      "scenario_path": "priv/replay/multi_tenant/fair_scheduler.exs",
+      "playwright_spec_path": "playwright/tests/multi_tenant_fairness.spec.ts",
+      "mode": "burst"
+    },
+    {
+      "capability_id": "security_allowlist_enforcement",
+      "capability_name": "Repo allowlist enforcement",
+      "scenario_path": "priv/replay/security/allowlist_enforcement.exs",
+      "playwright_spec_path": "playwright/tests/security_allowlist_enforcement.spec.ts",
+      "mode": "baseline"
+    },
+    {
+      "capability_id": "machine_identity_enforcement",
+      "capability_name": "Machine identity enforcement",
+      "scenario_path": "priv/replay/security/machine_identity_enforcement.exs",
+      "playwright_spec_path": "playwright/tests/machine_identity_enforcement.spec.ts",
+      "mode": "baseline"
+    },
+    {
+      "capability_id": "egress_policy_fail_closed",
+      "capability_name": "Egress policy fail-closed",
+      "scenario_path": "priv/replay/security/egress_policy_fail_closed.exs",
+      "playwright_spec_path": "playwright/tests/egress_policy_fail_closed.spec.ts",
+      "mode": "baseline"
+    },
+    {
+      "capability_id": "observability_slo_alerts",
+      "capability_name": "SLO alerts and metrics export",
+      "scenario_path": "priv/replay/observability/observability_slo_alerts.exs",
+      "playwright_spec_path": "playwright/tests/observability_slo_alerts.spec.ts",
+      "mode": "baseline"
+    }
+  ]
+}

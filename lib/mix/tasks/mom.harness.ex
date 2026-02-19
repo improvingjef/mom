@@ -11,7 +11,8 @@ defmodule Mix.Tasks.Mom.Harness do
   Examples:
       mix mom.harness --repo owner/name --record-path acceptance/harness_repo.json \
         --baseline-error-path priv/replay/error_path.ex \
-        --baseline-diagnostics-path priv/replay/diagnostics_path.ex
+        --baseline-diagnostics-path priv/replay/diagnostics_path.ex \
+        --traceability-path acceptance/harness_traceability.json
   """
 
   @impl true
@@ -22,7 +23,8 @@ defmodule Mix.Tasks.Mom.Harness do
          {:ok, record} <-
            HarnessRepo.confirm_and_record(opts.repo, opts.record_path,
              baseline_error_path: opts.baseline_error_path,
-             baseline_diagnostics_path: opts.baseline_diagnostics_path
+             baseline_diagnostics_path: opts.baseline_diagnostics_path,
+             traceability_path: opts.traceability_path
            ) do
       Mix.shell().info(
         "recorded private harness repo: #{record.name_with_owner} -> #{opts.record_path}"
@@ -39,7 +41,8 @@ defmodule Mix.Tasks.Mom.Harness do
              repo: String.t(),
              record_path: String.t(),
              baseline_error_path: String.t(),
-             baseline_diagnostics_path: String.t()
+             baseline_diagnostics_path: String.t(),
+             traceability_path: String.t()
            }}
           | {:error, String.t()}
   def parse_args(args) do
@@ -49,7 +52,8 @@ defmodule Mix.Tasks.Mom.Harness do
           repo: :string,
           record_path: :string,
           baseline_error_path: :string,
-          baseline_diagnostics_path: :string
+          baseline_diagnostics_path: :string,
+          traceability_path: :string
         ]
       )
 
@@ -57,6 +61,7 @@ defmodule Mix.Tasks.Mom.Harness do
     record_path = Keyword.get(opts, :record_path, "acceptance/harness_repo.json")
     baseline_error_path = Keyword.get(opts, :baseline_error_path)
     baseline_diagnostics_path = Keyword.get(opts, :baseline_diagnostics_path)
+    traceability_path = Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
 
     cond do
       is_nil(repo) or repo == "" ->
@@ -70,12 +75,13 @@ defmodule Mix.Tasks.Mom.Harness do
 
       true ->
         {:ok,
-         %{
-           repo: repo,
-           record_path: record_path,
-           baseline_error_path: baseline_error_path,
-           baseline_diagnostics_path: baseline_diagnostics_path
-         }}
+          %{
+            repo: repo,
+            record_path: record_path,
+            baseline_error_path: baseline_error_path,
+            baseline_diagnostics_path: baseline_diagnostics_path,
+            traceability_path: traceability_path
+          }}
     end
   end
 end

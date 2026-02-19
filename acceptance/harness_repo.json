@@ -5,5 +5,7 @@
   "visibility": "PRIVATE",
   "baseline_error_path": "priv/replay/error_path.ex",
   "baseline_diagnostics_path": "priv/replay/diagnostics_path.ex",
+  "traceability_path": "acceptance/harness_traceability.json",
+  "traceability_mapped_capability_count": 10,
   "recorded_at": "2026-02-19T22:01:42.959142Z"
 }
