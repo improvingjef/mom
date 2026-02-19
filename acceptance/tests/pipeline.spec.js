@@ -54,3 +54,28 @@ test("pipeline enforces max concurrency while dispatching workers", async () => 
   expect(result.completed_count).toBe(3);
   expect(result.queue_depth).toBe(0);
 });
+
+test("mom CLI parses pipeline concurrency flags", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_config_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.mode).toBe("inproc");
+  expect(result.max_concurrency).toBe(7);
+  expect(result.queue_max_size).toBe(280);
+  expect(result.job_timeout_ms).toBe(15000);
+  expect(result.overflow_policy).toBe("drop_oldest");
+});

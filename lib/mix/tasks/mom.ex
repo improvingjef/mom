@@ -14,37 +14,18 @@ defmodule Mix.Tasks.Mom do
 
   @impl true
   def run(args) do
-    {opts, rest, _} =
-      OptionParser.parse(args,
-        strict: [
-          node: :string,
-          cookie: :string,
-          mode: :string,
-          llm: :string,
-          llm_cmd: :string,
-          llm_api_key: :string,
-          llm_api_url: :string,
-          llm_model: :string,
-          triage_on_diagnostics: :boolean,
-          triage_mode: :string,
-          diag_run_queue_mult: :integer,
-          diag_mem_high_bytes: :integer,
-          diag_cooldown_ms: :integer,
-          git_ssh_command: :string,
-          issue_rate_limit_per_hour: :integer,
-          llm_rate_limit_per_hour: :integer,
-          issue_dedupe_window_ms: :integer,
-          redact_keys: :string,
-          open_pr: :boolean,
-          merge_pr: :boolean,
-          poll_interval_ms: :integer,
-          min_level: :string,
-          dry_run: :boolean,
-          github_token: :string,
-          github_repo: :string,
-          workdir: :string
-        ]
-      )
+    with {:ok, config} <- parse_args(args),
+         {:ok, _pid} <- Mom.start(config) do
+      Process.sleep(:infinity)
+    else
+      {:error, reason} ->
+        Mix.raise("mom failed: #{inspect(reason)}")
+    end
+  end
+
+  @spec parse_args([String.t()]) :: {:ok, Config.t()} | {:error, String.t()}
+  def parse_args(args) do
+    {opts, rest, _} = OptionParser.parse(args, strict: option_parser_spec())
 
     repo =
       case rest do
@@ -52,13 +33,7 @@ defmodule Mix.Tasks.Mom do
         _ -> nil
       end
 
-    with {:ok, config} <- build_config(repo, opts),
-         {:ok, _pid} <- Mom.start(config) do
-      Process.sleep(:infinity)
-    else
-      {:error, reason} ->
-        Mix.raise("mom failed: #{inspect(reason)}")
-    end
+    build_config(repo, opts)
   end
 
   defp build_config(repo, opts) do
@@ -127,5 +102,40 @@ defmodule Mix.Tasks.Mom do
       nil -> opts
       cookie -> Keyword.put(opts, :cookie, String.to_atom(cookie))
     end
+  end
+
+  defp option_parser_spec do
+    [
+      node: :string,
+      cookie: :string,
+      mode: :string,
+      llm: :string,
+      llm_cmd: :string,
+      llm_api_key: :string,
+      llm_api_url: :string,
+      llm_model: :string,
+      triage_on_diagnostics: :boolean,
+      triage_mode: :string,
+      diag_run_queue_mult: :integer,
+      diag_mem_high_bytes: :integer,
+      diag_cooldown_ms: :integer,
+      git_ssh_command: :string,
+      issue_rate_limit_per_hour: :integer,
+      llm_rate_limit_per_hour: :integer,
+      issue_dedupe_window_ms: :integer,
+      redact_keys: :string,
+      open_pr: :boolean,
+      merge_pr: :boolean,
+      poll_interval_ms: :integer,
+      max_concurrency: :integer,
+      queue_max_size: :integer,
+      job_timeout_ms: :integer,
+      overflow_policy: :string,
+      min_level: :string,
+      dry_run: :boolean,
+      github_token: :string,
+      github_repo: :string,
+      workdir: :string
+    ]
   end
 end

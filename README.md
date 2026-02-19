@@ -22,7 +22,7 @@ Run against a target node and repo:
 
 ```bash
 mix mom /path/to/repo --node app@127.0.0.1 --cookie SECRET \
-  --github_repo owner/repo --github_token $GITHUB_TOKEN
+  --github-repo owner/repo --github-token $GITHUB_TOKEN
 ```
 
 In-process mode (mom is running inside the same node):
@@ -37,26 +37,30 @@ mix mom /path/to/repo --mode inproc
 - `--cookie` Cookie for distributed Erlang auth.
 - `--mode` `remote` or `inproc`. Default `remote`.
 - `--llm` `claude_code`, `codex`, `api_anthropic`, `api_openai`. Default `claude_code`.
-- `--llm_cmd` Override CLI command used for the LLM.
-- `--llm_api_key` API key for `api_anthropic` or `api_openai`.
-- `--llm_api_url` Override API endpoint for `api_anthropic` or `api_openai`.
-- `--llm_model` Override model name for API providers.
-- `--triage_on_diagnostics` Enable triage when diagnostics thresholds are exceeded.
-- `--triage_mode` `report` or `fix`. Default `report`.
-- `--diag_run_queue_mult` Run queue multiplier threshold. Default `4`.
-- `--diag_mem_high_bytes` Memory threshold in bytes. Default `2147483648`.
-- `--diag_cooldown_ms` Cooldown between triage runs. Default `300000`.
-- `--git_ssh_command` Override SSH command for git operations (e.g. specify identity file).
-- `--issue_rate_limit_per_hour` Max GitHub issues per hour. Default `60`.
-- `--llm_rate_limit_per_hour` Max LLM calls per hour. Default `60`.
-- `--issue_dedupe_window_ms` Window for deduping identical issues. Default `3600000`.
-- `--redact_keys` Comma-separated list of keys to redact before logging/LLM/issue. Default `password,passwd,secret,token,api_key,apikey,authorization,cookie`.
-- `--open_pr` `true` or `false`. Default `true`.
-- `--merge_pr` `true` or `false`. Default `false`.
-- `--poll_interval_ms` Diagnostics polling interval. Default `5000`.
-- `--min_level` Minimum logger level to capture. Default `error`.
-- `--github_repo` GitHub repo in `owner/name` format.
-- `--github_token` Fine-grained PAT or GitHub App token.
+- `--llm-cmd` Override CLI command used for the LLM.
+- `--llm-api-key` API key for `api_anthropic` or `api_openai`.
+- `--llm-api-url` Override API endpoint for `api_anthropic` or `api_openai`.
+- `--llm-model` Override model name for API providers.
+- `--triage-on-diagnostics` Enable triage when diagnostics thresholds are exceeded.
+- `--triage-mode` `report` or `fix`. Default `report`.
+- `--diag-run-queue-mult` Run queue multiplier threshold. Default `4`.
+- `--diag-mem-high-bytes` Memory threshold in bytes. Default `2147483648`.
+- `--diag-cooldown-ms` Cooldown between triage runs. Default `300000`.
+- `--git-ssh-command` Override SSH command for git operations (e.g. specify identity file).
+- `--issue-rate-limit-per-hour` Max GitHub issues per hour. Default `60`.
+- `--llm-rate-limit-per-hour` Max LLM calls per hour. Default `60`.
+- `--issue-dedupe-window-ms` Window for deduping identical issues. Default `3600000`.
+- `--redact-keys` Comma-separated list of keys to redact before logging/LLM/issue. Default `password,passwd,secret,token,api_key,apikey,authorization,cookie`.
+- `--open-pr` `true` or `false`. Default `true`.
+- `--merge-pr` `true` or `false`. Default `false`.
+- `--poll-interval-ms` Diagnostics polling interval. Default `5000`.
+- `--max-concurrency` Max concurrent pipeline jobs. Default `4`.
+- `--queue-max-size` Max queued jobs before overflow policy applies. Default `200`.
+- `--job-timeout-ms` Per-job timeout budget in milliseconds. Default `120000`.
+- `--overflow-policy` `drop_newest` or `drop_oldest`. Default `drop_newest`.
+- `--min-level` Minimum logger level to capture. Default `error`.
+- `--github-repo` GitHub repo in `owner/name` format.
+- `--github-token` Fine-grained PAT or GitHub App token.
 - `--workdir` Optional workdir. If not set, a temporary git worktree is used.
 
 ## Runtime Config
@@ -73,6 +77,10 @@ You can set defaults via environment variables:
 - `MOM_ISSUE_RATE_LIMIT_PER_HOUR`
 - `MOM_LLM_RATE_LIMIT_PER_HOUR`
 - `MOM_ISSUE_DEDUPE_WINDOW_MS`
+- `MOM_MAX_CONCURRENCY`
+- `MOM_QUEUE_MAX_SIZE`
+- `MOM_JOB_TIMEOUT_MS`
+- `MOM_OVERFLOW_POLICY`
 - `MOM_REDACT_KEYS`
 
 ## How It Works

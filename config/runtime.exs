@@ -12,5 +12,9 @@ if config_env() in [:dev, :prod] do
     issue_rate_limit_per_hour: System.get_env("MOM_ISSUE_RATE_LIMIT_PER_HOUR"),
     llm_rate_limit_per_hour: System.get_env("MOM_LLM_RATE_LIMIT_PER_HOUR"),
     issue_dedupe_window_ms: System.get_env("MOM_ISSUE_DEDUPE_WINDOW_MS"),
+    max_concurrency: System.get_env("MOM_MAX_CONCURRENCY"),
+    queue_max_size: System.get_env("MOM_QUEUE_MAX_SIZE"),
+    job_timeout_ms: System.get_env("MOM_JOB_TIMEOUT_MS"),
+    overflow_policy: System.get_env("MOM_OVERFLOW_POLICY"),
     redact_keys: System.get_env("MOM_REDACT_KEYS")
 end

@@ -273,8 +273,8 @@ Out of scope (for this phase):
 - [ ] Add in-flight signature guard for concurrent dedupe safety.
 
 ### Config and Controls
-- [ ] Add config keys: `max_concurrency`, `queue_max_size`, `job_timeout_ms`, `overflow_policy`.
-- [ ] Validate and enforce overflow behavior (`:drop_newest` / `:drop_oldest`).
+- [x] Add config keys: `max_concurrency`, `queue_max_size`, `job_timeout_ms`, `overflow_policy`.
+- [x] Validate and enforce overflow behavior (`:drop_newest` / `:drop_oldest`).
 - [ ] Add optional repo allowlist control (`allowed_github_repos`).
 - [ ] Add branch naming policy support for Mom-generated branches.
 
@@ -318,6 +318,8 @@ Out of scope (for this phase):
 - [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
 - [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
+- [ ] Add customer-facing billing and entitlement enforcement (plan limits, overage handling, downgrade flow).
+- [ ] Define support and incident operations model (on-call rotations, escalation policy, status communication).
 - [ ] Add operational onboarding docs (installation hardening, key rotation, upgrade playbook).
 - [ ] Add customer billing and entitlement enforcement (seat/repo plans, overage policy, grace behavior).
 - [ ] Add 24x7 operational support model (on-call rotation, incident response SLAs, escalation paths).

@@ -9,6 +9,14 @@ defmodule Mom.ConfigTest do
     assert config.mode == :remote
   end
 
+  test "includes pipeline concurrency defaults" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo")
+    assert config.max_concurrency == 4
+    assert config.queue_max_size == 200
+    assert config.job_timeout_ms == 120_000
+    assert config.overflow_policy == :drop_newest
+  end
+
   test "parses redact keys from comma-separated string" do
     {:ok, config} =
       Config.from_opts(repo: "/tmp/repo", redact_keys: "foo, Bar , ,baz")
@@ -35,5 +43,35 @@ defmodule Mom.ConfigTest do
     assert config.issue_rate_limit_per_hour == 12
   after
     Application.delete_env(:mom, :issue_rate_limit_per_hour)
+  end
+
+  test "parses pipeline concurrency values from opts" do
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        max_concurrency: 8,
+        queue_max_size: 350,
+        job_timeout_ms: 9_000,
+        overflow_policy: :drop_oldest
+      )
+
+    assert config.max_concurrency == 8
+    assert config.queue_max_size == 350
+    assert config.job_timeout_ms == 9_000
+    assert config.overflow_policy == :drop_oldest
+  end
+
+  test "validates pipeline concurrency values" do
+    assert {:error, "max_concurrency must be a non-negative integer"} =
+             Config.from_opts(repo: "/tmp/repo", max_concurrency: -1)
+
+    assert {:error, "queue_max_size must be a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", queue_max_size: 0)
+
+    assert {:error, "job_timeout_ms must be a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", job_timeout_ms: 0)
+
+    assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
+             Config.from_opts(repo: "/tmp/repo", overflow_policy: :drop_middle)
   end
 end
