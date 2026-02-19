@@ -223,6 +223,7 @@ Out of scope (for this phase):
 - `staging_restricted` execution profile policy is implemented (sandbox requirement, command allowlist, and isolated write boundary enforcement), covered by ExUnit + Playwright acceptance tests.
 - `production_hardened` execution profile policy is implemented (read-only sandbox, codex-only command allowlist, isolated workdir enforcement, and readiness-gated sensitive operations), covered by ExUnit + Playwright acceptance tests.
 - Runtime fail-closed execution policy checks are implemented for restricted profiles (policy drift blocks LLM execution before command invocation), covered by ExUnit + Playwright acceptance tests.
+- Production observability integration is implemented with Prometheus export and SLO-breach alert telemetry (`queue_depth`, `drop_rate`, `failure_rate`, `latency_p95_ms`), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -251,12 +252,27 @@ Out of scope (for this phase):
 
 1. Production Observability Integration
 - Export pipeline telemetry to a production backend (OpenTelemetry/Prometheus), with dashboards and SLO alerts for queue depth, drop rate, failure rate, and triage latency.
+- Status: complete (February 19, 2026) via Prometheus text export + SLO breach telemetry events.
 
 2. Delivery Safety and Governance
 - Enforce protected-branch PR approvals, required CI checks, and policy gates for Mom-authored changes before merge.
 
 3. End-to-End Security Hardening
 - Implement restricted execution profiles (remove default `--yolo` in production), outbound egress controls, and audited command allowlists.
+
+## Additional Commercial Readiness Tasks (Recognized)
+
+1. Multi-Tenant Isolation and Quotas
+- Add tenant-scoped queue/concurrency/rate-limit controls, noisy-neighbor protection, and per-tenant audit partitioning for hosted operation.
+
+2. Billing and Usage Metering
+- Emit billable usage records (triage attempts, LLM calls, runtime minutes, PR/issue actions) with reconciliation and export to finance systems.
+
+3. Operational Runbooks and On-Call Readiness
+- Publish runbooks for incident response, credential revocation, degraded-mode operation, and recovery drills; add paging hooks tied to SLO breaches.
+
+4. Compliance and Data Governance Controls
+- Define retention/deletion policies for logs, prompts, and patches; implement PII handling controls and evidence collection for SOC2-style audits.
 
 4. Credential and Secret Operations
 - Move all credentials to managed secret storage, add rotation automation, and add startup/runtime checks for stale or over-scoped credentials.

@@ -37,6 +37,13 @@ defmodule Mom.Config do
     :queue_max_size,
     :job_timeout_ms,
     :overflow_policy,
+    :observability_backend,
+    :observability_export_path,
+    :observability_export_interval_ms,
+    :slo_queue_depth_threshold,
+    :slo_drop_rate_threshold,
+    :slo_failure_rate_threshold,
+    :slo_latency_p95_ms_threshold,
     :allowed_github_repos,
     :allowed_actor_ids,
     :branch_name_prefix,
@@ -83,6 +90,13 @@ defmodule Mom.Config do
           queue_max_size: pos_integer(),
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
+          observability_backend: :none | :prometheus,
+          observability_export_path: String.t() | nil,
+          observability_export_interval_ms: pos_integer(),
+          slo_queue_depth_threshold: pos_integer(),
+          slo_drop_rate_threshold: float(),
+          slo_failure_rate_threshold: float(),
+          slo_latency_p95_ms_threshold: pos_integer(),
           allowed_github_repos: [String.t()],
           allowed_actor_ids: [String.t()],
           branch_name_prefix: String.t(),
@@ -119,6 +133,19 @@ defmodule Mom.Config do
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
+             {:ok, observability_backend} <- parse_observability_backend(opts, runtime),
+             {:ok, observability_export_path} <-
+               parse_observability_export_path(opts, runtime, observability_backend),
+             {:ok, observability_export_interval_ms} <-
+               parse_pos_int(opts, runtime, :observability_export_interval_ms, 5_000),
+             {:ok, slo_queue_depth_threshold} <-
+               parse_pos_int(opts, runtime, :slo_queue_depth_threshold, 150),
+             {:ok, slo_drop_rate_threshold} <-
+               parse_ratio(opts, runtime, :slo_drop_rate_threshold, 0.05),
+             {:ok, slo_failure_rate_threshold} <-
+               parse_ratio(opts, runtime, :slo_failure_rate_threshold, 0.1),
+             {:ok, slo_latency_p95_ms_threshold} <-
+               parse_pos_int(opts, runtime, :slo_latency_p95_ms_threshold, 15_000),
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
              {:ok, allowed_actor_ids} <- parse_allowed_actor_ids(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
@@ -204,6 +231,13 @@ defmodule Mom.Config do
              queue_max_size: queue_max_size,
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
+             observability_backend: observability_backend,
+             observability_export_path: observability_export_path,
+             observability_export_interval_ms: observability_export_interval_ms,
+             slo_queue_depth_threshold: slo_queue_depth_threshold,
+             slo_drop_rate_threshold: slo_drop_rate_threshold,
+             slo_failure_rate_threshold: slo_failure_rate_threshold,
+             slo_latency_p95_ms_threshold: slo_latency_p95_ms_threshold,
              allowed_github_repos: allowed_github_repos,
              allowed_actor_ids: allowed_actor_ids,
              branch_name_prefix: branch_name_prefix,
@@ -257,6 +291,17 @@ defmodule Mom.Config do
   defp parse_int(value) when is_binary(value) do
     case Integer.parse(value) do
       {int, _} -> int
+      :error -> nil
+    end
+  end
+
+  defp parse_float(nil), do: nil
+  defp parse_float(value) when is_integer(value), do: value * 1.0
+  defp parse_float(value) when is_float(value), do: value
+
+  defp parse_float(value) when is_binary(value) do
+    case Float.parse(value) do
+      {float, _} -> float
       :error -> nil
     end
   end
@@ -574,6 +619,46 @@ defmodule Mom.Config do
       "drop_newest" -> {:ok, :drop_newest}
       "drop_oldest" -> {:ok, :drop_oldest}
       _other -> {:error, "overflow_policy must be :drop_newest or :drop_oldest"}
+    end
+  end
+
+  defp parse_observability_backend(opts, runtime) do
+    case Keyword.get(opts, :observability_backend, runtime[:observability_backend]) do
+      nil -> {:ok, :none}
+      :none -> {:ok, :none}
+      :prometheus -> {:ok, :prometheus}
+      "none" -> {:ok, :none}
+      "prometheus" -> {:ok, :prometheus}
+      _other -> {:error, "observability_backend must be :none or :prometheus"}
+    end
+  end
+
+  defp parse_observability_export_path(opts, runtime, :none) do
+    {:ok, Keyword.get(opts, :observability_export_path, runtime[:observability_export_path])}
+  end
+
+  defp parse_observability_export_path(opts, runtime, :prometheus) do
+    case Keyword.get(opts, :observability_export_path, runtime[:observability_export_path]) do
+      path when is_binary(path) and path != "" ->
+        {:ok, path}
+
+      _other ->
+        {:error, "observability_export_path is required when observability_backend is :prometheus"}
+    end
+  end
+
+  defp parse_ratio(opts, runtime, key, default) do
+    value = Keyword.get(opts, key, runtime[key])
+
+    case parse_float(value) do
+      nil ->
+        {:ok, default}
+
+      parsed when parsed >= 0.0 and parsed <= 1.0 ->
+        {:ok, parsed}
+
+      _parsed ->
+        {:error, "#{key} must be between 0.0 and 1.0"}
     end
   end
 

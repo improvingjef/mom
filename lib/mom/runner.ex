@@ -1,7 +1,7 @@
 defmodule Mom.Runner do
   @moduledoc false
 
-  alias Mom.{Beam, Config, Diagnostics, Pipeline}
+  alias Mom.{Beam, Config, Diagnostics, Observability, Pipeline}
 
   require Logger
 
@@ -22,10 +22,12 @@ defmodule Mom.Runner do
       queue_max_size: Keyword.get(opts, :queue_max_size, config.queue_max_size),
       overflow_policy: Keyword.get(opts, :overflow_policy, config.overflow_policy),
       worker_module: worker_module,
-      worker_opts: Keyword.merge([config: config, job_timeout_ms: config.job_timeout_ms], worker_opts)
+      worker_opts:
+        Keyword.merge([config: config, job_timeout_ms: config.job_timeout_ms], worker_opts)
     ]
 
-    with {:ok, pipeline} <- pipeline_module.start_link(pipeline_opts) do
+    with {:ok, pipeline} <- pipeline_module.start_link(pipeline_opts),
+         :ok <- maybe_start_observability(config) do
       do_start(config, pipeline, beam_module, diagnostics_module, pipeline_module)
     end
   end
@@ -115,4 +117,22 @@ defmodule Mom.Runner do
       _ -> raise "node is required in remote mode"
     end
   end
+
+  defp maybe_start_observability(%Config{observability_backend: :none}), do: :ok
+
+  defp maybe_start_observability(%Config{observability_backend: :prometheus} = config) do
+    case Observability.start_link(
+           export_path: config.observability_export_path,
+           export_interval_ms: config.observability_export_interval_ms,
+           queue_depth_threshold: config.slo_queue_depth_threshold,
+           drop_rate_threshold: config.slo_drop_rate_threshold,
+           failure_rate_threshold: config.slo_failure_rate_threshold,
+           latency_p95_ms_threshold: config.slo_latency_p95_ms_threshold
+         ) do
+      {:ok, _pid} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp maybe_start_observability(%Config{}), do: :ok
 end

@@ -16,6 +16,12 @@ defmodule Mom.ConfigTest do
     assert config.job_timeout_ms == 120_000
     assert config.overflow_policy == :drop_newest
     assert "api.github.com" in config.allowed_egress_hosts
+    assert config.observability_backend == :none
+    assert config.observability_export_interval_ms == 5_000
+    assert config.slo_queue_depth_threshold == 150
+    assert config.slo_drop_rate_threshold == 0.05
+    assert config.slo_failure_rate_threshold == 0.1
+    assert config.slo_latency_p95_ms_threshold == 15_000
   end
 
   test "parses redact keys from comma-separated string" do
@@ -275,6 +281,45 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
              Config.from_opts(repo: "/tmp/repo", overflow_policy: :drop_middle)
+  end
+
+  test "parses observability backend and slo thresholds" do
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        observability_backend: :prometheus,
+        observability_export_path: "/tmp/mom.prom",
+        observability_export_interval_ms: 2_000,
+        slo_queue_depth_threshold: 200,
+        slo_drop_rate_threshold: 0.1,
+        slo_failure_rate_threshold: 0.15,
+        slo_latency_p95_ms_threshold: 25_000
+      )
+
+    assert config.observability_backend == :prometheus
+    assert config.observability_export_path == "/tmp/mom.prom"
+    assert config.observability_export_interval_ms == 2_000
+    assert config.slo_queue_depth_threshold == 200
+    assert config.slo_drop_rate_threshold == 0.1
+    assert config.slo_failure_rate_threshold == 0.15
+    assert config.slo_latency_p95_ms_threshold == 25_000
+  end
+
+  test "validates observability settings" do
+    assert {:error, "observability_backend must be :none or :prometheus"} =
+             Config.from_opts(repo: "/tmp/repo", observability_backend: :datadog)
+
+    assert {:error, "observability_export_path is required when observability_backend is :prometheus"} =
+             Config.from_opts(repo: "/tmp/repo", observability_backend: :prometheus)
+
+    assert {:error, "observability_export_interval_ms must be a positive integer"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               observability_export_interval_ms: 0
+             )
+
+    assert {:error, "slo_drop_rate_threshold must be between 0.0 and 1.0"} =
+             Config.from_opts(repo: "/tmp/repo", slo_drop_rate_threshold: 1.5)
   end
 
   test "enforces github repo allowlist when configured" do
