@@ -210,6 +210,74 @@ defmodule Mom.ConfigTest do
     assert approved.open_pr
   end
 
+  test "emits execution profile attestation for approved restricted profile baseline" do
+    workdir = isolated_workdir_fixture()
+    handler_id = "mom-config-execution-profile-attested-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :execution_profile_policy_attested],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir
+             )
+
+    assert config.execution_profile == :production_hardened
+
+    assert_receive {:telemetry_event, [:mom, :audit, :execution_profile_policy_attested],
+                    metadata}
+
+    assert metadata.execution_profile == :production_hardened
+    assert metadata.drift_fields == []
+    assert metadata.baseline_id == "production_hardened_default"
+  end
+
+  test "blocks startup when restricted profile drifts from approved baseline and emits audit event" do
+    workdir = isolated_workdir_fixture()
+    handler_id = "mom-config-execution-profile-drift-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :execution_profile_policy_drift_blocked],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error,
+            "execution_profile staging_restricted drift detected from approved baseline: llm_cmd"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted,
+               workdir: workdir,
+               llm_cmd: "codex exec --sandbox workspace-write --cd /tmp"
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :execution_profile_policy_drift_blocked],
+                    metadata}
+
+    assert metadata.execution_profile == :staging_restricted
+    assert metadata.drift_fields == ["llm_cmd"]
+    assert metadata.baseline_id == "staging_restricted_default"
+  end
+
   test "fails closed when staging_restricted runtime policy drifts to yolo command" do
     workdir = isolated_workdir_fixture()
 

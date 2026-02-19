@@ -3,7 +3,8 @@
 ## Next 3 Tasks
 1. [x] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
  - Status: complete (February 19, 2026) via live GitHub permission evidence verification in `Mom.GitHubCredentialEvidence` (`x-oauth-scopes` PAT introspection + `/repos/{repo}/installation` permission checks), fail-closed startup gating with HMAC-signed attestation audit events in `Mom.Config`, and ExUnit + Playwright acceptance coverage.
-2. [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
+2. [x] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
+ - Status: complete (February 19, 2026) via startup baseline attestation in `Mom.Config` (`execution_profile_policy_attested`) with fail-closed drift blocking (`execution_profile_policy_drift_blocked`) across approved restricted-profile policy baselines, plus ExUnit + Playwright acceptance coverage.
 3. [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 
 ## Priority 0: Failure Server and Acceptance Reliability
@@ -32,9 +33,11 @@
  - Status: complete (February 19, 2026) via fail-closed startup scope validation in `Mom.Config` (`github_credential_scopes` + `MOM_GITHUB_CREDENTIAL_SCOPES`), blocked-start audit evidence (`github_credential_scope_blocked`), `mix mom` CLI scope wiring, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 - [x] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
  - Status: complete (February 19, 2026) via `Mom.GitHubCredentialEvidence` PAT scope introspection (`x-oauth-scopes`) + installation permission evidence (`/repos/{repo}/installation`), HMAC-signed startup attestation audit events (`github_credential_permission_attested` / `github_credential_permission_blocked`), and ExUnit + Playwright acceptance coverage.
-- [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
+- [x] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
+ - Status: complete (February 19, 2026) via approved-baseline policy attestation and fail-closed startup drift detection in `Mom.Config` (`execution_profile_policy_attested` / `execution_profile_policy_drift_blocked`), with ExUnit + Playwright acceptance coverage.
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.
+- [ ] Align Elixir runtime support policy with enforced startup/tooling checks (single supported patch baseline in `.tool-versions`/mise + `mix.exs` compatibility guardrails + CI parity checks) to prevent RC/stable mismatch startup blocks in operator and CI environments.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
 - [ ] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.

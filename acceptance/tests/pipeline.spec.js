@@ -260,6 +260,20 @@ test("mom fails closed when runtime execution policy is violated", async () => {
   ]);
 });
 
+test("mom attests approved execution profile baselines and blocks startup policy drift", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs"
+  );
+
+  expect(result.passing_profile).toBe("production_hardened");
+  expect(result.blocked_result).toEqual([
+    "error",
+    "execution_profile staging_restricted drift detected from approved baseline: llm_cmd"
+  ]);
+  expect(result.saw_attested_event).toBeTruthy();
+  expect(result.saw_drift_blocked_event).toBeTruthy();
+});
+
 test("mom stress mix task generates rapid event summary", async () => {
   const { result } = runAcceptanceScript("acceptance/scripts/mom_stress_acceptance.exs");
 

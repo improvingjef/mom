@@ -324,7 +324,23 @@ defmodule Mom.Config do
                  protected_branches
                ),
              {:ok, github_repo} <-
-               parse_and_validate_github_repo(opts, runtime, allowed_github_repos, actor_id) do
+               parse_and_validate_github_repo(opts, runtime, allowed_github_repos, actor_id),
+             :ok <-
+               attest_execution_profile_baseline(
+                 execution_profile,
+                 llm_provider,
+                 llm_cmd,
+                 policy,
+                 workdir,
+                 open_pr,
+                 merge_pr,
+                 readiness_gate_approved,
+                 test_command_profile,
+                 actor_id,
+                 repo,
+                 github_repo,
+                 startup_attestation_signing_key
+               ) do
           {:ok,
            %__MODULE__{
              repo: repo,
@@ -903,6 +919,206 @@ defmodule Mom.Config do
       write_boundaries: if(is_binary(workdir), do: [workdir], else: [])
     }
   end
+
+  defp attest_execution_profile_baseline(
+         :test_relaxed,
+         _llm_provider,
+         _llm_cmd,
+         _policy,
+         _workdir,
+         _open_pr,
+         _merge_pr,
+         _readiness_gate_approved,
+         _test_command_profile,
+         _actor_id,
+         _repo,
+         _github_repo,
+         _startup_attestation_signing_key
+       ),
+       do: :ok
+
+  defp attest_execution_profile_baseline(
+         execution_profile,
+         llm_provider,
+         llm_cmd,
+         policy,
+         workdir,
+         open_pr,
+         merge_pr,
+         readiness_gate_approved,
+         test_command_profile,
+         actor_id,
+         repo,
+         github_repo,
+         startup_attestation_signing_key
+       ) do
+    observed = %{
+      llm_provider: llm_provider,
+      llm_cmd: normalize_command(llm_cmd),
+      sandbox_mode: policy.sandbox_mode,
+      command_allowlist: policy.command_allowlist,
+      write_boundaries: policy.write_boundaries,
+      open_pr: open_pr,
+      merge_pr: merge_pr,
+      readiness_gate_approved: readiness_gate_approved,
+      test_command_profile: test_command_profile
+    }
+
+    baselines = approved_execution_profile_baselines(execution_profile, workdir)
+
+    case Enum.find(baselines, fn baseline -> baseline_match?(baseline.policy, observed) end) do
+      nil ->
+        closest = closest_baseline(baselines, observed)
+        drift_fields = drift_fields(closest.policy, observed)
+
+        :ok =
+          Audit.emit(:execution_profile_policy_drift_blocked, %{
+            repo: github_repo || repo,
+            actor_id: actor_id,
+            execution_profile: execution_profile,
+            baseline_id: closest.id,
+            drift_fields: drift_fields,
+            observed_policy: observed,
+            expected_policy: closest.policy,
+            attestation_signature:
+              maybe_sign_execution_profile_attestation(nil, startup_attestation_signing_key),
+            attestation_key_id: attestation_key_id(startup_attestation_signing_key)
+          })
+
+        {:error,
+         "execution_profile #{execution_profile} drift detected from approved baseline: #{Enum.join(drift_fields, ", ")}"}
+
+      baseline ->
+        :ok =
+          Audit.emit(:execution_profile_policy_attested, %{
+            repo: github_repo || repo,
+            actor_id: actor_id,
+            execution_profile: execution_profile,
+            baseline_id: baseline.id,
+            drift_fields: [],
+            observed_policy: observed,
+            expected_policy: baseline.policy,
+            attestation_signature:
+              maybe_sign_execution_profile_attestation(observed, startup_attestation_signing_key),
+            attestation_key_id: attestation_key_id(startup_attestation_signing_key)
+          })
+
+        :ok
+    end
+  end
+
+  defp approved_execution_profile_baselines(:staging_restricted, workdir) do
+    [
+      %{
+        id: "staging_restricted_default",
+        policy: %{
+          llm_provider: :codex,
+          llm_cmd: default_llm_cmd(:codex, nil, :staging_restricted),
+          sandbox_mode: :workspace_write,
+          command_allowlist: ["codex"],
+          write_boundaries: expected_write_boundaries(workdir),
+          open_pr: true,
+          merge_pr: false,
+          readiness_gate_approved: false,
+          test_command_profile: :mix_test
+        }
+      }
+    ]
+  end
+
+  defp approved_execution_profile_baselines(:production_hardened, workdir) do
+    [
+      %{
+        id: "production_hardened_default",
+        policy: %{
+          llm_provider: :codex,
+          llm_cmd: default_llm_cmd(:codex, nil, :production_hardened),
+          sandbox_mode: :read_only,
+          command_allowlist: ["codex"],
+          write_boundaries: expected_write_boundaries(workdir),
+          open_pr: false,
+          merge_pr: false,
+          readiness_gate_approved: false,
+          test_command_profile: :mix_test
+        }
+      },
+      %{
+        id: "production_hardened_readiness_approved_pr",
+        policy: %{
+          llm_provider: :codex,
+          llm_cmd: default_llm_cmd(:codex, nil, :production_hardened),
+          sandbox_mode: :read_only,
+          command_allowlist: ["codex"],
+          write_boundaries: expected_write_boundaries(workdir),
+          open_pr: true,
+          merge_pr: false,
+          readiness_gate_approved: true,
+          test_command_profile: :mix_test
+        }
+      }
+    ]
+  end
+
+  defp baseline_match?(expected, observed) do
+    Enum.all?(Map.keys(expected), fn key ->
+      Map.get(expected, key) == Map.get(observed, key)
+    end)
+  end
+
+  defp closest_baseline(baselines, observed) do
+    Enum.min_by(baselines, fn baseline ->
+      baseline.policy
+      |> drift_fields(observed)
+      |> length()
+    end)
+  end
+
+  defp drift_fields(expected, observed) do
+    expected
+    |> Map.keys()
+    |> Enum.filter(fn key -> Map.get(expected, key) != Map.get(observed, key) end)
+    |> Enum.map(&Atom.to_string/1)
+    |> Enum.sort()
+  end
+
+  defp maybe_sign_execution_profile_attestation(_policy, signing_key)
+       when not is_binary(signing_key),
+       do: nil
+
+  defp maybe_sign_execution_profile_attestation(policy, signing_key) do
+    payload =
+      policy
+      |> case do
+        nil -> %{}
+        value -> value
+      end
+      |> Jason.encode!()
+
+    :crypto.mac(:hmac, :sha256, signing_key, payload)
+    |> Base.encode64()
+  end
+
+  defp attestation_key_id(signing_key) when is_binary(signing_key) and signing_key != "" do
+    digest =
+      signing_key
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+
+    "sha256:#{digest}"
+  end
+
+  defp attestation_key_id(_), do: "unsigned"
+
+  defp normalize_command(value) when is_binary(value) do
+    value
+    |> String.split(~r/\s+/, trim: true)
+    |> Enum.join(" ")
+  end
+
+  defp normalize_command(value), do: value
+
+  defp expected_write_boundaries(workdir) when is_binary(workdir), do: [workdir]
+  defp expected_write_boundaries(_workdir), do: []
 
   defp validate_execution_policy(
          :test_relaxed,
