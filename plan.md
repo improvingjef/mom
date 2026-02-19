@@ -266,7 +266,7 @@ Out of scope (for this phase):
 ## Execution Checklist
 
 ### Concurrency Foundation
-- [ ] Add `Mom.Pipeline` ingestion/queue coordinator.
+- [x] Add `Mom.Pipeline` ingestion/queue coordinator.
 - [ ] Add `Mom.WorkerSupervisor` and bounded dispatch by `max_concurrency`.
 - [ ] Route `Mom.Runner` events through pipeline enqueue path.
 - [ ] Add per-job timeout/cancellation handling.
@@ -310,3 +310,12 @@ Out of scope (for this phase):
 - [ ] Define `production_hardened` policy (restricted profile + sensitive-op approvals).
 - [ ] Add fail-closed policy checks for safety violations.
 - [ ] Add audit assertions for all agent-driven git mutations.
+
+## Commercial Availability Backlog
+- [ ] Define SLA/SLO targets (triage latency, queue durability, PR turnaround) and error budgets.
+- [ ] Add durable queue mode (disk-backed persistence and replay on restart) for production resilience.
+- [ ] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
+- [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
+- [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
+- [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
+- [ ] Add operational onboarding docs (installation hardening, key rotation, upgrade playbook).
