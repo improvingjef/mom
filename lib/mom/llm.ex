@@ -9,10 +9,16 @@ defmodule Mom.LLM do
   def generate_patch(context, %Config{llm_provider: provider} = config) do
     prompt = build_prompt(context)
 
-    with true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
+    with :ok <- Config.validate_runtime_policy(config),
+         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
       call_provider(prompt, provider, config)
     else
-      false -> {:error, :llm_rate_limited}
+      {:error, reason} ->
+        Logger.warning("mom: llm invocation blocked by runtime policy violation reason=#{reason}")
+        {:error, {:policy_violation, reason}}
+
+      false ->
+        {:error, :llm_rate_limited}
     end
   end
 
@@ -20,10 +26,16 @@ defmodule Mom.LLM do
   def generate_text(context, %Config{llm_provider: provider} = config) do
     prompt = build_prompt(context)
 
-    with true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
+    with :ok <- Config.validate_runtime_policy(config),
+         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
       call_provider(prompt, provider, config)
     else
-      false -> {:error, :llm_rate_limited}
+      {:error, reason} ->
+        Logger.warning("mom: llm invocation blocked by runtime policy violation reason=#{reason}")
+        {:error, {:policy_violation, reason}}
+
+      false ->
+        {:error, :llm_rate_limited}
     end
   end
 
@@ -67,13 +79,14 @@ defmodule Mom.LLM do
   end
 
   defp call_codex(prompt, %Config{} = config) do
-    cmd = config.llm_cmd || "codex"
+    cmd = config.llm_cmd || "codex --yolo exec"
     started_at = System.monotonic_time()
     Logger.info("mom: codex invocation started cmd=#{cmd}")
 
-    result = CLI.call(prompt, config, "codex")
+    result = CLI.call(prompt, config, "codex --yolo exec")
 
-    duration_ms = System.convert_time_unit(System.monotonic_time() - started_at, :native, :millisecond)
+    duration_ms =
+      System.convert_time_unit(System.monotonic_time() - started_at, :native, :millisecond)
 
     case result do
       {:ok, _out} ->

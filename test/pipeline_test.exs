@@ -18,6 +18,7 @@ defmodule Mom.PipelineTest do
   defmodule FailingWorker do
     def perform({:error_event, %{id: id, test_pid: test_pid}}, _opts) do
       send(test_pid, {:started, id, self()})
+      Process.sleep(10)
       raise "worker boom"
     end
   end

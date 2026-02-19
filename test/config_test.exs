@@ -173,6 +173,41 @@ defmodule Mom.ConfigTest do
     assert approved.open_pr
   end
 
+  test "fails closed when staging_restricted runtime policy drifts to yolo command" do
+    workdir = isolated_workdir_fixture()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        llm_provider: :codex,
+        execution_profile: :staging_restricted,
+        workdir: workdir,
+        llm_cmd: "codex exec --sandbox workspace-write"
+      )
+
+    drifted = %{config | llm_cmd: "codex --yolo exec --sandbox workspace-write"}
+
+    assert {:error, "staging_restricted forbids --yolo execution"} =
+             Config.validate_runtime_policy(drifted)
+  end
+
+  test "fails closed when production_hardened runtime policy drifts from protected baseline" do
+    workdir = isolated_workdir_fixture()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        llm_provider: :codex,
+        execution_profile: :production_hardened,
+        workdir: workdir
+      )
+
+    drifted = %{config | sandbox_mode: :workspace_write}
+
+    assert {:error, "production_hardened requires codex sandbox mode read-only"} =
+             Config.validate_runtime_policy(drifted)
+  end
+
   test "uses runtime env defaults" do
     Application.put_env(:mom, :llm_cmd, "cat")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")

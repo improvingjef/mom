@@ -221,6 +221,27 @@ defmodule Mom.Config do
     end
   end
 
+  @spec validate_runtime_policy(t()) :: :ok | {:error, String.t()}
+  def validate_runtime_policy(%__MODULE__{execution_profile: :test_relaxed}), do: :ok
+
+  def validate_runtime_policy(%__MODULE__{} = config) do
+    policy = execution_policy(config.execution_profile, config.workdir)
+
+    with :ok <- validate_policy_alignment(config, policy),
+         :ok <-
+           validate_execution_policy(
+             config.execution_profile,
+             config.llm_provider,
+             config.llm_cmd,
+             config.workdir,
+             config.open_pr,
+             config.merge_pr,
+             config.readiness_gate_approved
+           ) do
+      :ok
+    end
+  end
+
   defp default_llm_cmd(:codex, nil, :staging_restricted),
     do: "codex exec --sandbox workspace-write"
 
@@ -506,6 +527,44 @@ defmodule Mom.Config do
   end
 
   defp codex_read_only_sandbox?(_llm_cmd), do: false
+
+  defp validate_policy_alignment(
+         %__MODULE__{execution_profile: :staging_restricted} = config,
+         expected
+       ) do
+    cond do
+      config.write_boundaries != expected.write_boundaries ->
+        {:error, "staging_restricted requires an isolated --workdir write boundary"}
+
+      config.command_allowlist != expected.command_allowlist ->
+        {:error, "staging_restricted requires codex command allowlist compliance"}
+
+      config.sandbox_mode != expected.sandbox_mode ->
+        {:error, "staging_restricted requires codex sandbox mode workspace-write"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp validate_policy_alignment(
+         %__MODULE__{execution_profile: :production_hardened} = config,
+         expected
+       ) do
+    cond do
+      config.write_boundaries != expected.write_boundaries ->
+        {:error, "production_hardened requires an isolated --workdir write boundary"}
+
+      config.command_allowlist != expected.command_allowlist ->
+        {:error, "production_hardened requires codex command allowlist compliance"}
+
+      config.sandbox_mode != expected.sandbox_mode ->
+        {:error, "production_hardened requires codex sandbox mode read-only"}
+
+      true ->
+        :ok
+    end
+  end
 
   defp parse_overflow_policy(opts, runtime) do
     case Keyword.get(opts, :overflow_policy, runtime[:overflow_policy]) do

@@ -331,6 +331,31 @@ test("mom CLI defines production_hardened profile guardrails", async () => {
   expect(result.approved_sensitive_op_open_pr).toBeTruthy();
 });
 
+test("mom fails closed when runtime execution policy is violated", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.execution_profile).toBe("staging_restricted");
+  expect(result.blocked_result).toEqual([
+    "error",
+    ["policy_violation", "staging_restricted forbids --yolo execution"]
+  ]);
+});
+
 test("mom stress mix task generates rapid event summary", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

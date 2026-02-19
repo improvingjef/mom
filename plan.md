@@ -222,6 +222,7 @@ Out of scope (for this phase):
 - Readiness gate validation is implemented for automated PR creation (`readiness_gate_approved`), with fail-closed audit logging and ExUnit + Playwright acceptance coverage.
 - `staging_restricted` execution profile policy is implemented (sandbox requirement, command allowlist, and isolated write boundary enforcement), covered by ExUnit + Playwright acceptance tests.
 - `production_hardened` execution profile policy is implemented (read-only sandbox, codex-only command allowlist, isolated workdir enforcement, and readiness-gated sensitive operations), covered by ExUnit + Playwright acceptance tests.
+- Runtime fail-closed execution policy checks are implemented for restricted profiles (policy drift blocks LLM execution before command invocation), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -378,7 +379,7 @@ Out of scope (for this phase):
 ### Post-Validation Hardening
 - [x] Define `staging_restricted` policy (sandbox + command allowlist + write boundaries).
 - [x] Define `production_hardened` policy (restricted profile + sensitive-op approvals).
-- [ ] Add fail-closed policy checks for safety violations.
+- [x] Add fail-closed policy checks for safety violations.
 - [ ] Add audit assertions for all agent-driven git mutations.
 
 ## Commercial Availability Backlog
@@ -426,3 +427,5 @@ Out of scope (for this phase):
 - [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
 - [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+- [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
+- [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
