@@ -101,3 +101,29 @@ test("runner routes logs and diagnostics through pipeline workers", async () => 
   expect(result.saw_error_event).toBeTruthy();
   expect(result.saw_diagnostics_event).toBeTruthy();
 });
+
+test("pipeline cancels timed out jobs and continues queued work", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/pipeline_timeout_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.slow_started).toBeTruthy();
+  expect(result.fast_started_early).toBeFalsy();
+  expect(result.fast_started).toBeTruthy();
+  expect(result.active_workers).toBe(0);
+  expect(result.completed_count).toBe(2);
+  expect(result.queue_depth).toBe(0);
+});

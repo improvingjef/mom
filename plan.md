@@ -195,6 +195,7 @@ Out of scope (for this phase):
 ### Progress Update (February 19, 2026)
 - Step 2 complete: concurrency config/flags and validation are implemented and covered by ExUnit + acceptance tests.
 - Step 3 complete: `Mom.Runner` now routes error and diagnostics work through `Mom.Pipeline`, with worker-based engine execution and acceptance coverage.
+- Step 3/4 follow-through complete: per-job timeout/cancellation handling is now covered by ExUnit worker tests and Playwright acceptance coverage.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -298,8 +299,8 @@ Out of scope (for this phase):
 ### Concurrency Foundation
 - [x] Add `Mom.Pipeline` ingestion/queue coordinator.
 - [x] Add `Mom.WorkerSupervisor` and bounded dispatch by `max_concurrency`.
-- [ ] Route `Mom.Runner` events through pipeline enqueue path.
-- [ ] Add per-job timeout/cancellation handling.
+- [x] Route `Mom.Runner` events through pipeline enqueue path.
+- [x] Add per-job timeout/cancellation handling.
 - [ ] Add in-flight signature guard for concurrent dedupe safety.
 
 ### Config and Controls
@@ -354,3 +355,6 @@ Out of scope (for this phase):
 - [ ] Add customer billing and entitlement enforcement (seat/repo plans, overage policy, grace behavior).
 - [ ] Add 24x7 operational support model (on-call rotation, incident response SLAs, escalation paths).
 - [ ] Add legal/governance package (ToS, DPA, subprocessors list, data residency options).
+- [ ] Add customer identity and enterprise access controls (SSO/SAML, SCIM provisioning, enforced MFA).
+- [ ] Add data lifecycle controls (tenant-scoped export, retention windows, hard-delete workflow, legal hold support).
+- [ ] Add billing-grade usage metering and reconciliation (LLM, CI, and repo actions) with invoice/audit traceability.
