@@ -15,9 +15,10 @@ defmodule Mom.Engine do
     with {:ok, workdir} <- Isolation.prepare_workdir(config),
          {:ok, context} <- build_context(sanitized_event, config, workdir),
          {:ok, patch} <- LLM.generate_patch(context, config),
-         :ok <- Git.apply_patch(workdir, patch),
+         :ok <-
+           Git.apply_patch(workdir, patch, actor_id: config.actor_id, repo: target_repo(config)),
          :ok <- ensure_test_patch(event, config, workdir),
-         :ok <- Git.run_tests(workdir),
+         :ok <- Git.run_tests(workdir, config),
          {:ok, branch} <-
            Git.commit_changes(workdir, "mom: fix error", config.branch_name_prefix,
              actor_id: config.actor_id,
@@ -74,9 +75,13 @@ defmodule Mom.Engine do
     case LLM.generate_patch(context, config) do
       {:ok, patch} ->
         with {:ok, workdir} <- Isolation.prepare_workdir(config),
-             :ok <- Git.apply_patch(workdir, patch),
+             :ok <-
+               Git.apply_patch(workdir, patch,
+                 actor_id: config.actor_id,
+                 repo: target_repo(config)
+               ),
              :ok <- ensure_test_patch(%{diagnostics: report, issues: issues}, config, workdir),
-             :ok <- Git.run_tests(workdir),
+             :ok <- Git.run_tests(workdir, config),
              {:ok, branch} <-
                Git.commit_changes(workdir, "mom: diagnostics fix", config.branch_name_prefix,
                  actor_id: config.actor_id,
@@ -132,7 +137,11 @@ defmodule Mom.Engine do
         }
 
         with {:ok, patch} <- LLM.generate_patch(context, config),
-             :ok <- Git.apply_patch(workdir, patch) do
+             :ok <-
+               Git.apply_patch(workdir, patch,
+                 actor_id: config.actor_id,
+                 repo: target_repo(config)
+               ) do
           :ok
         end
     end
@@ -141,7 +150,8 @@ defmodule Mom.Engine do
   defp maybe_open_pr(_workdir, _branch, %Config{open_pr: false}), do: {:ok, nil}
 
   defp maybe_open_pr(workdir, branch, %Config{} = config) do
-    with :ok <- Git.push_branch(workdir, branch),
+    with :ok <-
+           Git.push_branch(workdir, branch, actor_id: config.actor_id, repo: target_repo(config)),
          {:ok, pr} <- GitHub.create_pr(config, branch) do
       {:ok, pr}
     end

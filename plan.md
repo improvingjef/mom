@@ -1,7 +1,7 @@
 # Mom Concurrency-First Plan
 
 ## Goal
-Enable Mom to safely process multiple incidents concurrently (with bounded parallelism and backpressure) before building the full Phoenix + Playwright stress harness.
+Enable Mom to safely process multiple incidents concurrently (with bounded parallelism and backpressure) while building and validating against an intentionally fragile Phoenix harness incrementally.
 
 ## Why This First
 - Current runner flow (`Mom.Runner` -> `Mom.Engine.handle_log/2`) is effectively single-threaded per runner process.
@@ -18,7 +18,7 @@ In scope:
 - Cross-repo execution model and commit/test discipline for Mom-driven development workflow
 
 Out of scope (for this phase):
-- Full Phoenix app + Playwright harness
+- Full production-grade UI/product polish for the harness
 - Product/UI polish in `mom_web`
 - Large refactors unrelated to concurrency safety
 
@@ -40,6 +40,13 @@ Out of scope (for this phase):
 - Every task that changes end-to-end/operator behavior must include Playwright coverage in the harness repo.
 - If a task is backend-only and not user/operator observable, document why Playwright is not applicable in task notes.
 
+### Incremental Harness Policy (Effective February 19, 2026)
+- Harness work is parallel, not deferred: each major `mom` capability must ship with a corresponding fragile-app scenario update in the harness repo.
+- No major checklist item is complete until both sides are done:
+  - `mom`: feature + ExUnit coverage
+  - harness: intentional failure scenario + Playwright coverage in baseline and/or burst mode as applicable
+- Security preconditions (private repo, branch protection, least-privilege credentials) must be established early and maintained continuously, not treated as a one-time final gate.
+
 ## Success Criteria
 - Mom can process multiple incidents at once (configurable, default `max_concurrency=4`).
 - No crash propagation: one failing triage job does not stop other jobs.
@@ -57,6 +64,7 @@ Out of scope (for this phase):
   - human-paced baseline mode (default): realistic think time and navigation pacing
   - burst stress mode: rapid-fire concurrent fault triggering
 - Evaluate issue/PR behavior and concurrency in realistic e2e flow
+- Treat each completed major feature as requiring a new or updated intentional defect path in the fragile app.
 
 
 ## Architecture Changes
@@ -192,15 +200,24 @@ Out of scope (for this phase):
 1. Baseline & Instrumentation
 - Add temporary benchmark script to submit synthetic incidents.
 - Capture baseline throughput/latency on current single-thread behavior.
+- Harness pair:
+  - Bootstrap fragile Phoenix app repo with one deterministic error path and one deterministic diagnostics anomaly path.
+  - Add baseline Playwright spec that triggers those paths in human-paced mode.
 
 2. Add Config + Validation
 - Extend `Mom.Config` and mix task flags for new concurrency controls.
 - Add defaults and runtime env support.
+- Harness pair:
+  - Add toggles in fragile app to make failures configurable (frequency, route, severity).
+  - Add Playwright assertions that config/rate controls cap issue/LLM churn under repeated triggers.
 
 3. Build Pipeline + Worker Supervisor
 - Implement `Mom.Pipeline` queue + dispatch loop.
 - Implement worker supervision and job lifecycle handling.
 - Wire `Mom.Runner` to enqueue events instead of direct engine call.
+- Harness pair:
+  - Add concurrent fault generators (multiple routes/sessions) in fragile app.
+  - Add burst-mode Playwright scenarios that verify bounded dispatch and no deadlock.
 
 ### Progress Update (February 19, 2026)
 - Step 2 complete: concurrency config/flags and validation are implemented and covered by ExUnit + acceptance tests.
@@ -231,10 +248,15 @@ Out of scope (for this phase):
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
 - Ensure cleanup on both success and failure.
+- Harness pair:
+  - Add duplicate-signature fault trigger endpoint(s) in fragile app.
+  - Add Playwright scenarios that prove dedupe under concurrency and post-failure cleanup.
 
 5. Telemetry + Structured Logs
 - Add events and log fields for queue/worker visibility.
  - Status: complete (February 19, 2026).
+- Harness pair:
+  - Add Playwright assertions that expected telemetry/audit signals are emitted for each injected harness fault type.
 
 6. Test Coverage
 - Unit tests:
@@ -247,9 +269,13 @@ Out of scope (for this phase):
   - burst of mixed error + diagnostics events
   - assert no runner deadlock/crash
   - assert expected issue/LLM call ceilings with rate limits
+- Harness pair:
+  - Keep a traceable matrix mapping each major behavior to at least one fragile-app defect and one Playwright spec.
 
 7. Load Simulation
 - Add a local stress script (`mix` task) to generate N events quickly.
+- Harness pair:
+  - Maintain parity between synthetic `mix mom.stress` scenarios and real harness burst scenarios (same failure classes and success/failure assertions).
 
 ## Commercial Availability Additions (New)
 
@@ -287,8 +313,9 @@ Out of scope (for this phase):
 - Add per-repo quotas, per-tenant concurrency isolation, and anomaly throttling to prevent noisy or malicious workloads from starving capacity.
 - Validate stability and throughput against success criteria.
 
-8. Readiness Gate for E2E Harness
-- Proceed to Phoenix + Playwright harness only after criteria are met.
+8. Readiness Gate for Full Harness Promotion
+- Harness must already exist and be used incrementally for prior steps.
+- Gate applies only to promotion into continuous/automated high-volume burst runs.
 - Security checklist above must pass before enabling automated PR creation.
 
 ## Commercial Availability Backlog (New)
@@ -395,6 +422,13 @@ Out of scope (for this phase):
 - [x] Add/maintain ExUnit TDD coverage for every completed checklist task.
 - [x] Add/maintain Playwright coverage for every applicable end-to-end task (or record N/A rationale).
 
+### Incremental Harness Delivery (Required)
+- [ ] Create/confirm separate private fragile Phoenix harness repo and record location.
+- [ ] Establish harness baseline scenario set (at least one deterministic error and one diagnostics anomaly).
+- [ ] For each completed major `mom` capability, add/update at least one corresponding harness defect scenario.
+- [ ] For each completed major `mom` capability, add/update corresponding Playwright coverage in baseline or burst mode.
+- [ ] Maintain a capability-to-harness traceability table and fail task completion if mapping is missing.
+
 ### Post-Validation Hardening
 - [x] Define `staging_restricted` policy (sandbox + command allowlist + write boundaries).
 - [x] Define `production_hardened` policy (restricted profile + sensitive-op approvals).
@@ -408,27 +442,24 @@ Out of scope (for this phase):
  - Status: complete (February 19, 2026) via `durable_queue_path` persistence/replay in `Mom.Pipeline`, plus ExUnit + Playwright acceptance coverage.
 - [x] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
  - Status: complete (February 19, 2026) via `tenant_queue_max_size`, tenant-scoped dedupe keys, and fair tenant dispatch in `Mom.Pipeline` with ExUnit + Playwright acceptance coverage.
-- [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
+- [x] Add cost controls and spend caps for LLM/token/test execution per repository.
+ - Status: complete (February 19, 2026) via per-repo LLM cost/token caps and test-execution spend caps, with ExUnit + Playwright acceptance coverage.
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
 - [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
-- [ ] Add customer-facing billing and entitlement enforcement (plan limits, overage handling, downgrade flow).
-- [ ] Define support and incident operations model (on-call rotations, escalation policy, status communication).
+- [ ] Add customer billing and entitlement enforcement (seat/repo plans, plan limits, overage policy, grace behavior, downgrade flow).
+- [ ] Define 24x7 support and incident operations model (on-call rotations, incident response SLAs, escalation policy, status communication).
 - [ ] Add operational onboarding docs (installation hardening, key rotation, upgrade playbook).
-- [ ] Add customer billing and entitlement enforcement (seat/repo plans, overage policy, grace behavior).
-- [ ] Add 24x7 operational support model (on-call rotation, incident response SLAs, escalation paths).
 - [ ] Add legal/governance package (ToS, DPA, subprocessors list, data residency options).
 - [ ] Add customer identity and enterprise access controls (SSO/SAML, SCIM provisioning, enforced MFA).
 - [ ] Add data lifecycle controls (tenant-scoped export, retention windows, hard-delete workflow, legal hold support).
 - [ ] Add billing-grade usage metering and reconciliation (LLM, CI, and repo actions) with invoice/audit traceability.
-- [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, key rotation, and optional BYOK support).
+- [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, KMS-backed key versioning, key rotation, optional BYOK support, and cryptographic deletion attestations).
 - [ ] Add revenue operations controls for enterprise procurement (PO-based invoicing, payment terms enforcement, and collections escalation workflow).
 - [ ] Add customer-facing change management controls (maintenance windows, tenant-targeted release channels, and backward-compatibility policy/versioning guarantees).
 - [ ] Add data loss prevention controls for generated patches/issues/PRs (secret scanning + policy enforcement before push/open PR).
 - [ ] Add customer support forensics tooling (tenant-scoped audit search, timeline reconstruction, and one-click incident evidence export).
 - [ ] Add third-party dependency governance controls (SBOM generation, vulnerability SLA policy, and automated dependency risk gates).
 - [ ] Add tenant-facing data processing controls (per-tenant model/data retention toggles, legal-hold exceptions, and export attestations).
-
-## Commercial Availability Backlog (Additional)
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add finance and tax operations readiness (sales tax/VAT handling, invoice delivery/collections workflow, and revenue-recognition reporting exports).
@@ -454,5 +485,5 @@ Out of scope (for this phase):
 - [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.
 - [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
 - [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
-- [ ] Add customer-managed encryption key lifecycle controls (KMS-backed key versioning, tenant-specific rekey workflows, and cryptographic deletion attestations).
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
+- [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.

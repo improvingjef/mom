@@ -100,6 +100,9 @@ defmodule Mom.Acceptance.RunnerBurstScript do
 
       {:worker_job, :diagnostics_event, _seq} ->
         await_burst_results(error_seen, diagnostics_seen + 1, attempts - 1)
+
+      _other ->
+        await_burst_results(error_seen, diagnostics_seen, attempts - 1)
     after
       50 ->
         await_burst_results(error_seen, diagnostics_seen, attempts - 1)

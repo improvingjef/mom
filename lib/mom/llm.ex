@@ -1,7 +1,7 @@
 defmodule Mom.LLM do
   @moduledoc false
 
-  alias Mom.{Config, LLM.API, LLM.CLI, RateLimiter}
+  alias Mom.{Config, LLM.API, LLM.CLI, RateLimiter, SpendLimiter}
 
   require Logger
 
@@ -10,7 +10,8 @@ defmodule Mom.LLM do
     prompt = build_prompt(context)
 
     with :ok <- Config.validate_runtime_policy(config),
-         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
+         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000),
+         :ok <- enforce_llm_budget(config) do
       call_provider(prompt, provider, config)
     else
       {:error, reason} ->
@@ -19,6 +20,9 @@ defmodule Mom.LLM do
 
       false ->
         {:error, :llm_rate_limited}
+
+      {:budget_error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -27,7 +31,8 @@ defmodule Mom.LLM do
     prompt = build_prompt(context)
 
     with :ok <- Config.validate_runtime_policy(config),
-         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000) do
+         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000),
+         :ok <- enforce_llm_budget(config) do
       call_provider(prompt, provider, config)
     else
       {:error, reason} ->
@@ -36,6 +41,9 @@ defmodule Mom.LLM do
 
       false ->
         {:error, :llm_rate_limited}
+
+      {:budget_error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -104,5 +112,28 @@ defmodule Mom.LLM do
     end
 
     result
+  end
+
+  defp enforce_llm_budget(%Config{} = config) do
+    case SpendLimiter.allow_spend?(
+           config.repo,
+           :llm_cost,
+           config.llm_call_cost_cents,
+           config.llm_spend_cap_cents_per_hour
+         ) do
+      true ->
+        case SpendLimiter.allow_spend?(
+               config.repo,
+               :llm_tokens,
+               config.llm_tokens_per_call_estimate,
+               config.llm_token_cap_per_hour
+             ) do
+          true -> :ok
+          false -> {:budget_error, :llm_token_cap_exceeded}
+        end
+
+      false ->
+        {:budget_error, :llm_spend_cap_exceeded}
+    end
   end
 end

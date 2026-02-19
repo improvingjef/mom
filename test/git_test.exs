@@ -5,6 +5,11 @@ defmodule Mom.GitTest do
 
   alias Mom.{Git, Isolation, Config}
 
+  setup do
+    Mom.TestHelper.reset_spend_limiter()
+    :ok
+  end
+
   test "touches_tests? detects test changes" do
     repo = Mom.TestHelper.create_repo()
     File.mkdir_p!(Path.join(repo, "test"))
@@ -42,12 +47,97 @@ defmodule Mom.GitTest do
     assert File.read!(file) == "a\nb\n"
   end
 
+  test "apply_patch emits audit event with actor, repo, and workdir" do
+    repo = Mom.TestHelper.create_repo()
+    file = Path.join(repo, "lib.txt")
+    File.write!(file, "a\n")
+    Mom.TestHelper.git(repo, ["add", "."])
+    Mom.TestHelper.git(repo, ["commit", "-m", "add file"])
+
+    patch = """
+    diff --git a/lib.txt b/lib.txt
+    index 2e65efe..8c7e5a6 100644
+    --- a/lib.txt
+    +++ b/lib.txt
+    @@ -1 +1,2 @@
+     a
+    +b
+    """
+
+    telemetry_handler = "git-patch-applied-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_patch_applied]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert :ok =
+                 Git.apply_patch(repo, patch,
+                   actor_id: "machine-user",
+                   repo: "acme/mom"
+                 )
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_patch_applied], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert metadata.workdir == repo
+    assert log =~ "\"event\":\"git_patch_applied\""
+    assert log =~ "\"actor_id\":\"machine-user\""
+  end
+
   test "prepare_workdir creates a git worktree" do
     repo = Mom.TestHelper.create_repo()
     {:ok, config} = Config.from_opts(repo: repo)
 
     {:ok, workdir} = Isolation.prepare_workdir(config)
     assert File.exists?(Path.join(workdir, ".git"))
+  end
+
+  test "prepare_workdir emits worktree audit event with actor and repo" do
+    repo = Mom.TestHelper.create_repo()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: repo,
+        github_repo: "acme/mom",
+        actor_id: "machine-bot",
+        allowed_actor_ids: ["machine-bot"]
+      )
+
+    telemetry_handler = "git-worktree-created-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_worktree_created]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert {:ok, workdir} = Isolation.prepare_workdir(config)
+        assert File.exists?(Path.join(workdir, ".git"))
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_worktree_created], metadata}
+    assert metadata.actor_id == "machine-bot"
+    assert metadata.repo == "acme/mom"
+    assert is_binary(metadata.workdir)
+    assert log =~ "\"event\":\"git_worktree_created\""
+    assert log =~ "\"actor_id\":\"machine-bot\""
   end
 
   test "prepare_workdir rejects explicit non-worktree path" do
@@ -103,5 +193,68 @@ defmodule Mom.GitTest do
     assert String.starts_with?(metadata.branch, "mom/audit-")
     assert log =~ "\"event\":\"git_branch_created\""
     assert log =~ "\"actor_id\":\"machine-user\""
+  end
+
+  test "push_branch emits audit event with repo, branch, and actor id" do
+    base = Path.join(System.tmp_dir!(), "mom-git-push-#{System.unique_integer([:positive])}")
+    remote = Path.join(base, "remote.git")
+    local = Path.join(base, "local")
+
+    File.rm_rf!(base)
+    File.mkdir_p!(base)
+    {_, 0} = System.cmd("git", ["init", "--bare", remote])
+    File.mkdir_p!(local)
+    {_, 0} = System.cmd("git", ["init"], cd: local)
+    {_, 0} = System.cmd("git", ["config", "user.email", "mom@example.com"], cd: local)
+    {_, 0} = System.cmd("git", ["config", "user.name", "mom"], cd: local)
+
+    File.write!(Path.join(local, "README.md"), "hello\n")
+    {_, 0} = System.cmd("git", ["add", "."], cd: local)
+    {_, 0} = System.cmd("git", ["commit", "-m", "init"], cd: local)
+    {_, 0} = System.cmd("git", ["remote", "add", "origin", remote], cd: local)
+    {_, 0} = System.cmd("git", ["checkout", "-b", "mom/push-audit"], cd: local)
+
+    telemetry_handler = "git-branch-pushed-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_branch_pushed]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert :ok =
+                 Git.push_branch(local, "mom/push-audit",
+                   actor_id: "machine-user",
+                   repo: "acme/mom"
+                 )
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_branch_pushed], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert metadata.branch == "mom/push-audit"
+    assert log =~ "\"event\":\"git_branch_pushed\""
+    assert log =~ "\"actor_id\":\"machine-user\""
+  end
+
+  test "enforces per-repo test execution spend cap" do
+    repo = Mom.TestHelper.create_repo()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: repo,
+        test_spend_cap_cents_per_hour: 1,
+        test_run_cost_cents: 1
+      )
+
+    assert {:error, _} = Git.run_tests(repo, config)
+    assert {:error, :test_spend_cap_exceeded} = Git.run_tests(repo, config)
   end
 end

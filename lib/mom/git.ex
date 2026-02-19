@@ -1,21 +1,30 @@
 defmodule Mom.Git do
   @moduledoc false
 
+  alias Mom.{Config, SpendLimiter}
   alias Mom.Audit
 
-  @spec add_worktree(String.t(), String.t()) :: :ok | {:error, term()}
-  def add_worktree(repo, workdir) do
-    cmd(repo, ["worktree", "add", workdir]) |> ok_or_error()
+  @spec add_worktree(String.t(), String.t(), keyword()) :: :ok | {:error, term()}
+  def add_worktree(repo, workdir, audit_opts \\ []) do
+    case cmd(repo, ["worktree", "add", workdir]) |> ok_or_error() do
+      :ok ->
+        emit_git_audit(:git_worktree_created, audit_opts, %{workdir: workdir})
+        :ok
+
+      {:error, _} = error ->
+        error
+    end
   end
 
-  @spec apply_patch(String.t(), String.t()) :: :ok | {:error, term()}
-  def apply_patch(workdir, patch) do
+  @spec apply_patch(String.t(), String.t(), keyword()) :: :ok | {:error, term()}
+  def apply_patch(workdir, patch, audit_opts \\ []) do
     tmp = Path.join(System.tmp_dir!(), "mom-patch-#{System.unique_integer([:positive])}.diff")
     File.write!(tmp, patch)
 
     case System.cmd("git", ["apply", tmp], cd: workdir) do
       {_, 0} ->
         File.rm(tmp)
+        emit_git_audit(:git_patch_applied, audit_opts, %{workdir: workdir})
         :ok
 
       {out, code} ->
@@ -27,6 +36,19 @@ defmodule Mom.Git do
   @spec run_tests(String.t()) :: :ok | {:error, term()}
   def run_tests(workdir) do
     cmd(workdir, ["mix", "test"]) |> ok_or_error()
+  end
+
+  @spec run_tests(String.t(), Config.t()) :: :ok | {:error, term()}
+  def run_tests(workdir, %Config{} = config) do
+    case SpendLimiter.allow_spend?(
+           config.repo,
+           :test_execution,
+           config.test_run_cost_cents,
+           config.test_spend_cap_cents_per_hour
+         ) do
+      true -> run_tests(workdir)
+      false -> {:error, :test_spend_cap_exceeded}
+    end
   end
 
   @spec touches_tests?(String.t()) :: boolean()
@@ -60,9 +82,16 @@ defmodule Mom.Git do
     end
   end
 
-  @spec push_branch(String.t(), String.t()) :: :ok | {:error, term()}
-  def push_branch(workdir, branch) do
-    cmd(workdir, ["push", "origin", branch]) |> ok_or_error()
+  @spec push_branch(String.t(), String.t(), keyword()) :: :ok | {:error, term()}
+  def push_branch(workdir, branch, audit_opts \\ []) do
+    case cmd(workdir, ["push", "origin", branch]) |> ok_or_error() do
+      :ok ->
+        emit_git_audit(:git_branch_pushed, audit_opts, %{branch: branch})
+        :ok
+
+      {:error, _} = error ->
+        error
+    end
   end
 
   defp cmd(workdir, args) do
@@ -73,12 +102,19 @@ defmodule Mom.Git do
   defp ok_or_error({out, code}), do: {:error, {:git_failed, code, out}}
 
   defp emit_branch_audit(branch, audit_opts) do
-    metadata = %{
-      repo: Keyword.get(audit_opts, :repo),
-      actor_id: Keyword.get(audit_opts, :actor_id, "mom"),
-      branch: branch
-    }
+    emit_git_audit(:git_branch_created, audit_opts, %{branch: branch})
+  end
 
-    Audit.emit(:git_branch_created, metadata)
+  defp emit_git_audit(event, audit_opts, extra) do
+    metadata =
+      Map.merge(
+        %{
+          repo: Keyword.get(audit_opts, :repo),
+          actor_id: Keyword.get(audit_opts, :actor_id, "mom")
+        },
+        extra
+      )
+
+    Audit.emit(event, metadata)
   end
 end

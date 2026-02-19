@@ -30,6 +30,32 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.durable_queue_path == "/tmp/mom/queue.bin"
   end
 
+  test "parse_args accepts spend control flags" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--llm-spend-cap-cents-per-hour",
+        "500",
+        "--llm-call-cost-cents",
+        "25",
+        "--llm-token-cap-per-hour",
+        "20000",
+        "--llm-tokens-per-call-estimate",
+        "1500",
+        "--test-spend-cap-cents-per-hour",
+        "750",
+        "--test-run-cost-cents",
+        "30"
+      ])
+
+    assert config.llm_spend_cap_cents_per_hour == 500
+    assert config.llm_call_cost_cents == 25
+    assert config.llm_token_cap_per_hour == 20_000
+    assert config.llm_tokens_per_call_estimate == 1_500
+    assert config.test_spend_cap_cents_per_hour == 750
+    assert config.test_run_cost_cents == 30
+  end
+
   test "parse_args rejects invalid overflow policy values" do
     assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
              Mix.Tasks.Mom.parse_args([

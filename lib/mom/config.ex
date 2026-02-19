@@ -26,6 +26,12 @@ defmodule Mom.Config do
     :diag_cooldown_ms,
     :issue_rate_limit_per_hour,
     :llm_rate_limit_per_hour,
+    :llm_spend_cap_cents_per_hour,
+    :llm_call_cost_cents,
+    :llm_token_cap_per_hour,
+    :llm_tokens_per_call_estimate,
+    :test_spend_cap_cents_per_hour,
+    :test_run_cost_cents,
     :issue_dedupe_window_ms,
     :redact_keys,
     :git_ssh_command,
@@ -87,6 +93,12 @@ defmodule Mom.Config do
           diag_cooldown_ms: pos_integer(),
           issue_rate_limit_per_hour: pos_integer(),
           llm_rate_limit_per_hour: pos_integer(),
+          llm_spend_cap_cents_per_hour: pos_integer() | nil,
+          llm_call_cost_cents: non_neg_integer(),
+          llm_token_cap_per_hour: pos_integer() | nil,
+          llm_tokens_per_call_estimate: non_neg_integer(),
+          test_spend_cap_cents_per_hour: pos_integer() | nil,
+          test_run_cost_cents: non_neg_integer(),
           issue_dedupe_window_ms: pos_integer(),
           redact_keys: [String.t()],
           git_ssh_command: String.t() | nil,
@@ -149,6 +161,18 @@ defmodule Mom.Config do
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, tenant_queue_max_size} <-
                parse_optional_pos_int(opts, runtime, :tenant_queue_max_size),
+             {:ok, llm_spend_cap_cents_per_hour} <-
+               parse_optional_pos_int(opts, runtime, :llm_spend_cap_cents_per_hour),
+             {:ok, llm_call_cost_cents} <-
+               parse_non_neg_int(opts, runtime, :llm_call_cost_cents, 0),
+             {:ok, llm_token_cap_per_hour} <-
+               parse_optional_pos_int(opts, runtime, :llm_token_cap_per_hour),
+             {:ok, llm_tokens_per_call_estimate} <-
+               parse_non_neg_int(opts, runtime, :llm_tokens_per_call_estimate, 0),
+             {:ok, test_spend_cap_cents_per_hour} <-
+               parse_optional_pos_int(opts, runtime, :test_spend_cap_cents_per_hour),
+             {:ok, test_run_cost_cents} <-
+               parse_non_neg_int(opts, runtime, :test_run_cost_cents, 0),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
@@ -247,6 +271,12 @@ defmodule Mom.Config do
                  Keyword.get(opts, :llm_rate_limit_per_hour) || runtime[:llm_rate_limit_per_hour]
                ) ||
                  60,
+             llm_spend_cap_cents_per_hour: llm_spend_cap_cents_per_hour,
+             llm_call_cost_cents: llm_call_cost_cents,
+             llm_token_cap_per_hour: llm_token_cap_per_hour,
+             llm_tokens_per_call_estimate: llm_tokens_per_call_estimate,
+             test_spend_cap_cents_per_hour: test_spend_cap_cents_per_hour,
+             test_run_cost_cents: test_run_cost_cents,
              issue_dedupe_window_ms:
                parse_int(
                  Keyword.get(opts, :issue_dedupe_window_ms) || runtime[:issue_dedupe_window_ms]

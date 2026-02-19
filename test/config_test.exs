@@ -30,6 +30,12 @@ defmodule Mom.ConfigTest do
     assert config.error_budget_triage_latency_overage_rate == 0.05
     assert config.error_budget_queue_loss_rate == 0.005
     assert config.error_budget_pr_turnaround_overage_rate == 0.1
+    assert config.llm_spend_cap_cents_per_hour == nil
+    assert config.llm_call_cost_cents == 0
+    assert config.llm_token_cap_per_hour == nil
+    assert config.llm_tokens_per_call_estimate == 0
+    assert config.test_spend_cap_cents_per_hour == nil
+    assert config.test_run_cost_cents == 0
   end
 
   test "parses redact keys from comma-separated string" do
@@ -281,6 +287,26 @@ defmodule Mom.ConfigTest do
     assert config.durable_queue_path == "/tmp/mom/queue.bin"
   end
 
+  test "parses spend control values from opts" do
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        llm_spend_cap_cents_per_hour: 500,
+        llm_call_cost_cents: 25,
+        llm_token_cap_per_hour: 20_000,
+        llm_tokens_per_call_estimate: 1_500,
+        test_spend_cap_cents_per_hour: 750,
+        test_run_cost_cents: 30
+      )
+
+    assert config.llm_spend_cap_cents_per_hour == 500
+    assert config.llm_call_cost_cents == 25
+    assert config.llm_token_cap_per_hour == 20_000
+    assert config.llm_tokens_per_call_estimate == 1_500
+    assert config.test_spend_cap_cents_per_hour == 750
+    assert config.test_run_cost_cents == 30
+  end
+
   test "validates pipeline concurrency values" do
     assert {:error, "max_concurrency must be a non-negative integer"} =
              Config.from_opts(repo: "/tmp/repo", max_concurrency: -1)
@@ -299,6 +325,26 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "durable_queue_path must be nil or a non-empty string"} =
              Config.from_opts(repo: "/tmp/repo", durable_queue_path: "")
+  end
+
+  test "validates spend control values" do
+    assert {:error, "llm_spend_cap_cents_per_hour must be nil or a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", llm_spend_cap_cents_per_hour: 0)
+
+    assert {:error, "llm_call_cost_cents must be a non-negative integer"} =
+             Config.from_opts(repo: "/tmp/repo", llm_call_cost_cents: -1)
+
+    assert {:error, "llm_token_cap_per_hour must be nil or a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", llm_token_cap_per_hour: 0)
+
+    assert {:error, "llm_tokens_per_call_estimate must be a non-negative integer"} =
+             Config.from_opts(repo: "/tmp/repo", llm_tokens_per_call_estimate: -1)
+
+    assert {:error, "test_spend_cap_cents_per_hour must be nil or a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", test_spend_cap_cents_per_hour: 0)
+
+    assert {:error, "test_run_cost_cents must be a non-negative integer"} =
+             Config.from_opts(repo: "/tmp/repo", test_run_cost_cents: -1)
   end
 
   test "parses observability backend and slo thresholds" do

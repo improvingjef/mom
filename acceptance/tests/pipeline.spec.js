@@ -268,6 +268,36 @@ test("mom CLI enforces egress host allowlist for API providers", async () => {
   ]);
 });
 
+test("mom CLI enforces per-repo spend caps for llm and test execution", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_spend_caps_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.parsed_llm_spend_cap_cents_per_hour).toBe(500);
+  expect(result.parsed_llm_call_cost_cents).toBe(25);
+  expect(result.parsed_llm_token_cap_per_hour).toBe(20000);
+  expect(result.parsed_llm_tokens_per_call_estimate).toBe(1500);
+  expect(result.parsed_test_spend_cap_cents_per_hour).toBe(750);
+  expect(result.parsed_test_run_cost_cents).toBe(30);
+  expect(result.llm_first[0]).toBe("error");
+  expect(result.llm_second).toEqual(["error", "llm_spend_cap_exceeded"]);
+  expect(result.test_first[0]).toBe("error");
+  expect(result.test_second).toEqual(["error", "test_spend_cap_exceeded"]);
+});
+
 test("mom CLI defaults codex to yolo exec profile", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(
@@ -633,12 +663,20 @@ test("mom enforces env-only secret injection and redacts sensitive audit logs", 
 
 test("runner handles burst mixed events and continues after an isolated worker failure", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
+  const burstBuildPath = path.join(
+    repoRoot,
+    "_build_runner_burst_" + Date.now().toString()
+  );
   const output = execFileSync(
     "mix",
     ["run", "acceptance/scripts/runner_burst_acceptance.exs"],
     {
       cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+      env: {
+        ...process.env,
+        ASDF_ELIXIR_VERSION: "1.19.4-otp-28",
+        MIX_BUILD_PATH: burstBuildPath
+      }
     }
   ).toString();
 
@@ -673,10 +711,16 @@ test("mom emits structured git and GitHub audit events", async () => {
   expect(marker).toBeTruthy();
   const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
 
+  expect(result.saw_worktree_event).toBeTruthy();
+  expect(result.saw_patch_event).toBeTruthy();
+  expect(result.saw_push_event).toBeTruthy();
   expect(result.saw_branch_event).toBeTruthy();
   expect(result.saw_issue_event).toBeTruthy();
   expect(result.saw_pr_event).toBeTruthy();
   expect(result.saw_merge_attempt_event).toBeTruthy();
+  expect(result.worktree_event_fields).toBeTruthy();
+  expect(result.patch_event_fields).toBeTruthy();
+  expect(result.push_event_fields).toBeTruthy();
   expect(result.branch_event_fields).toBeTruthy();
   expect(result.issue_event_fields).toBeTruthy();
   expect(result.pr_event_fields).toBeTruthy();

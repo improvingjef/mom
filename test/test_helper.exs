@@ -8,6 +8,13 @@ defmodule Mom.TestHelper do
     end
   end
 
+  def reset_spend_limiter do
+    case :ets.whereis(:mom_spend_limiter) do
+      :undefined -> :ok
+      _ -> :ets.delete(:mom_spend_limiter)
+    end
+  end
+
   def create_repo do
     base = Path.join(System.tmp_dir!(), "mom-test-repo-#{System.unique_integer([:positive])}")
     File.rm_rf!(base)

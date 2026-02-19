@@ -4,7 +4,7 @@ defmodule Mom.Isolation do
   alias Mom.{Config, Git}
 
   @spec prepare_workdir(Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def prepare_workdir(%Config{repo: repo, workdir: workdir}) do
+  def prepare_workdir(%Config{repo: repo, workdir: workdir} = config) do
     cond do
       is_binary(workdir) ->
         if isolated_worktree?(workdir) do
@@ -14,10 +14,9 @@ defmodule Mom.Isolation do
         end
 
       true ->
-        tmp = Path.join(System.tmp_dir!(), "mom-#{System.unique_integer([:positive])}")
-
-        with :ok <- File.mkdir_p(tmp),
-             :ok <- Git.add_worktree(repo, tmp) do
+        with {:ok, tmp} <- unique_tmp_workdir(),
+             :ok <-
+               Git.add_worktree(repo, tmp, actor_id: config.actor_id, repo: target_repo(config)) do
           {:ok, tmp}
         end
     end
@@ -32,6 +31,22 @@ defmodule Mom.Isolation do
       String.starts_with?(String.trim_leading(contents), "gitdir:")
     else
       _ -> false
+    end
+  end
+
+  defp target_repo(%Config{github_repo: nil, repo: repo}), do: repo
+  defp target_repo(%Config{github_repo: github_repo}), do: github_repo
+
+  defp unique_tmp_workdir(attempts \\ 10)
+  defp unique_tmp_workdir(0), do: {:error, :workdir_allocation_failed}
+
+  defp unique_tmp_workdir(attempts) do
+    candidate = Path.join(System.tmp_dir!(), "mom-#{System.unique_integer([:positive])}")
+
+    if File.exists?(candidate) do
+      unique_tmp_workdir(attempts - 1)
+    else
+      {:ok, candidate}
     end
   end
 end
