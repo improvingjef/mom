@@ -208,3 +208,54 @@ test("mom CLI enforces allowed github repo allowlist", async () => {
   expect(result.allowed_list).toEqual(["acme/mom", "acme/other"]);
   expect(result.blocked_result).toEqual(["error", "github_repo is not allowed"]);
 });
+
+test("mom CLI applies branch naming policy to generated branches", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_branch_policy_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.branch_name_prefix).toBe("mom/incidents");
+  expect(result.prefix_matches).toBeTruthy();
+  expect(result.generated_branch.startsWith("mom/incidents-")).toBeTruthy();
+  expect(result.invalid_result).toEqual([
+    "error",
+    "branch_name_prefix is not a valid git branch prefix"
+  ]);
+});
+
+test("mom logs codex invocation start and outcome", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/llm_codex_logging_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.saw_start_success).toBeTruthy();
+  expect(result.saw_completed_success).toBeTruthy();
+  expect(result.saw_start_failure).toBeTruthy();
+  expect(result.saw_completed_failure).toBeTruthy();
+});

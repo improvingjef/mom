@@ -49,6 +49,16 @@ Out of scope (for this phase):
 - Clear metrics/logging show throughput, queue depth, active workers, failures.
 - Source repository access is least-privilege, isolated, auditable, and revocable.
 
+## AS YOU GO
+**As you build** the features, be certain to build an intentionally fragile Phoenix test app
+- Create private GitHub repo via `gh`
+- Run Mom against app repo
+- Use Playwright in two modes:
+  - human-paced baseline mode (default): realistic think time and navigation pacing
+  - burst stress mode: rapid-fire concurrent fault triggering
+- Evaluate issue/PR behavior and concurrency in realistic e2e flow
+
+
 ## Architecture Changes
 
 ### 1. Introduce a Job Pipeline
@@ -197,6 +207,8 @@ Out of scope (for this phase):
 - Step 3 complete: `Mom.Runner` now routes error and diagnostics work through `Mom.Pipeline`, with worker-based engine execution and acceptance coverage.
 - Step 3/4 follow-through complete: per-job timeout/cancellation handling is now covered by ExUnit worker tests and Playwright acceptance coverage.
 - Step 5 complete: pipeline telemetry events (`enqueued`, `dropped`, `started`, `completed`, `failed`) and queue/worker structured lifecycle logs are implemented with ExUnit + Playwright acceptance coverage.
+- Branch naming policy support for Mom-generated branches is implemented and covered by ExUnit + Playwright acceptance tests.
+- Codex invocation/outcome logging is implemented (`mom: codex invocation started/completed`) and covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -286,14 +298,6 @@ Out of scope (for this phase):
 - Stress script and benchmark notes
 - Short runbook documenting tuning knobs and recommended defaults
 
-## Next Phase (After This Plan Is Done)
-- Build intentionally fragile Phoenix test app
-- Create private GitHub repo via `gh`
-- Run Mom against app repo
-- Use Playwright in two modes:
-  - human-paced baseline mode (default): realistic think time and navigation pacing
-  - burst stress mode: rapid-fire concurrent fault triggering
-- Evaluate issue/PR behavior and concurrency in realistic e2e flow
 
 ## E2E Harness Modes (Planned)
 
@@ -329,12 +333,12 @@ Out of scope (for this phase):
 - [x] Add config keys: `max_concurrency`, `queue_max_size`, `job_timeout_ms`, `overflow_policy`.
 - [x] Validate and enforce overflow behavior (`:drop_newest` / `:drop_oldest`).
 - [x] Add optional repo allowlist control (`allowed_github_repos`).
-- [ ] Add branch naming policy support for Mom-generated branches.
+- [x] Add branch naming policy support for Mom-generated branches.
 
 ### Observability and Audit
 - [x] Emit pipeline telemetry for enqueued/dropped/started/completed/failed jobs.
 - [x] Include queue depth, active worker count, job type, duration, and failure reason.
-- [ ] Log Codex invocation + outcome for each run.
+- [x] Log Codex invocation + outcome for each run.
 - [ ] Emit structured git/GitHub audit events (repo, issue/branch/PR, merge attempt, actor id).
 
 ### Test Execution Profile (Current)
@@ -381,3 +385,9 @@ Out of scope (for this phase):
 - [ ] Add data lifecycle controls (tenant-scoped export, retention windows, hard-delete workflow, legal hold support).
 - [ ] Add billing-grade usage metering and reconciliation (LLM, CI, and repo actions) with invoice/audit traceability.
 - [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, key rotation, and optional BYOK support).
+
+## Commercial Availability Backlog (Additional)
+- [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
+- [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
+- [ ] Add finance and tax operations readiness (sales tax/VAT handling, invoice delivery/collections workflow, and revenue-recognition reporting exports).
+- [ ] Add end-to-end trace correlation IDs linking pipeline jobs, Codex invocations, and Git/GitHub mutations for auditability and support forensics.

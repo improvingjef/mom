@@ -7,7 +7,13 @@ defmodule Mom.LLM.CLI do
   def call(prompt, %Config{llm_cmd: cmd}, default_cmd) do
     exec = cmd || default_cmd
 
-    case System.cmd(exec, [], input: prompt) do
+    script = """
+    cat <<'MOM_PROMPT_EOF' | #{exec}
+    #{prompt}
+    MOM_PROMPT_EOF
+    """
+
+    case System.cmd("/bin/sh", ["-lc", script], stderr_to_stdout: true) do
       {out, 0} -> {:ok, out}
       {out, code} -> {:error, {:llm_failed, code, out}}
     end
