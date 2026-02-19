@@ -52,4 +52,35 @@ defmodule Mom.AcceptanceLifecycleTest do
     assert "_build_acceptance_serialized_ci_run_42" ==
              AcceptanceLifecycle.build_artifact_path(:serialized, "ci run 42", 9)
   end
+
+  test "merges lingering descendants across multiple snapshots for race hardening" do
+    samples = [
+      """
+      120 1 node worker.js
+      """,
+      """
+      120 1 node worker.js
+      130 120 mix run acceptance/scripts/pipeline_acceptance.exs
+      """
+    ]
+
+    assert [%{pid: 130}] = AcceptanceLifecycle.lingering_mix_run_children_from_samples(samples, 120)
+  end
+
+  test "parses retry budget and fail-on-flaky policy from env" do
+    assert 3 == AcceptanceLifecycle.retry_budget(%{"MOM_ACCEPTANCE_RETRY_BUDGET" => "3"})
+    assert 1 == AcceptanceLifecycle.retry_budget(%{"MOM_ACCEPTANCE_RETRY_BUDGET" => "invalid"})
+    assert AcceptanceLifecycle.fail_on_flaky?(%{"MOM_ACCEPTANCE_FAIL_ON_FLAKY" => "true"})
+    refute AcceptanceLifecycle.fail_on_flaky?(%{})
+  end
+
+  test "classifies monitor attach race failures and applies retry budget policy" do
+    assert :monitor_attach_race ==
+             AcceptanceLifecycle.classify_failure("missing telemetry failed pipeline event")
+
+    assert :non_retryable == AcceptanceLifecycle.classify_failure("syntax error in acceptance script")
+    assert AcceptanceLifecycle.retry?(1, 2, :monitor_attach_race)
+    refute AcceptanceLifecycle.retry?(3, 2, :monitor_attach_race)
+    refute AcceptanceLifecycle.retry?(1, 2, :non_retryable)
+  end
 end

@@ -1,5 +1,9 @@
 const { test, expect } = require("@playwright/test");
+const path = require("node:path");
+const os = require("node:os");
+const fs = require("node:fs");
 const {
+  runAcceptanceScript,
   enforceNoLingeringMixRunChildren,
   __private
 } = require("./helpers/mix_runner");
@@ -62,4 +66,69 @@ test("acceptance runner supports serialized build mode", async () => {
   expect(__private.resolveBuildArtifactPath({ env, parentPid: 777 })).toBe(
     "_build_acceptance_serialized_nightly_run"
   );
+});
+
+test("acceptance runner retries monitor-attach-race failures within retry budget and records flake metadata", async () => {
+  const reportPath = path.join(
+    os.tmpdir(),
+    `mom-acceptance-concurrency-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+  );
+
+  let calls = 0;
+  const deps = {
+    execFileSync: () => {
+      calls += 1;
+
+      if (calls === 1) {
+        const error = new Error("missing telemetry failed pipeline event");
+        error.stderr = "missing telemetry failed pipeline event";
+        throw error;
+      }
+
+      return Buffer.from('RESULT_JSON:{"ok":true}\n');
+    },
+    listProcesses: () => [],
+    sleepMs: () => {}
+  };
+
+  const { result } = runAcceptanceScript("acceptance/scripts/fake_acceptance.exs", {
+    env: {
+      MOM_ACCEPTANCE_RETRY_BUDGET: "1",
+      MOM_ACCEPTANCE_FAIL_ON_FLAKY: "false",
+      MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH: reportPath,
+      MOM_ACCEPTANCE_RUN_ID: "ci-acceptance"
+    },
+    deps
+  });
+
+  expect(result.ok).toBeTruthy();
+  expect(calls).toBe(2);
+
+  const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+  expect(report).toHaveLength(2);
+  expect(report[0].status).toBe("retrying");
+  expect(report[0].classification).toBe("monitor_attach_race");
+  expect(report[1].status).toBe("passed");
+  expect(report[1].flaky).toBeTruthy();
+
+  fs.rmSync(reportPath, { force: true });
+});
+
+test("acceptance runner enforces retry-budget exhaustion for monitor-attach races", async () => {
+  const deps = {
+    execFileSync: () => {
+      const error = new Error("did not terminate");
+      error.stderr = "did not terminate";
+      throw error;
+    },
+    listProcesses: () => [],
+    sleepMs: () => {}
+  };
+
+  expect(() =>
+    runAcceptanceScript("acceptance/scripts/fake_acceptance.exs", {
+      env: { MOM_ACCEPTANCE_RETRY_BUDGET: "1" },
+      deps
+    })
+  ).toThrow(/Retry budget exhausted/);
 });

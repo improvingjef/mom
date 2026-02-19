@@ -9,13 +9,15 @@
  - Status: complete (February 19, 2026) via shared Playwright `mix_runner` lifecycle guard, pre/post leak checks, forced cleanup on detected lingering children, and ExUnit + Playwright lifecycle coverage.
 2. [x] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention.
  - Status: complete (February 19, 2026) via deterministic per-worker `MIX_BUILD_PATH` isolation in the Playwright acceptance runner, serialized execution toggle support (`MOM_ACCEPTANCE_SERIALIZED`/`MOM_ACCEPTANCE_BUILD_MODE=serialized`), and ExUnit + Playwright lifecycle coverage.
-3. [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy).
+3. [x] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy).
+ - Status: complete (February 19, 2026) via stable multi-snapshot lingering-process detection, retry-budget/fail-on-flaky acceptance runner policy, deterministic attempt IDs with CI instrumentation reports, and ExUnit + Playwright coverage.
 
 ## Priority 0: Failure Harness and Acceptance Reliability
 - [ ] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
 - [x] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
 - [x] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention under parallel Playwright execution.
-- [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
+- [x] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
+- [ ] Check in CI workflow manifests and required-check wiring for ExUnit + Playwright gates (including concurrency-report artifacts and fail-on-flaky enforcement) so branch protection can enforce reliability controls.
 - [ ] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
 - [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
 - [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.

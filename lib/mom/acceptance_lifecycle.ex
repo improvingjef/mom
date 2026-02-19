@@ -7,8 +7,16 @@ defmodule Mom.AcceptanceLifecycle do
 
   @type process_row :: %{pid: pos_integer(), ppid: pos_integer(), command: String.t()}
   @type build_artifact_mode :: :worker_isolated | :serialized
+  @type retryable_failure :: :monitor_attach_race | :non_retryable
 
   @truthy_values ~w(1 true TRUE yes YES on ON)
+  @default_retry_budget 1
+  @monitor_attach_race_markers [
+    "missing telemetry failed pipeline event",
+    "did not terminate",
+    "no process",
+    "timeout"
+  ]
 
   @spec parse_snapshot(String.t()) :: [process_row()]
   def parse_snapshot(snapshot) when is_binary(snapshot) do
@@ -49,8 +57,17 @@ defmodule Mom.AcceptanceLifecycle do
       end
 
     rows
-    |> descendants(root_pid)
-    |> Enum.filter(&lingering_mix_run_command?/1)
+      |> descendants(root_pid)
+      |> Enum.filter(&lingering_mix_run_command?/1)
+  end
+
+  @spec lingering_mix_run_children_from_samples([String.t() | [process_row()]], pos_integer()) ::
+          [process_row()]
+  def lingering_mix_run_children_from_samples(samples, root_pid)
+      when is_list(samples) and is_integer(root_pid) do
+    samples
+    |> Enum.flat_map(&lingering_mix_run_children(&1, root_pid))
+    |> Enum.uniq_by(& &1.pid)
   end
 
   @spec build_artifact_mode(map()) :: build_artifact_mode()
@@ -75,6 +92,35 @@ defmodule Mom.AcceptanceLifecycle do
       :worker_isolated ->
         "_build_acceptance_worker_#{sanitize_segment(run_id)}_#{worker_index}"
     end
+  end
+
+  @spec retry_budget(map()) :: non_neg_integer()
+  def retry_budget(env) when is_map(env) do
+    env
+    |> Map.get("MOM_ACCEPTANCE_RETRY_BUDGET")
+    |> parse_non_neg_int(@default_retry_budget)
+  end
+
+  @spec fail_on_flaky?(map()) :: boolean()
+  def fail_on_flaky?(env) when is_map(env) do
+    truthy?(Map.get(env, "MOM_ACCEPTANCE_FAIL_ON_FLAKY"))
+  end
+
+  @spec classify_failure(binary()) :: retryable_failure()
+  def classify_failure(message) when is_binary(message) do
+    downcased = String.downcase(message)
+
+    if Enum.any?(@monitor_attach_race_markers, &String.contains?(downcased, &1)) do
+      :monitor_attach_race
+    else
+      :non_retryable
+    end
+  end
+
+  @spec retry?(pos_integer(), non_neg_integer(), retryable_failure()) :: boolean()
+  def retry?(attempt, retry_budget, classification)
+      when is_integer(attempt) and attempt > 0 and is_integer(retry_budget) and retry_budget >= 0 do
+    classification == :monitor_attach_race and attempt <= retry_budget
   end
 
   defp walk_descendants(_grouped, [], acc), do: acc
@@ -104,6 +150,17 @@ defmodule Mom.AcceptanceLifecycle do
 
   defp truthy?(value) when is_binary(value), do: value in @truthy_values
   defp truthy?(_value), do: false
+
+  defp parse_non_neg_int(nil, default), do: default
+
+  defp parse_non_neg_int(value, default) when is_binary(value) do
+    case Integer.parse(String.trim(value)) do
+      {int, ""} when int >= 0 -> int
+      _ -> default
+    end
+  end
+
+  defp parse_non_neg_int(_value, default), do: default
 
   defp sanitize_segment(value) do
     value

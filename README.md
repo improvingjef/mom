@@ -116,3 +116,9 @@ You can set defaults via environment variables:
 
 - API-based LLM providers are stubbed but not yet implemented.
 - The PR base branch defaults to `main`.
+
+## Acceptance CI Concurrency Controls
+
+- `MOM_ACCEPTANCE_RETRY_BUDGET` Maximum retries for monitor-attach race classified acceptance failures. Default `1`.
+- `MOM_ACCEPTANCE_FAIL_ON_FLAKY` Fail the run when a test passes only after retry (`1|true|yes|on`).
+- `MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH` Optional JSON report path for per-attempt concurrency instrumentation metadata.

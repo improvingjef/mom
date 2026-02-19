@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.0.1",
   "scripts": {
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:ci": "MOM_ACCEPTANCE_RETRY_BUDGET=1 MOM_ACCEPTANCE_FAIL_ON_FLAKY=1 MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH=.artifacts/concurrency-report.json playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"
