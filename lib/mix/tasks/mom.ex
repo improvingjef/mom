@@ -126,6 +126,7 @@ defmodule Mix.Tasks.Mom do
       mode: :string,
       llm: :string,
       llm_cmd: :string,
+      execution_profile: :string,
       llm_api_key: :string,
       llm_api_url: :string,
       llm_model: :string,

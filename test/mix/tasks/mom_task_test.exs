@@ -43,6 +43,25 @@ defmodule Mix.Tasks.MomTaskTest do
 
     assert config.llm_provider == :codex
     assert config.llm_cmd == "codex --yolo exec"
+    assert config.execution_profile == :test_relaxed
+  end
+
+  test "parse_args accepts staging_restricted execution profile" do
+    workdir = isolated_workdir_fixture()
+
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--llm",
+        "codex",
+        "--execution-profile",
+        "staging_restricted",
+        "--workdir",
+        workdir
+      ])
+
+    assert config.execution_profile == :staging_restricted
+    assert config.llm_cmd == "codex exec --sandbox workspace-write"
   end
 
   test "parse_args accepts github repo allowlist flag" do
@@ -194,5 +213,18 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.readiness_gate_approved
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+  end
+
+  defp isolated_workdir_fixture do
+    workdir =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-task-policy-worktree-#{System.unique_integer([:positive])}"
+      )
+
+    File.rm_rf!(workdir)
+    File.mkdir_p!(workdir)
+    File.write!(Path.join(workdir, ".git"), "gitdir: /tmp/mom-task-policy-gitdir\n")
+    workdir
   end
 end

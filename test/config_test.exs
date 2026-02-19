@@ -37,6 +37,62 @@ defmodule Mom.ConfigTest do
     assert config.llm_cmd == "codex exec"
   end
 
+  test "defines staging_restricted execution profile policy" do
+    assert {:error, "staging_restricted requires an isolated --workdir write boundary"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted
+             )
+
+    workdir = isolated_workdir_fixture()
+
+    assert {:error, "staging_restricted requires codex command allowlist compliance"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted,
+               workdir: workdir,
+               llm_cmd: "claude exec --sandbox workspace-write"
+             )
+
+    assert {:error, "staging_restricted requires codex sandbox mode workspace-write"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted,
+               workdir: workdir,
+               llm_cmd: "codex exec"
+             )
+
+    assert {:error, "staging_restricted forbids --yolo execution"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted,
+               workdir: workdir,
+               llm_cmd: "codex --yolo exec --sandbox workspace-write"
+             )
+  end
+
+  test "accepts valid staging_restricted execution policy" do
+    workdir = isolated_workdir_fixture()
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :staging_restricted,
+               workdir: workdir,
+               llm_cmd: "codex exec --sandbox workspace-write"
+             )
+
+    assert config.execution_profile == :staging_restricted
+    assert config.sandbox_mode == :workspace_write
+    assert config.command_allowlist == ["codex"]
+    assert config.write_boundaries == [workdir]
+  end
+
   test "uses runtime env defaults" do
     Application.put_env(:mom, :llm_cmd, "cat")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
@@ -351,5 +407,18 @@ defmodule Mom.ConfigTest do
              Config.from_opts(repo: repo, workdir: workdir)
 
     assert config.workdir == workdir
+  end
+
+  defp isolated_workdir_fixture do
+    workdir =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-config-policy-worktree-#{System.unique_integer([:positive])}"
+      )
+
+    File.rm_rf!(workdir)
+    File.mkdir_p!(workdir)
+    File.write!(Path.join(workdir, ".git"), "gitdir: /tmp/mom-config-policy-gitdir\n")
+    workdir
   end
 end

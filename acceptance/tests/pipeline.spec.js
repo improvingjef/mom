@@ -259,6 +259,39 @@ test("mom CLI defaults codex to yolo exec profile", async () => {
   expect(result.override_llm_cmd).toBe("codex --profile staging exec");
 });
 
+test("mom CLI defines staging_restricted profile guardrails", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_staging_profile_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.execution_profile).toBe("staging_restricted");
+  expect(result.llm_cmd).toBe("codex exec --sandbox workspace-write");
+  expect(result.sandbox_mode).toBe("workspace_write");
+  expect(result.command_allowlist).toEqual(["codex"]);
+  expect(result.write_boundaries.length).toBe(1);
+  expect(result.missing_sandbox).toEqual([
+    "error",
+    "staging_restricted requires codex sandbox mode workspace-write"
+  ]);
+  expect(result.yolo_disallowed).toEqual([
+    "error",
+    "staging_restricted forbids --yolo execution"
+  ]);
+});
+
 test("mom stress mix task generates rapid event summary", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

@@ -44,6 +44,7 @@ mix mom.stress --events 200 --max-concurrency 4 --queue-max-size 300 --work-ms 5
 - `--mode` `remote` or `inproc`. Default `remote`.
 - `--llm` `claude_code`, `codex`, `api_anthropic`, `api_openai`. Default `claude_code`.
 - `--llm-cmd` Override CLI command used for the LLM. For `--llm codex`, default is `codex --yolo exec`.
+- `--execution-profile` `test_relaxed`, `staging_restricted`, or `production_hardened`. Default `test_relaxed`. `staging_restricted` enforces Codex sandboxing, command allowlisting, and an isolated `--workdir`.
 - `--llm-api-key` API key for `api_anthropic` or `api_openai`.
 - `--llm-api-url` Override API endpoint for `api_anthropic` or `api_openai`.
 - `--llm-model` Override model name for API providers.

@@ -12,6 +12,10 @@ defmodule Mom.Config do
     :mode,
     :llm_provider,
     :llm_cmd,
+    :execution_profile,
+    :sandbox_mode,
+    :command_allowlist,
+    :write_boundaries,
     :llm_api_key,
     :llm_api_url,
     :llm_model,
@@ -54,6 +58,10 @@ defmodule Mom.Config do
           mode: :remote | :inproc,
           llm_provider: llm_provider(),
           llm_cmd: String.t() | nil,
+          execution_profile: :test_relaxed | :staging_restricted | :production_hardened,
+          sandbox_mode: :unrestricted | :workspace_write | :read_only,
+          command_allowlist: [String.t()],
+          write_boundaries: [String.t()],
           llm_api_key: String.t() | nil,
           llm_api_url: String.t() | nil,
           llm_model: String.t() | nil,
@@ -95,7 +103,7 @@ defmodule Mom.Config do
     runtime = Application.get_all_env(:mom)
     redact_keys = normalize_redact_keys(Keyword.get(opts, :redact_keys) || runtime[:redact_keys])
     llm_provider = Keyword.get(opts, :llm_provider, :claude_code)
-    llm_cmd = default_llm_cmd(llm_provider, Keyword.get(opts, :llm_cmd) || runtime[:llm_cmd])
+    llm_cmd_override = Keyword.get(opts, :llm_cmd) || runtime[:llm_cmd]
     llm_api_url = Keyword.get(opts, :llm_api_url) || runtime[:llm_api_url]
 
     cond do
@@ -122,6 +130,10 @@ defmodule Mom.Config do
                parse_protected_branches(opts, runtime, github_base_branch),
              {:ok, readiness_gate_approved} <- parse_readiness_gate_approved(opts, runtime),
              {:ok, workdir} <- parse_workdir(opts, runtime),
+             {:ok, execution_profile} <- parse_execution_profile(opts, runtime),
+             llm_cmd <- default_llm_cmd(llm_provider, llm_cmd_override, execution_profile),
+             policy <- execution_policy(execution_profile, workdir),
+             :ok <- validate_execution_policy(execution_profile, llm_provider, llm_cmd, workdir),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              :ok <-
                validate_automated_pr_readiness(
@@ -143,6 +155,10 @@ defmodule Mom.Config do
              mode: Keyword.get(opts, :mode, :remote),
              llm_provider: llm_provider,
              llm_cmd: llm_cmd,
+             execution_profile: execution_profile,
+             sandbox_mode: policy.sandbox_mode,
+             command_allowlist: policy.command_allowlist,
+             write_boundaries: policy.write_boundaries,
              llm_api_key: llm_api_key,
              llm_api_url: llm_api_url,
              llm_model: Keyword.get(opts, :llm_model) || runtime[:llm_model],
@@ -194,8 +210,11 @@ defmodule Mom.Config do
     end
   end
 
-  defp default_llm_cmd(:codex, nil), do: "codex --yolo exec"
-  defp default_llm_cmd(_provider, cmd), do: cmd
+  defp default_llm_cmd(:codex, nil, :staging_restricted),
+    do: "codex exec --sandbox workspace-write"
+
+  defp default_llm_cmd(:codex, nil, _profile), do: "codex --yolo exec"
+  defp default_llm_cmd(_provider, cmd, _profile), do: cmd
 
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value
@@ -324,6 +343,100 @@ defmodule Mom.Config do
         {:error, "workdir must reference an isolated git worktree"}
     end
   end
+
+  defp parse_execution_profile(opts, runtime) do
+    case Keyword.get(opts, :execution_profile, runtime[:execution_profile]) do
+      nil ->
+        {:ok, :test_relaxed}
+
+      :test_relaxed ->
+        {:ok, :test_relaxed}
+
+      :staging_restricted ->
+        {:ok, :staging_restricted}
+
+      :production_hardened ->
+        {:ok, :production_hardened}
+
+      "test_relaxed" ->
+        {:ok, :test_relaxed}
+
+      "staging_restricted" ->
+        {:ok, :staging_restricted}
+
+      "production_hardened" ->
+        {:ok, :production_hardened}
+
+      _other ->
+        {:error,
+         "execution_profile must be :test_relaxed, :staging_restricted, or :production_hardened"}
+    end
+  end
+
+  defp execution_policy(:test_relaxed, _workdir) do
+    %{
+      sandbox_mode: :unrestricted,
+      command_allowlist: [],
+      write_boundaries: []
+    }
+  end
+
+  defp execution_policy(:staging_restricted, workdir) do
+    %{
+      sandbox_mode: :workspace_write,
+      command_allowlist: ["codex"],
+      write_boundaries: if(is_binary(workdir), do: [workdir], else: [])
+    }
+  end
+
+  defp execution_policy(:production_hardened, workdir) do
+    %{
+      sandbox_mode: :read_only,
+      command_allowlist: ["codex"],
+      write_boundaries: if(is_binary(workdir), do: [workdir], else: [])
+    }
+  end
+
+  defp validate_execution_policy(:test_relaxed, _llm_provider, _llm_cmd, _workdir), do: :ok
+  defp validate_execution_policy(:production_hardened, _llm_provider, _llm_cmd, _workdir), do: :ok
+
+  defp validate_execution_policy(:staging_restricted, llm_provider, llm_cmd, workdir) do
+    cond do
+      not is_binary(workdir) ->
+        {:error, "staging_restricted requires an isolated --workdir write boundary"}
+
+      llm_provider != :codex ->
+        {:error, "staging_restricted currently supports llm_provider=codex only"}
+
+      not llm_cmd_binary_allowed?(llm_cmd, ["codex"]) ->
+        {:error, "staging_restricted requires codex command allowlist compliance"}
+
+      String.contains?(llm_cmd || "", "--yolo") ->
+        {:error, "staging_restricted forbids --yolo execution"}
+
+      not codex_workspace_write_sandbox?(llm_cmd) ->
+        {:error, "staging_restricted requires codex sandbox mode workspace-write"}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp llm_cmd_binary_allowed?(llm_cmd, allowlist)
+       when is_binary(llm_cmd) and is_list(allowlist) do
+    case String.split(llm_cmd, ~r/\s+/, trim: true) do
+      [binary | _] -> binary in allowlist
+      [] -> false
+    end
+  end
+
+  defp llm_cmd_binary_allowed?(_llm_cmd, _allowlist), do: false
+
+  defp codex_workspace_write_sandbox?(llm_cmd) when is_binary(llm_cmd) do
+    Regex.match?(~r/(^|\s)--sandbox(=|\s+)workspace-write(\s|$)/, llm_cmd)
+  end
+
+  defp codex_workspace_write_sandbox?(_llm_cmd), do: false
 
   defp parse_overflow_policy(opts, runtime) do
     case Keyword.get(opts, :overflow_policy, runtime[:overflow_policy]) do
