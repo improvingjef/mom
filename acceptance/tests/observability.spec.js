@@ -26,10 +26,18 @@ test("mom exports pipeline observability metrics and emits SLO breaches", async 
   expect(result.has_drop_rate_metric).toBeTruthy();
   expect(result.has_failure_rate_metric).toBeTruthy();
   expect(result.has_latency_metric).toBeTruthy();
+  expect(result.has_queue_durability_metric).toBeTruthy();
+  expect(result.has_pr_turnaround_metric).toBeTruthy();
+  expect(result.has_error_budget_queue_loss_metric).toBeTruthy();
   expect(result.saw_queue_depth_breach).toBeTruthy();
   expect(result.saw_drop_rate_breach).toBeTruthy();
   expect(result.saw_failure_rate_breach).toBeTruthy();
   expect(result.saw_latency_breach).toBeTruthy();
+  expect(result.saw_latency_budget_breach).toBeTruthy();
+  expect(result.saw_queue_budget_breach).toBeTruthy();
+  expect(result.saw_pr_turnaround_budget_breach).toBeTruthy();
   expect(result.snapshot_drop_rate).toBe(0.5);
   expect(result.snapshot_failure_rate).toBe(1.0);
+  expect(result.snapshot_queue_durability).toBe(0.5);
+  expect(result.snapshot_pr_turnaround_p95_ms).toBe(1500.0);
 });

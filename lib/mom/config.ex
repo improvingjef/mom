@@ -44,6 +44,12 @@ defmodule Mom.Config do
     :slo_drop_rate_threshold,
     :slo_failure_rate_threshold,
     :slo_latency_p95_ms_threshold,
+    :sla_triage_latency_p95_ms_target,
+    :sla_queue_durability_target,
+    :sla_pr_turnaround_p95_ms_target,
+    :error_budget_triage_latency_overage_rate,
+    :error_budget_queue_loss_rate,
+    :error_budget_pr_turnaround_overage_rate,
     :allowed_github_repos,
     :allowed_actor_ids,
     :branch_name_prefix,
@@ -97,6 +103,12 @@ defmodule Mom.Config do
           slo_drop_rate_threshold: float(),
           slo_failure_rate_threshold: float(),
           slo_latency_p95_ms_threshold: pos_integer(),
+          sla_triage_latency_p95_ms_target: pos_integer(),
+          sla_queue_durability_target: float(),
+          sla_pr_turnaround_p95_ms_target: pos_integer(),
+          error_budget_triage_latency_overage_rate: float(),
+          error_budget_queue_loss_rate: float(),
+          error_budget_pr_turnaround_overage_rate: float(),
           allowed_github_repos: [String.t()],
           allowed_actor_ids: [String.t()],
           branch_name_prefix: String.t(),
@@ -146,6 +158,18 @@ defmodule Mom.Config do
                parse_ratio(opts, runtime, :slo_failure_rate_threshold, 0.1),
              {:ok, slo_latency_p95_ms_threshold} <-
                parse_pos_int(opts, runtime, :slo_latency_p95_ms_threshold, 15_000),
+             {:ok, sla_triage_latency_p95_ms_target} <-
+               parse_pos_int(opts, runtime, :sla_triage_latency_p95_ms_target, 15_000),
+             {:ok, sla_queue_durability_target} <-
+               parse_ratio(opts, runtime, :sla_queue_durability_target, 0.995),
+             {:ok, sla_pr_turnaround_p95_ms_target} <-
+               parse_pos_int(opts, runtime, :sla_pr_turnaround_p95_ms_target, 900_000),
+             {:ok, error_budget_triage_latency_overage_rate} <-
+               parse_ratio(opts, runtime, :error_budget_triage_latency_overage_rate, 0.05),
+             {:ok, error_budget_queue_loss_rate} <-
+               parse_ratio(opts, runtime, :error_budget_queue_loss_rate, 0.005),
+             {:ok, error_budget_pr_turnaround_overage_rate} <-
+               parse_ratio(opts, runtime, :error_budget_pr_turnaround_overage_rate, 0.1),
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
              {:ok, allowed_actor_ids} <- parse_allowed_actor_ids(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
@@ -238,6 +262,12 @@ defmodule Mom.Config do
              slo_drop_rate_threshold: slo_drop_rate_threshold,
              slo_failure_rate_threshold: slo_failure_rate_threshold,
              slo_latency_p95_ms_threshold: slo_latency_p95_ms_threshold,
+             sla_triage_latency_p95_ms_target: sla_triage_latency_p95_ms_target,
+             sla_queue_durability_target: sla_queue_durability_target,
+             sla_pr_turnaround_p95_ms_target: sla_pr_turnaround_p95_ms_target,
+             error_budget_triage_latency_overage_rate: error_budget_triage_latency_overage_rate,
+             error_budget_queue_loss_rate: error_budget_queue_loss_rate,
+             error_budget_pr_turnaround_overage_rate: error_budget_pr_turnaround_overage_rate,
              allowed_github_repos: allowed_github_repos,
              allowed_actor_ids: allowed_actor_ids,
              branch_name_prefix: branch_name_prefix,
@@ -643,7 +673,8 @@ defmodule Mom.Config do
         {:ok, path}
 
       _other ->
-        {:error, "observability_export_path is required when observability_backend is :prometheus"}
+        {:error,
+         "observability_export_path is required when observability_backend is :prometheus"}
     end
   end
 

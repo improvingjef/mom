@@ -72,6 +72,7 @@ defmodule Mom.ObservabilityTest do
     assert snapshot.drop_rate == 0.5
     assert snapshot.failure_rate == 0.5
     assert snapshot.latency_p95_ms == 120.0
+    assert snapshot.queue_durability == 0.5
   end
 
   test "emits SLO breach telemetry events when thresholds are exceeded" do
@@ -132,6 +133,91 @@ defmodule Mom.ObservabilityTest do
 
     assert_receive {:slo_breach, [:mom, :alert, :slo_breach], %{count: 1}, metadata}
     assert metadata.metric in [:queue_depth, :drop_rate, :failure_rate, :latency_p95_ms]
+  end
+
+  test "exports sla targets and emits error-budget breach telemetry events" do
+    export_path = unique_export_path()
+    handler_id = "mom-observability-budget-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :alert, :error_budget_breach],
+        fn event, measurements, metadata, pid ->
+          send(pid, {:error_budget_breach, event, measurements, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn ->
+      :telemetry.detach(handler_id)
+    end)
+
+    pid =
+      start_supervised!(
+        {Observability,
+         export_path: export_path,
+         export_interval_ms: 10,
+         triage_latency_p95_ms_target: 100,
+         queue_durability_target: 0.99,
+         pr_turnaround_p95_ms_target: 1_000,
+         triage_latency_overage_budget_rate: 0.1,
+         queue_loss_budget_rate: 0.01,
+         pr_turnaround_overage_budget_rate: 0.05}
+      )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :enqueued],
+      %{count: 1},
+      %{job_type: :error_event, queue_depth: 1, active_workers: 0}
+    )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :completed],
+      %{duration: System.convert_time_unit(250, :millisecond, :native)},
+      %{job_type: :error_event, queue_depth: 0, active_workers: 0}
+    )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :dropped],
+      %{count: 1},
+      %{drop_reason: :newest, queue_depth: 0, active_workers: 0}
+    )
+
+    :telemetry.execute(
+      [:mom, :audit, :github_issue_created],
+      %{count: 1},
+      %{occurred_at_ms: 1_000}
+    )
+
+    :telemetry.execute(
+      [:mom, :audit, :github_pr_created],
+      %{count: 1},
+      %{occurred_at_ms: 2_500}
+    )
+
+    assert_receive {:error_budget_breach, [:mom, :alert, :error_budget_breach], %{count: 1},
+                    %{metric: :triage_latency_overage_rate}}
+
+    assert_receive {:error_budget_breach, [:mom, :alert, :error_budget_breach], %{count: 1},
+                    %{metric: :queue_loss_rate}}
+
+    assert_receive {:error_budget_breach, [:mom, :alert, :error_budget_breach], %{count: 1},
+                    %{metric: :pr_turnaround_overage_rate}}
+
+    eventually(fn ->
+      contents = File.read!(export_path)
+      assert contents =~ "mom_sla_target_triage_latency_p95_ms 100"
+      assert contents =~ "mom_sla_target_queue_durability 0.99"
+      assert contents =~ "mom_sla_target_pr_turnaround_p95_ms 1000"
+      assert contents =~ "mom_sla_queue_durability 0.5"
+      assert contents =~ "mom_sla_pr_turnaround_p95_ms "
+      assert contents =~ "mom_error_budget_queue_loss_rate 0.5"
+    end)
+
+    snapshot = Observability.snapshot(pid)
+    assert snapshot.queue_durability == 0.5
+    assert snapshot.pr_turnaround_p95_ms == 1500.0
   end
 
   defp eventually(fun, retries \\ 40)

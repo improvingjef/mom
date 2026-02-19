@@ -223,6 +223,7 @@ Out of scope (for this phase):
 - `staging_restricted` execution profile policy is implemented (sandbox requirement, command allowlist, and isolated write boundary enforcement), covered by ExUnit + Playwright acceptance tests.
 - `production_hardened` execution profile policy is implemented (read-only sandbox, codex-only command allowlist, isolated workdir enforcement, and readiness-gated sensitive operations), covered by ExUnit + Playwright acceptance tests.
 - Runtime fail-closed execution policy checks are implemented for restricted profiles (policy drift blocks LLM execution before command invocation), covered by ExUnit + Playwright acceptance tests.
+- Audit assertions for all agent-driven git mutations are implemented: worktree creation, patch apply, branch create/push, and GitHub mutation events now have ExUnit + Playwright acceptance coverage.
 - Production observability integration is implemented with Prometheus export and SLO-breach alert telemetry (`queue_depth`, `drop_rate`, `failure_rate`, `latency_p95_ms`), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
@@ -252,7 +253,7 @@ Out of scope (for this phase):
 
 1. Production Observability Integration
 - Export pipeline telemetry to a production backend (OpenTelemetry/Prometheus), with dashboards and SLO alerts for queue depth, drop rate, failure rate, and triage latency.
-- Status: complete (February 19, 2026) via Prometheus text export + SLO breach telemetry events.
+ - Status: complete (February 19, 2026) via Prometheus text export + SLO breach telemetry events.
 
 2. Delivery Safety and Governance
 - Enforce protected-branch PR approvals, required CI checks, and policy gates for Mom-authored changes before merge.
@@ -396,10 +397,11 @@ Out of scope (for this phase):
 - [x] Define `staging_restricted` policy (sandbox + command allowlist + write boundaries).
 - [x] Define `production_hardened` policy (restricted profile + sensitive-op approvals).
 - [x] Add fail-closed policy checks for safety violations.
-- [ ] Add audit assertions for all agent-driven git mutations.
+- [x] Add audit assertions for all agent-driven git mutations.
 
 ## Commercial Availability Backlog
-- [ ] Define SLA/SLO targets (triage latency, queue durability, PR turnaround) and error budgets.
+- [x] Define SLA/SLO targets (triage latency, queue durability, PR turnaround) and error budgets.
+ - Status: complete (February 19, 2026) via explicit config targets/budgets, Prometheus export, and breach telemetry for budget burn.
 - [ ] Add durable queue mode (disk-backed persistence and replay on restart) for production resilience.
 - [ ] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
 - [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
@@ -444,4 +446,7 @@ Out of scope (for this phase):
 - [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
+- [ ] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
 - [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
+- [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
+- [ ] Add customer-managed encryption key lifecycle controls (KMS-backed key versioning, tenant-specific rekey workflows, and cryptographic deletion attestations).

@@ -127,7 +127,13 @@ defmodule Mom.Runner do
            queue_depth_threshold: config.slo_queue_depth_threshold,
            drop_rate_threshold: config.slo_drop_rate_threshold,
            failure_rate_threshold: config.slo_failure_rate_threshold,
-           latency_p95_ms_threshold: config.slo_latency_p95_ms_threshold
+           latency_p95_ms_threshold: config.slo_latency_p95_ms_threshold,
+           triage_latency_p95_ms_target: config.sla_triage_latency_p95_ms_target,
+           queue_durability_target: config.sla_queue_durability_target,
+           pr_turnaround_p95_ms_target: config.sla_pr_turnaround_p95_ms_target,
+           triage_latency_overage_budget_rate: config.error_budget_triage_latency_overage_rate,
+           queue_loss_budget_rate: config.error_budget_queue_loss_rate,
+           pr_turnaround_overage_budget_rate: config.error_budget_pr_turnaround_overage_rate
          ) do
       {:ok, _pid} -> :ok
       {:error, reason} -> {:error, reason}

@@ -22,6 +22,12 @@ defmodule Mom.ConfigTest do
     assert config.slo_drop_rate_threshold == 0.05
     assert config.slo_failure_rate_threshold == 0.1
     assert config.slo_latency_p95_ms_threshold == 15_000
+    assert config.sla_triage_latency_p95_ms_target == 15_000
+    assert config.sla_queue_durability_target == 0.995
+    assert config.sla_pr_turnaround_p95_ms_target == 900_000
+    assert config.error_budget_triage_latency_overage_rate == 0.05
+    assert config.error_budget_queue_loss_rate == 0.005
+    assert config.error_budget_pr_turnaround_overage_rate == 0.1
   end
 
   test "parses redact keys from comma-separated string" do
@@ -293,7 +299,13 @@ defmodule Mom.ConfigTest do
         slo_queue_depth_threshold: 200,
         slo_drop_rate_threshold: 0.1,
         slo_failure_rate_threshold: 0.15,
-        slo_latency_p95_ms_threshold: 25_000
+        slo_latency_p95_ms_threshold: 25_000,
+        sla_triage_latency_p95_ms_target: 12_000,
+        sla_queue_durability_target: 0.999,
+        sla_pr_turnaround_p95_ms_target: 600_000,
+        error_budget_triage_latency_overage_rate: 0.02,
+        error_budget_queue_loss_rate: 0.001,
+        error_budget_pr_turnaround_overage_rate: 0.05
       )
 
     assert config.observability_backend == :prometheus
@@ -303,13 +315,20 @@ defmodule Mom.ConfigTest do
     assert config.slo_drop_rate_threshold == 0.1
     assert config.slo_failure_rate_threshold == 0.15
     assert config.slo_latency_p95_ms_threshold == 25_000
+    assert config.sla_triage_latency_p95_ms_target == 12_000
+    assert config.sla_queue_durability_target == 0.999
+    assert config.sla_pr_turnaround_p95_ms_target == 600_000
+    assert config.error_budget_triage_latency_overage_rate == 0.02
+    assert config.error_budget_queue_loss_rate == 0.001
+    assert config.error_budget_pr_turnaround_overage_rate == 0.05
   end
 
   test "validates observability settings" do
     assert {:error, "observability_backend must be :none or :prometheus"} =
              Config.from_opts(repo: "/tmp/repo", observability_backend: :datadog)
 
-    assert {:error, "observability_export_path is required when observability_backend is :prometheus"} =
+    assert {:error,
+            "observability_export_path is required when observability_backend is :prometheus"} =
              Config.from_opts(repo: "/tmp/repo", observability_backend: :prometheus)
 
     assert {:error, "observability_export_interval_ms must be a positive integer"} =
@@ -320,6 +339,12 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "slo_drop_rate_threshold must be between 0.0 and 1.0"} =
              Config.from_opts(repo: "/tmp/repo", slo_drop_rate_threshold: 1.5)
+
+    assert {:error, "sla_queue_durability_target must be between 0.0 and 1.0"} =
+             Config.from_opts(repo: "/tmp/repo", sla_queue_durability_target: 1.5)
+
+    assert {:error, "error_budget_queue_loss_rate must be between 0.0 and 1.0"} =
+             Config.from_opts(repo: "/tmp/repo", error_budget_queue_loss_rate: -0.1)
   end
 
   test "enforces github repo allowlist when configured" do

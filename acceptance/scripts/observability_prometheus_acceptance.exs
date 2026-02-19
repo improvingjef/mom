@@ -16,6 +16,18 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
         parent
       )
 
+    budget_handler_id = "#{handler_id}-budget"
+
+    :ok =
+      :telemetry.attach(
+        budget_handler_id,
+        [:mom, :alert, :error_budget_breach],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:error_budget_breach, event, metadata})
+        end,
+        parent
+      )
+
     try do
       {:ok, pid} =
         Observability.start_link(
@@ -24,7 +36,13 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
           queue_depth_threshold: 1,
           drop_rate_threshold: 0.25,
           failure_rate_threshold: 0.25,
-          latency_p95_ms_threshold: 100
+          latency_p95_ms_threshold: 100,
+          triage_latency_p95_ms_target: 100,
+          queue_durability_target: 0.99,
+          pr_turnaround_p95_ms_target: 1_000,
+          triage_latency_overage_budget_rate: 0.1,
+          queue_loss_budget_rate: 0.01,
+          pr_turnaround_overage_budget_rate: 0.05
         )
 
       :telemetry.execute(
@@ -45,6 +63,18 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
         %{job_type: :error_event, queue_depth: 0, active_workers: 0, reason: :boom}
       )
 
+      :telemetry.execute(
+        [:mom, :audit, :github_issue_created],
+        %{count: 1},
+        %{occurred_at_ms: 1_000}
+      )
+
+      :telemetry.execute(
+        [:mom, :audit, :github_pr_created],
+        %{count: 1},
+        %{occurred_at_ms: 2_500}
+      )
+
       wait_for(fn ->
         case File.read(export_path) do
           {:ok, contents} -> String.contains?(contents, "mom_pipeline_enqueued_total 1")
@@ -55,6 +85,7 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
       metrics = File.read!(export_path)
       snapshot = Observability.snapshot(pid)
       breaches = collect_breaches([])
+      budget_breaches = collect_budget_breaches([])
 
       result = %{
         has_enqueued_metric: String.contains?(metrics, "mom_pipeline_enqueued_total 1"),
@@ -63,17 +94,27 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
         has_drop_rate_metric: String.contains?(metrics, "mom_pipeline_drop_rate 0.5"),
         has_failure_rate_metric: String.contains?(metrics, "mom_pipeline_failure_rate 1.0"),
         has_latency_metric: String.contains?(metrics, "mom_pipeline_latency_p95_ms 250.0"),
+        has_queue_durability_metric: String.contains?(metrics, "mom_sla_queue_durability 0.5"),
+        has_pr_turnaround_metric: String.contains?(metrics, "mom_sla_pr_turnaround_p95_ms "),
+        has_error_budget_queue_loss_metric:
+          String.contains?(metrics, "mom_error_budget_queue_loss_rate 0.5"),
         saw_queue_depth_breach: :queue_depth in breaches,
         saw_drop_rate_breach: :drop_rate in breaches,
         saw_failure_rate_breach: :failure_rate in breaches,
         saw_latency_breach: :latency_p95_ms in breaches,
+        saw_latency_budget_breach: :triage_latency_overage_rate in budget_breaches,
+        saw_queue_budget_breach: :queue_loss_rate in budget_breaches,
+        saw_pr_turnaround_budget_breach: :pr_turnaround_overage_rate in budget_breaches,
         snapshot_drop_rate: snapshot.drop_rate,
-        snapshot_failure_rate: snapshot.failure_rate
+        snapshot_failure_rate: snapshot.failure_rate,
+        snapshot_queue_durability: snapshot.queue_durability,
+        snapshot_pr_turnaround_p95_ms: snapshot.pr_turnaround_p95_ms
       }
 
       IO.puts("RESULT_JSON:" <> Jason.encode!(result))
     after
       :telemetry.detach(handler_id)
+      :telemetry.detach(budget_handler_id)
     end
   end
 
@@ -81,6 +122,16 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
     receive do
       {:slo_breach, [:mom, :alert, :slo_breach], %{metric: metric}} ->
         collect_breaches([metric | acc])
+    after
+      200 ->
+        Enum.uniq(acc)
+    end
+  end
+
+  defp collect_budget_breaches(acc) do
+    receive do
+      {:error_budget_breach, [:mom, :alert, :error_budget_breach], %{metric: metric}} ->
+        collect_budget_breaches([metric | acc])
     after
       200 ->
         Enum.uniq(acc)

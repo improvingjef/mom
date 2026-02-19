@@ -10,7 +10,9 @@ defmodule Mom.Observability do
     [:mom, :pipeline, :dropped],
     [:mom, :pipeline, :started],
     [:mom, :pipeline, :completed],
-    [:mom, :pipeline, :failed]
+    [:mom, :pipeline, :failed],
+    [:mom, :audit, :github_issue_created],
+    [:mom, :audit, :github_pr_created]
   ]
 
   @default_export_interval_ms 5_000
@@ -18,6 +20,12 @@ defmodule Mom.Observability do
   @default_drop_rate_threshold 0.05
   @default_failure_rate_threshold 0.1
   @default_latency_p95_ms_threshold 15_000
+  @default_triage_latency_target_ms 15_000
+  @default_queue_durability_target 0.995
+  @default_pr_turnaround_target_ms 900_000
+  @default_triage_latency_overage_budget_rate 0.05
+  @default_queue_loss_budget_rate 0.005
+  @default_pr_turnaround_overage_budget_rate 0.1
   @max_duration_samples 512
 
   @type t :: %{
@@ -32,7 +40,12 @@ defmodule Mom.Observability do
           active_workers_max: non_neg_integer(),
           drop_rate: float(),
           failure_rate: float(),
-          latency_p95_ms: float()
+          latency_p95_ms: float(),
+          queue_durability: float(),
+          pr_turnaround_p95_ms: float(),
+          triage_latency_overage_rate: float(),
+          queue_loss_rate: float(),
+          pr_turnaround_overage_rate: float()
         }
 
   @spec start_link(keyword()) :: GenServer.on_start()
@@ -58,6 +71,32 @@ defmodule Mom.Observability do
         Keyword.get(opts, :latency_p95_ms_threshold, @default_latency_p95_ms_threshold)
     }
 
+    targets = %{
+      triage_latency_p95_ms:
+        Keyword.get(opts, :triage_latency_p95_ms_target, @default_triage_latency_target_ms),
+      queue_durability:
+        Keyword.get(opts, :queue_durability_target, @default_queue_durability_target),
+      pr_turnaround_p95_ms:
+        Keyword.get(opts, :pr_turnaround_p95_ms_target, @default_pr_turnaround_target_ms)
+    }
+
+    budgets = %{
+      triage_latency_overage_rate:
+        Keyword.get(
+          opts,
+          :triage_latency_overage_budget_rate,
+          @default_triage_latency_overage_budget_rate
+        ),
+      queue_loss_rate:
+        Keyword.get(opts, :queue_loss_budget_rate, @default_queue_loss_budget_rate),
+      pr_turnaround_overage_rate:
+        Keyword.get(
+          opts,
+          :pr_turnaround_overage_budget_rate,
+          @default_pr_turnaround_overage_budget_rate
+        )
+    }
+
     handler_id = "mom-observability-#{System.unique_integer([:positive])}"
     parent = self()
 
@@ -72,7 +111,7 @@ defmodule Mom.Observability do
       )
 
     state =
-      initial_state(export_path, export_interval_ms, handler_id, thresholds)
+      initial_state(export_path, export_interval_ms, handler_id, thresholds, targets, budgets)
       |> export_metrics()
 
     schedule_export(export_interval_ms)
@@ -90,6 +129,7 @@ defmodule Mom.Observability do
       state
       |> apply_event(event, measurements, metadata)
       |> evaluate_slos()
+      |> evaluate_error_budgets()
       |> export_metrics()
 
     {:noreply, next_state}
@@ -106,13 +146,16 @@ defmodule Mom.Observability do
     :ok
   end
 
-  defp initial_state(export_path, export_interval_ms, handler_id, thresholds) do
+  defp initial_state(export_path, export_interval_ms, handler_id, thresholds, targets, budgets) do
     %{
       export_path: export_path,
       export_interval_ms: export_interval_ms,
       handler_id: handler_id,
       thresholds: thresholds,
+      targets: targets,
+      budgets: budgets,
       breaches: %{},
+      budget_breaches: %{},
       enqueued_total: 0,
       dropped_total: 0,
       started_total: 0,
@@ -123,7 +166,9 @@ defmodule Mom.Observability do
       queue_depth_max: 0,
       active_workers: 0,
       active_workers_max: 0,
-      durations_ms: []
+      durations_ms: [],
+      issue_timestamps_ms: [],
+      pr_turnaround_durations_ms: []
     }
   end
 
@@ -138,7 +183,9 @@ defmodule Mom.Observability do
 
     state
     |> Map.update!(:dropped_total, &(&1 + count))
-    |> Map.update!(:drop_reason_counts, fn counts -> Map.update(counts, reason, count, &(&1 + count)) end)
+    |> Map.update!(:drop_reason_counts, fn counts ->
+      Map.update(counts, reason, count, &(&1 + count))
+    end)
     |> update_queue_activity(metadata)
   end
 
@@ -161,6 +208,34 @@ defmodule Mom.Observability do
     |> update_queue_activity(metadata)
   end
 
+  defp apply_event(state, [:mom, :audit, :github_issue_created], _measurements, metadata) do
+    timestamp_ms = event_timestamp_ms(metadata)
+
+    issue_timestamps_ms =
+      [timestamp_ms | state.issue_timestamps_ms] |> Enum.take(@max_duration_samples)
+
+    %{state | issue_timestamps_ms: issue_timestamps_ms}
+  end
+
+  defp apply_event(state, [:mom, :audit, :github_pr_created], _measurements, metadata) do
+    case state.issue_timestamps_ms do
+      [latest_issue_ms | rest] ->
+        turnaround_ms = max(0.0, (event_timestamp_ms(metadata) - latest_issue_ms) * 1.0)
+
+        pr_turnaround_durations_ms =
+          [turnaround_ms | state.pr_turnaround_durations_ms] |> Enum.take(@max_duration_samples)
+
+        %{
+          state
+          | issue_timestamps_ms: rest,
+            pr_turnaround_durations_ms: pr_turnaround_durations_ms
+        }
+
+      [] ->
+        state
+    end
+  end
+
   defp apply_event(state, _event, _measurements, _metadata), do: state
 
   defp update_queue_activity(state, metadata) do
@@ -179,7 +254,8 @@ defmodule Mom.Observability do
   defp measurement_count(%{count: count}) when is_integer(count) and count > 0, do: count
   defp measurement_count(_), do: 1
 
-  defp add_duration_ms(state, %{duration: duration}) when is_integer(duration) and duration >= 0 do
+  defp add_duration_ms(state, %{duration: duration})
+       when is_integer(duration) and duration >= 0 do
     duration_ms = System.convert_time_unit(duration, :native, :millisecond)
     durations = [duration_ms * 1.0 | state.durations_ms] |> Enum.take(@max_duration_samples)
     %{state | durations_ms: durations}
@@ -207,6 +283,61 @@ defmodule Mom.Observability do
     )
   end
 
+  defp evaluate_error_budgets(state) do
+    metrics = derived_metrics(state)
+
+    state
+    |> maybe_emit_error_budget_breach(
+      :triage_latency_overage_rate,
+      metrics.triage_latency_overage_rate,
+      state.budgets.triage_latency_overage_rate,
+      metrics
+    )
+    |> maybe_emit_error_budget_breach(
+      :queue_loss_rate,
+      metrics.queue_loss_rate,
+      state.budgets.queue_loss_rate,
+      metrics
+    )
+    |> maybe_emit_error_budget_breach(
+      :pr_turnaround_overage_rate,
+      metrics.pr_turnaround_overage_rate,
+      state.budgets.pr_turnaround_overage_rate,
+      metrics
+    )
+  end
+
+  defp maybe_emit_error_budget_breach(state, metric, observed, budget, metrics) do
+    breached? = observed > budget
+    already_breached? = Map.get(state.budget_breaches, metric, false)
+
+    cond do
+      breached? and not already_breached? ->
+        metadata = %{
+          metric: metric,
+          observed: observed,
+          budget: budget,
+          triage_latency_overage_rate: metrics.triage_latency_overage_rate,
+          queue_loss_rate: metrics.queue_loss_rate,
+          pr_turnaround_overage_rate: metrics.pr_turnaround_overage_rate
+        }
+
+        :telemetry.execute([:mom, :alert, :error_budget_breach], %{count: 1}, metadata)
+
+        Logger.warning(
+          "mom: alert error_budget_breach metric=#{metric} observed=#{observed} budget=#{budget}"
+        )
+
+        put_in(state.budget_breaches[metric], true)
+
+      not breached? and already_breached? ->
+        put_in(state.budget_breaches[metric], false)
+
+      true ->
+        state
+    end
+  end
+
   defp maybe_emit_breach(state, metric, observed, threshold, metrics) do
     breached? = observed > threshold
     already_breached? = Map.get(state.breaches, metric, false)
@@ -224,7 +355,11 @@ defmodule Mom.Observability do
         }
 
         :telemetry.execute([:mom, :alert, :slo_breach], %{count: 1}, metadata)
-        Logger.warning("mom: alert slo_breach metric=#{metric} observed=#{observed} threshold=#{threshold}")
+
+        Logger.warning(
+          "mom: alert slo_breach metric=#{metric} observed=#{observed} threshold=#{threshold}"
+        )
+
         put_in(state.breaches[metric], true)
 
       not breached? and already_breached? ->
@@ -238,23 +373,35 @@ defmodule Mom.Observability do
   defp export_metrics(state) do
     metrics = derived_metrics(state)
 
-    lines = [
-      "mom_pipeline_enqueued_total #{state.enqueued_total}",
-      "mom_pipeline_dropped_total #{state.dropped_total}",
-      "mom_pipeline_started_total #{state.started_total}",
-      "mom_pipeline_completed_total #{state.completed_total}",
-      "mom_pipeline_failed_total #{state.failed_total}"
-      | drop_reason_lines(state.drop_reason_counts)
-    ] ++
+    lines =
       [
-        "mom_pipeline_queue_depth #{state.queue_depth}",
-        "mom_pipeline_queue_depth_max #{state.queue_depth_max}",
-        "mom_pipeline_active_workers #{state.active_workers}",
-        "mom_pipeline_active_workers_max #{state.active_workers_max}",
-        "mom_pipeline_drop_rate #{Float.round(metrics.drop_rate, 6)}",
-        "mom_pipeline_failure_rate #{Float.round(metrics.failure_rate, 6)}",
-        "mom_pipeline_latency_p95_ms #{Float.round(metrics.latency_p95_ms, 3)}"
-      ]
+        "mom_pipeline_enqueued_total #{state.enqueued_total}",
+        "mom_pipeline_dropped_total #{state.dropped_total}",
+        "mom_pipeline_started_total #{state.started_total}",
+        "mom_pipeline_completed_total #{state.completed_total}",
+        "mom_pipeline_failed_total #{state.failed_total}"
+        | drop_reason_lines(state.drop_reason_counts)
+      ] ++
+        [
+          "mom_pipeline_queue_depth #{state.queue_depth}",
+          "mom_pipeline_queue_depth_max #{state.queue_depth_max}",
+          "mom_pipeline_active_workers #{state.active_workers}",
+          "mom_pipeline_active_workers_max #{state.active_workers_max}",
+          "mom_pipeline_drop_rate #{Float.round(metrics.drop_rate, 6)}",
+          "mom_pipeline_failure_rate #{Float.round(metrics.failure_rate, 6)}",
+          "mom_pipeline_latency_p95_ms #{Float.round(metrics.latency_p95_ms, 3)}",
+          "mom_sla_target_triage_latency_p95_ms #{state.targets.triage_latency_p95_ms}",
+          "mom_sla_target_queue_durability #{Float.round(state.targets.queue_durability, 6)}",
+          "mom_sla_target_pr_turnaround_p95_ms #{state.targets.pr_turnaround_p95_ms}",
+          "mom_sla_queue_durability #{Float.round(metrics.queue_durability, 6)}",
+          "mom_sla_pr_turnaround_p95_ms #{Float.round(metrics.pr_turnaround_p95_ms, 3)}",
+          "mom_error_budget_target_triage_latency_overage_rate #{Float.round(state.budgets.triage_latency_overage_rate, 6)}",
+          "mom_error_budget_target_queue_loss_rate #{Float.round(state.budgets.queue_loss_rate, 6)}",
+          "mom_error_budget_target_pr_turnaround_overage_rate #{Float.round(state.budgets.pr_turnaround_overage_rate, 6)}",
+          "mom_error_budget_triage_latency_overage_rate #{Float.round(metrics.triage_latency_overage_rate, 6)}",
+          "mom_error_budget_queue_loss_rate #{Float.round(metrics.queue_loss_rate, 6)}",
+          "mom_error_budget_pr_turnaround_overage_rate #{Float.round(metrics.pr_turnaround_overage_rate, 6)}"
+        ]
 
     File.mkdir_p!(Path.dirname(state.export_path))
     File.write!(state.export_path, Enum.join(lines, "\n") <> "\n")
@@ -272,11 +419,19 @@ defmodule Mom.Observability do
   defp derived_metrics(state) do
     drop_denominator = state.enqueued_total + state.dropped_total
     completion_denominator = state.completed_total + state.failed_total
+    queue_loss_rate = safe_ratio(state.dropped_total, drop_denominator)
 
     %{
-      drop_rate: safe_ratio(state.dropped_total, drop_denominator),
+      drop_rate: queue_loss_rate,
       failure_rate: safe_ratio(state.failed_total, completion_denominator),
-      latency_p95_ms: percentile(state.durations_ms, 0.95)
+      latency_p95_ms: percentile(state.durations_ms, 0.95),
+      queue_durability: max(0.0, 1.0 - queue_loss_rate),
+      pr_turnaround_p95_ms: percentile(state.pr_turnaround_durations_ms, 0.95),
+      triage_latency_overage_rate:
+        overage_rate(state.durations_ms, state.targets.triage_latency_p95_ms),
+      queue_loss_rate: queue_loss_rate,
+      pr_turnaround_overage_rate:
+        overage_rate(state.pr_turnaround_durations_ms, state.targets.pr_turnaround_p95_ms)
     }
   end
 
@@ -295,7 +450,12 @@ defmodule Mom.Observability do
       active_workers_max: state.active_workers_max,
       drop_rate: metrics.drop_rate,
       failure_rate: metrics.failure_rate,
-      latency_p95_ms: metrics.latency_p95_ms
+      latency_p95_ms: metrics.latency_p95_ms,
+      queue_durability: metrics.queue_durability,
+      pr_turnaround_p95_ms: metrics.pr_turnaround_p95_ms,
+      triage_latency_overage_rate: metrics.triage_latency_overage_rate,
+      queue_loss_rate: metrics.queue_loss_rate,
+      pr_turnaround_overage_rate: metrics.pr_turnaround_overage_rate
     }
   end
 
@@ -309,6 +469,19 @@ defmodule Mom.Observability do
 
   defp safe_ratio(_num, 0), do: 0.0
   defp safe_ratio(num, den), do: num / den
+
+  defp overage_rate([], _target), do: 0.0
+
+  defp overage_rate(samples, target) when is_integer(target) and target > 0 do
+    over_target_count = Enum.count(samples, &(&1 > target))
+    safe_ratio(over_target_count, length(samples))
+  end
+
+  defp event_timestamp_ms(%{occurred_at_ms: ts}) when is_integer(ts) and ts >= 0, do: ts
+
+  defp event_timestamp_ms(_metadata) do
+    System.monotonic_time(:millisecond)
+  end
 
   defp schedule_export(interval_ms), do: Process.send_after(self(), :export_metrics, interval_ms)
 
