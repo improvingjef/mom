@@ -217,6 +217,7 @@ Out of scope (for this phase):
 - Least-privilege credential identity enforcement is implemented via actor allowlist controls for GitHub-token flows, covered by ExUnit + Playwright acceptance tests.
 - Dedicated machine identity enforcement for GitHub-token flows is implemented (bot/app actor pattern required), covered by ExUnit + Playwright acceptance tests.
 - Network egress policy enforcement is implemented: outbound GitHub/LLM hosts are restricted to an allowlist with fail-closed validation/runtime checks, covered by ExUnit + Playwright acceptance tests.
+- Unusual-activity alerting is implemented for PR spikes, auth failure spikes, and disallowed repo target attempts, covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -360,7 +361,7 @@ Out of scope (for this phase):
 - [x] Confirm secrets are injected securely and redacted in logs.
 - [x] Confirm isolated worktrees are used for all mutations.
 - [x] Confirm network egress is restricted to required endpoints.
-- [ ] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
+- [x] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
 
 ### Coverage and Validation
 - [x] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
@@ -414,3 +415,5 @@ Out of scope (for this phase):
 - [ ] Add customer offboarding/deprovisioning workflows (tenant export verification, credential revocation, and timed hard-delete confirmation).
 - [ ] Add automated fix-quality and safety gates (regression benchmark suite, semantic diff risk scoring, and mandatory human approval path for high-risk patches).
 - [ ] Add abuse/fraud controls for commercial usage (tenant anomaly detection, spend-spike auto-throttles, and chargeback dispute evidence workflows).
+- [ ] Add customer-facing SLA contract automation (policy templates, entitlement mapping, and auto-enforced remedy terms).
+- [ ] Add enterprise procurement security review workflow (security questionnaire automation, evidence bundle generation, and renewal tracking).

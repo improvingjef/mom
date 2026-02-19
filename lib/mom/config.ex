@@ -1,6 +1,8 @@
 defmodule Mom.Config do
   @moduledoc false
 
+  alias Mom.Audit
+
   @type llm_provider :: :claude_code | :codex | :api_anthropic | :api_openai
 
   defstruct [
@@ -119,7 +121,7 @@ defmodule Mom.Config do
              {:ok, workdir} <- parse_workdir(opts, runtime),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              {:ok, github_repo} <-
-               parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
+               parse_and_validate_github_repo(opts, runtime, allowed_github_repos, actor_id) do
           {:ok,
            %__MODULE__{
              repo: repo,
@@ -320,7 +322,7 @@ defmodule Mom.Config do
     end
   end
 
-  defp parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
+  defp parse_and_validate_github_repo(opts, runtime, allowed_github_repos, actor_id) do
     github_repo = Keyword.get(opts, :github_repo) || runtime[:github_repo]
 
     cond do
@@ -334,6 +336,13 @@ defmodule Mom.Config do
         {:ok, github_repo}
 
       true ->
+        :ok =
+          Audit.emit(:github_repo_disallowed, %{
+            repo: github_repo,
+            actor_id: actor_id,
+            allowed_repos: allowed_github_repos
+          })
+
         {:error, "github_repo is not allowed"}
     end
   end

@@ -207,6 +207,8 @@ test("mom CLI enforces allowed github repo allowlist", async () => {
   expect(result.allowed_repo).toBe("acme/mom");
   expect(result.allowed_list).toEqual(["acme/mom", "acme/other"]);
   expect(result.blocked_result).toEqual(["error", "github_repo is not allowed"]);
+  expect(result.saw_disallowed_repo_alert).toBeTruthy();
+  expect(result.disallowed_alert_repo).toBe("evil/repo");
 });
 
 test("mom CLI enforces egress host allowlist for API providers", async () => {

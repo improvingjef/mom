@@ -1,6 +1,7 @@
 defmodule Mom.Audit do
   @moduledoc false
 
+  alias Mom.Alerting
   alias Mom.Security
 
   require Logger
@@ -10,6 +11,7 @@ defmodule Mom.Audit do
     sanitized_metadata = Security.sanitize(metadata, redact_keys())
 
     :telemetry.execute([:mom, :audit, event], %{count: 1}, sanitized_metadata)
+    _ = Alerting.observe(event, sanitized_metadata)
 
     payload =
       sanitized_metadata

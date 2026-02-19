@@ -132,6 +132,33 @@ defmodule Mom.ConfigTest do
              )
   end
 
+  test "emits audit event for disallowed github repo target" do
+    handler_id = "mom-config-disallowed-repo-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :github_repo_disallowed],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error, "github_repo is not allowed"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "evil/repo",
+               allowed_github_repos: ["acme/mom"]
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :github_repo_disallowed], metadata}
+    assert metadata.repo == "evil/repo"
+    assert metadata.allowed_repos == ["acme/mom"]
+  end
+
   test "validates required egress hosts and llm api url host" do
     assert {:ok, config} =
              Config.from_opts(
