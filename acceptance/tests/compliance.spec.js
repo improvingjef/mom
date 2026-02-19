@@ -32,3 +32,29 @@ test("mom enforces compliance controls for retention, evidence hooks, and PII po
   expect(result.log_has_authorization_key).toBeFalsy();
   expect(result.log_contains_secret).toBeFalsy();
 });
+
+test("mom CLI generates a validated disaster recovery runbook", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_runbook_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.output_exists).toBeTruthy();
+  expect(result.generated_on_present).toBeTruthy();
+  expect(result.has_backup_restore).toBeTruthy();
+  expect(result.has_credential_revocation).toBeTruthy();
+  expect(result.has_failover).toBeTruthy();
+  expect(result.validates).toBeTruthy();
+});
