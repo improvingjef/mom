@@ -31,6 +31,12 @@ In-process mode (mom is running inside the same node):
 mix mom /path/to/repo --mode inproc
 ```
 
+Local stress simulation (rapid synthetic incident generation):
+
+```bash
+mix mom.stress --events 200 --max-concurrency 4 --queue-max-size 300 --work-ms 5 --format json
+```
+
 ## Options
 
 - `--node` Target BEAM node name (`name@host`) for remote mode.

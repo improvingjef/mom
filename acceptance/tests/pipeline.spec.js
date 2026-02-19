@@ -259,6 +259,31 @@ test("mom CLI defaults codex to yolo exec profile", async () => {
   expect(result.override_llm_cmd).toBe("codex --profile staging exec");
 });
 
+test("mom stress mix task generates rapid event summary", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_stress_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.events_submitted).toBe(40);
+  expect(result.accepted).toBeGreaterThan(0);
+  expect(result.completed).toBe(result.accepted);
+  expect(result.failed).toBe(0);
+  expect(result.throughput_per_sec).toBeGreaterThan(0);
+});
+
 test("mom CLI applies branch naming policy to generated branches", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

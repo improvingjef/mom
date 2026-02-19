@@ -85,7 +85,7 @@ defmodule Mom.Acceptance.RunnerBurstScript do
       }
 
       IO.puts("RESULT_JSON:" <> Jason.encode!(result))
-      System.halt(0)
+      :ok
     after
       Logger.configure(level: previous_level)
     end

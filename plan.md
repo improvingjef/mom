@@ -218,6 +218,7 @@ Out of scope (for this phase):
 - Dedicated machine identity enforcement for GitHub-token flows is implemented (bot/app actor pattern required), covered by ExUnit + Playwright acceptance tests.
 - Network egress policy enforcement is implemented: outbound GitHub/LLM hosts are restricted to an allowlist with fail-closed validation/runtime checks, covered by ExUnit + Playwright acceptance tests.
 - Unusual-activity alerting is implemented for PR spikes, auth failure spikes, and disallowed repo target attempts, covered by ExUnit + Playwright acceptance tests.
+- Load simulation is implemented via `mix mom.stress` for rapid synthetic incident generation, covered by ExUnit TDD and Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -366,7 +367,7 @@ Out of scope (for this phase):
 ### Coverage and Validation
 - [x] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
 - [x] Add integration burst tests for mixed diagnostics/error events.
-- [ ] Add stress script/mix task for rapid local event generation.
+- [x] Add stress script/mix task for rapid local event generation.
 - [ ] Validate readiness gate before enabling automated PR creation.
 - [ ] Add/maintain ExUnit TDD coverage for every completed checklist task.
 - [ ] Add/maintain Playwright coverage for every applicable end-to-end task (or record N/A rationale).
@@ -417,3 +418,4 @@ Out of scope (for this phase):
 - [ ] Add abuse/fraud controls for commercial usage (tenant anomaly detection, spend-spike auto-throttles, and chargeback dispute evidence workflows).
 - [ ] Add customer-facing SLA contract automation (policy templates, entitlement mapping, and auto-enforced remedy terms).
 - [ ] Add enterprise procurement security review workflow (security questionnaire automation, evidence bundle generation, and renewal tracking).
+- [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
