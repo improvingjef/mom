@@ -223,4 +223,24 @@ defmodule Mom.ConfigTest do
     assert config.github_base_branch == "release"
     assert config.protected_branches == ["main", "release"]
   end
+
+  test "rejects workdir that is not an isolated git worktree" do
+    repo = Mom.TestHelper.create_repo()
+
+    assert {:error, "workdir must reference an isolated git worktree"} =
+             Config.from_opts(repo: repo, workdir: repo)
+  end
+
+  test "accepts explicit workdir when it is an isolated git worktree" do
+    repo = Mom.TestHelper.create_repo()
+    workdir = Path.join(System.tmp_dir!(), "mom-config-worktree-#{System.unique_integer([:positive])}")
+    File.rm_rf!(workdir)
+    File.mkdir_p!(workdir)
+    assert :ok = Mom.Git.add_worktree(repo, workdir)
+
+    assert {:ok, config} =
+             Config.from_opts(repo: repo, workdir: workdir)
+
+    assert config.workdir == workdir
+  end
 end

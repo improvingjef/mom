@@ -259,6 +259,32 @@ test("mom CLI applies branch naming policy to generated branches", async () => {
   ]);
 });
 
+test("mom CLI enforces isolated git worktree for mutation workdir", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.invalid).toEqual([
+    "error",
+    "workdir must reference an isolated git worktree"
+  ]);
+  expect(result.valid_workdir).toBeTruthy();
+  expect(result.valid_result).toBe("ok");
+});
+
 test("mom CLI enforces machine actor allowlist for GitHub credentials", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

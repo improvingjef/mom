@@ -357,7 +357,7 @@ Out of scope (for this phase):
 ### Security Baseline
 - [x] Confirm dedicated machine identity (or GitHub App) is used.
 - [x] Confirm secrets are injected securely and redacted in logs.
-- [ ] Confirm isolated worktrees are used for all mutations.
+- [x] Confirm isolated worktrees are used for all mutations.
 - [ ] Confirm network egress is restricted to required endpoints.
 - [ ] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
 
@@ -401,6 +401,7 @@ Out of scope (for this phase):
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add finance and tax operations readiness (sales tax/VAT handling, invoice delivery/collections workflow, and revenue-recognition reporting exports).
+- [ ] Add worktree lifecycle management (automatic cleanup, retention windows, and stale-worktree quarantine) to prevent sensitive residue and disk exhaustion in long-running production deployments.
 - [ ] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
 - [ ] Add end-to-end trace correlation IDs linking pipeline jobs, Codex invocations, and Git/GitHub mutations for auditability and support forensics.
 - [ ] Add control-plane high-availability targets and validation (RPO/RTO objectives, automated failover, and recurring recovery drills).

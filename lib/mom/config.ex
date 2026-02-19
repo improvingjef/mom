@@ -110,6 +110,7 @@ defmodule Mom.Config do
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
+             {:ok, workdir} <- parse_workdir(opts, runtime),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              {:ok, github_repo} <-
                parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
@@ -164,7 +165,7 @@ defmodule Mom.Config do
              github_base_branch: github_base_branch,
              protected_branches: protected_branches,
              actor_id: actor_id,
-             workdir: Keyword.get(opts, :workdir)
+             workdir: workdir
            }}
         end
     end
@@ -260,6 +261,23 @@ defmodule Mom.Config do
       nil -> {:ok, default}
       parsed when parsed > 0 -> {:ok, parsed}
       _parsed -> {:error, "#{key} must be a positive integer"}
+    end
+  end
+
+  defp parse_workdir(opts, runtime) do
+    case Keyword.get(opts, :workdir, runtime[:workdir]) do
+      nil ->
+        {:ok, nil}
+
+      workdir when is_binary(workdir) ->
+        if Mom.Isolation.isolated_worktree?(workdir) do
+          {:ok, workdir}
+        else
+          {:error, "workdir must reference an isolated git worktree"}
+        end
+
+      _other ->
+        {:error, "workdir must reference an isolated git worktree"}
     end
   end
 

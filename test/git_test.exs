@@ -50,6 +50,13 @@ defmodule Mom.GitTest do
     assert File.exists?(Path.join(workdir, ".git"))
   end
 
+  test "prepare_workdir rejects explicit non-worktree path" do
+    repo = Mom.TestHelper.create_repo()
+    config = %Config{repo: repo, workdir: repo}
+
+    assert {:error, :workdir_must_be_isolated_worktree} = Isolation.prepare_workdir(config)
+  end
+
   test "commit_changes uses configured branch naming prefix" do
     repo = Mom.TestHelper.create_repo()
     File.mkdir_p!(Path.join(repo, "lib"))
