@@ -15,6 +15,7 @@ defmodule Mom.ConfigTest do
     assert config.queue_max_size == 200
     assert config.job_timeout_ms == 120_000
     assert config.overflow_policy == :drop_newest
+    assert config.durable_queue_path == nil
     assert "api.github.com" in config.allowed_egress_hosts
     assert config.observability_backend == :none
     assert config.observability_export_interval_ms == 5_000
@@ -266,13 +267,15 @@ defmodule Mom.ConfigTest do
         max_concurrency: 8,
         queue_max_size: 350,
         job_timeout_ms: 9_000,
-        overflow_policy: :drop_oldest
+        overflow_policy: :drop_oldest,
+        durable_queue_path: "/tmp/mom/queue.bin"
       )
 
     assert config.max_concurrency == 8
     assert config.queue_max_size == 350
     assert config.job_timeout_ms == 9_000
     assert config.overflow_policy == :drop_oldest
+    assert config.durable_queue_path == "/tmp/mom/queue.bin"
   end
 
   test "validates pipeline concurrency values" do
@@ -287,6 +290,9 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
              Config.from_opts(repo: "/tmp/repo", overflow_policy: :drop_middle)
+
+    assert {:error, "durable_queue_path must be nil or a non-empty string"} =
+             Config.from_opts(repo: "/tmp/repo", durable_queue_path: "")
   end
 
   test "parses observability backend and slo thresholds" do

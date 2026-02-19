@@ -14,7 +14,9 @@ defmodule Mix.Tasks.MomTaskTest do
         "--job-timeout-ms",
         "45000",
         "--overflow-policy",
-        "drop_oldest"
+        "drop_oldest",
+        "--durable-queue-path",
+        "/tmp/mom/queue.bin"
       ])
 
     assert config.mode == :inproc
@@ -22,6 +24,7 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.queue_max_size == 333
     assert config.job_timeout_ms == 45_000
     assert config.overflow_policy == :drop_oldest
+    assert config.durable_queue_path == "/tmp/mom/queue.bin"
   end
 
   test "parse_args rejects invalid overflow policy values" do

@@ -231,6 +231,59 @@ defmodule Mom.PipelineTest do
     assert log =~ "mom: pipeline completed"
   end
 
+  test "persists queued jobs and replays them after restart when durable_queue_path is configured" do
+    durable_queue_path = durable_queue_fixture_path()
+
+    pid1 =
+      start_supervised!(
+        {Pipeline, queue_max_size: 5, durable_queue_path: durable_queue_path},
+        id: "pipeline-durable-1-#{System.unique_integer([:positive])}"
+      )
+
+    assert :ok == Pipeline.enqueue(pid1, {:error_event, %{id: 101}})
+    assert :ok == Pipeline.enqueue(pid1, {:diagnostics_event, %{run_queue: 3}, [:memory_high]})
+
+    assert File.exists?(durable_queue_path)
+    assert %{queue_depth: 2} = Pipeline.stats(pid1)
+
+    Process.exit(pid1, :shutdown)
+    assert_down(pid1)
+
+    pid2 =
+      start_supervised!(
+        {Pipeline, queue_max_size: 5, durable_queue_path: durable_queue_path},
+        id: "pipeline-durable-2-#{System.unique_integer([:positive])}"
+      )
+
+    assert {:ok, {:error_event, %{id: 101}}} == Pipeline.dequeue(pid2)
+    assert {:ok, {:diagnostics_event, %{run_queue: 3}, [:memory_high]}} == Pipeline.dequeue(pid2)
+    assert :empty == Pipeline.dequeue(pid2)
+  end
+
+  test "updates persisted queue snapshot when jobs are drained" do
+    durable_queue_path = durable_queue_fixture_path()
+
+    pid1 =
+      start_supervised!(
+        {Pipeline, queue_max_size: 5, durable_queue_path: durable_queue_path},
+        id: "pipeline-durable-drain-1-#{System.unique_integer([:positive])}"
+      )
+
+    assert :ok == Pipeline.enqueue(pid1, {:error_event, %{id: 102}})
+    assert {:ok, {:error_event, %{id: 102}}} == Pipeline.dequeue(pid1)
+
+    Process.exit(pid1, :shutdown)
+    assert_down(pid1)
+
+    pid2 =
+      start_supervised!(
+        {Pipeline, queue_max_size: 5, durable_queue_path: durable_queue_path},
+        id: "pipeline-durable-drain-2-#{System.unique_integer([:positive])}"
+      )
+
+    assert :empty == Pipeline.dequeue(pid2)
+  end
+
   defp eventually(fun, retries \\ 20)
 
   defp eventually(fun, 0), do: fun.()
@@ -265,6 +318,26 @@ defmodule Mom.PipelineTest do
     after
       remaining_ms ->
         raise ExUnit.AssertionError, message: "missing telemetry failed pipeline event"
+    end
+  end
+
+  defp durable_queue_fixture_path do
+    base = Path.join(System.tmp_dir!(), "mom-pipeline-durable-tests")
+    File.mkdir_p!(base)
+    path = Path.join(base, "queue-#{System.unique_integer([:positive])}.bin")
+    File.rm_rf(path)
+    path
+  end
+
+  defp assert_down(pid, timeout_ms \\ 1_000) do
+    ref = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^ref, :process, ^pid, _reason} ->
+        :ok
+    after
+      timeout_ms ->
+        raise ExUnit.AssertionError, message: "process #{inspect(pid)} did not terminate"
     end
   end
 end

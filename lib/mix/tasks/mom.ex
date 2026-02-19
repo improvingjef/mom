@@ -148,6 +148,7 @@ defmodule Mix.Tasks.Mom do
       queue_max_size: :integer,
       job_timeout_ms: :integer,
       overflow_policy: :string,
+      durable_queue_path: :string,
       observability_backend: :string,
       observability_export_path: :string,
       observability_export_interval_ms: :integer,

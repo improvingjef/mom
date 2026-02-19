@@ -78,6 +78,7 @@ test("mom CLI parses pipeline concurrency flags", async () => {
   expect(result.queue_max_size).toBe(280);
   expect(result.job_timeout_ms).toBe(15000);
   expect(result.overflow_policy).toBe("drop_oldest");
+  expect(result.durable_queue_path).toBe("/tmp/mom/queue.bin");
 });
 
 test("runner routes logs and diagnostics through pipeline workers", async () => {
@@ -153,6 +154,37 @@ test("pipeline emits telemetry lifecycle events with queue visibility metadata",
   expect(result.saw_failed).toBeTruthy();
   expect(result.event_has_fields).toBeTruthy();
   expect(result.failed_count).toBe(1);
+});
+
+test("pipeline durable queue mode replays queued jobs after restart", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/pipeline_durable_queue_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.durable_queue_path_exists).toBeTruthy();
+  expect(result.first).toBe("ok");
+  expect(result.second).toBe("ok");
+  expect(result.replay_depth).toBe(2);
+  expect(result.replay_first).toEqual(["ok", ["error_event", { id: 501 }]]);
+  expect(result.replay_second).toEqual([
+    "ok",
+    ["diagnostics_event", { run_queue: 2 }, ["memory_high"]]
+  ]);
+  expect(result.replay_empty).toBe("empty");
+  expect(result.drained_after_restart).toBe("empty");
 });
 
 test("pipeline drops duplicate in-flight incidents and allows retry after completion", async () => {

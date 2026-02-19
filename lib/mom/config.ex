@@ -37,6 +37,7 @@ defmodule Mom.Config do
     :queue_max_size,
     :job_timeout_ms,
     :overflow_policy,
+    :durable_queue_path,
     :observability_backend,
     :observability_export_path,
     :observability_export_interval_ms,
@@ -96,6 +97,7 @@ defmodule Mom.Config do
           queue_max_size: pos_integer(),
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
+          durable_queue_path: String.t() | nil,
           observability_backend: :none | :prometheus,
           observability_export_path: String.t() | nil,
           observability_export_interval_ms: pos_integer(),
@@ -145,6 +147,7 @@ defmodule Mom.Config do
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
+             {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
              {:ok, observability_backend} <- parse_observability_backend(opts, runtime),
              {:ok, observability_export_path} <-
                parse_observability_export_path(opts, runtime, observability_backend),
@@ -255,6 +258,7 @@ defmodule Mom.Config do
              queue_max_size: queue_max_size,
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
+             durable_queue_path: durable_queue_path,
              observability_backend: observability_backend,
              observability_export_path: observability_export_path,
              observability_export_interval_ms: observability_export_interval_ms,
@@ -649,6 +653,23 @@ defmodule Mom.Config do
       "drop_newest" -> {:ok, :drop_newest}
       "drop_oldest" -> {:ok, :drop_oldest}
       _other -> {:error, "overflow_policy must be :drop_newest or :drop_oldest"}
+    end
+  end
+
+  defp parse_durable_queue_path(opts, runtime) do
+    case Keyword.get(opts, :durable_queue_path, runtime[:durable_queue_path]) do
+      nil ->
+        {:ok, nil}
+
+      path when is_binary(path) ->
+        trimmed = String.trim(path)
+
+        if trimmed == "",
+          do: {:error, "durable_queue_path must be nil or a non-empty string"},
+          else: {:ok, trimmed}
+
+      _other ->
+        {:error, "durable_queue_path must be nil or a non-empty string"}
     end
   end
 

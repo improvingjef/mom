@@ -63,28 +63,35 @@ defmodule Mom.Pipeline do
       |> Keyword.get(:max_concurrency, @default_max_concurrency)
       |> normalize_max_concurrency()
 
+    durable_queue_path =
+      opts
+      |> Keyword.get(:durable_queue_path)
+      |> normalize_durable_queue_path()
+
     dispatch? = Keyword.get(opts, :dispatch?, false)
     worker_module = Keyword.get(opts, :worker_module)
     worker_opts = Keyword.get(opts, :worker_opts, [])
     worker_supervisor = maybe_start_worker_supervisor(opts, dispatch?)
 
-    {:ok,
-     %{
-       queue: :queue.new(),
-       queue_depth: 0,
-       queue_max_size: queue_max_size,
-       overflow_policy: overflow_policy,
-       dropped_count: 0,
-       dispatch?: dispatch?,
-       worker_module: worker_module,
-       worker_opts: worker_opts,
-       worker_supervisor: worker_supervisor,
-       max_concurrency: max_concurrency,
-       active_workers: %{},
-       inflight_signatures: MapSet.new(),
-       completed_count: 0,
-       failed_count: 0
-     }, {:continue, :dispatch}}
+    state = %{
+      queue: :queue.new(),
+      queue_depth: 0,
+      queue_max_size: queue_max_size,
+      overflow_policy: overflow_policy,
+      durable_queue_path: durable_queue_path,
+      dropped_count: 0,
+      dispatch?: dispatch?,
+      worker_module: worker_module,
+      worker_opts: worker_opts,
+      worker_supervisor: worker_supervisor,
+      max_concurrency: max_concurrency,
+      active_workers: %{},
+      inflight_signatures: MapSet.new(),
+      completed_count: 0,
+      failed_count: 0
+    }
+
+    {:ok, restore_persisted_queue(state), {:continue, :dispatch}}
   end
 
   @impl true
@@ -111,7 +118,7 @@ defmodule Mom.Pipeline do
         inflight_signatures: MapSet.delete(state.inflight_signatures, signature)
     }
 
-    {:reply, {:ok, job}, next_state}
+    {:reply, {:ok, job}, persist_queue_snapshot(next_state)}
   end
 
   def handle_call(:stats, _from, state) do
@@ -204,7 +211,7 @@ defmodule Mom.Pipeline do
     metadata = common_metadata(job, next_state.queue_depth, map_size(next_state.active_workers))
     telemetry(:enqueued, %{count: 1}, metadata)
     log_pipeline(:debug, "enqueued", metadata)
-    {:ok, next_state}
+    {:ok, persist_queue_snapshot(next_state)}
   end
 
   defp enqueue_unique(_job, _signature, %{overflow_policy: :drop_newest} = state) do
@@ -241,7 +248,7 @@ defmodule Mom.Pipeline do
 
     telemetry(:dropped, %{count: 1}, metadata)
     log_pipeline(:warning, "dropped", metadata)
-    {{:dropped, :oldest}, next_state}
+    {{:dropped, :oldest}, persist_queue_snapshot(next_state)}
   end
 
   defp valid_job?({:error_event, event}) when is_map(event), do: true
@@ -260,6 +267,123 @@ defmodule Mom.Pipeline do
 
   defp normalize_max_concurrency(value) when is_integer(value) and value >= 0, do: value
   defp normalize_max_concurrency(_value), do: @default_max_concurrency
+
+  defp normalize_durable_queue_path(path) when is_binary(path) do
+    trimmed = String.trim(path)
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp normalize_durable_queue_path(_path), do: nil
+
+  defp restore_persisted_queue(%{durable_queue_path: nil} = state), do: state
+
+  defp restore_persisted_queue(state) do
+    jobs = read_persisted_jobs(state.durable_queue_path)
+
+    next_state =
+      Enum.reduce(jobs, state, fn job, acc ->
+        restore_enqueue(job, acc)
+      end)
+
+    persist_queue_snapshot(next_state)
+  end
+
+  defp restore_enqueue(job, state) do
+    signature = job_signature(job)
+
+    cond do
+      MapSet.member?(state.inflight_signatures, signature) ->
+        state
+
+      state.queue_depth < state.queue_max_size ->
+        %{
+          state
+          | queue: :queue.in({job, signature}, state.queue),
+            queue_depth: state.queue_depth + 1,
+            inflight_signatures: MapSet.put(state.inflight_signatures, signature)
+        }
+
+      state.overflow_policy == :drop_newest ->
+        state
+
+      true ->
+        {{:value, {_dropped_job, dropped_signature}}, queue} = :queue.out(state.queue)
+
+        %{
+          state
+          | queue: :queue.in({job, signature}, queue),
+            inflight_signatures:
+              state.inflight_signatures
+              |> MapSet.delete(dropped_signature)
+              |> MapSet.put(signature)
+        }
+    end
+  end
+
+  defp read_persisted_jobs(path) do
+    case File.read(path) do
+      {:ok, binary} ->
+        case safe_decode_jobs(binary) do
+          {:ok, jobs} ->
+            Enum.filter(jobs, &valid_job?/1)
+
+          {:error, reason} ->
+            Logger.warning(
+              "mom: pipeline durable queue decode failed #{inspect(reason)} path=#{path}"
+            )
+
+            []
+        end
+
+      {:error, :enoent} ->
+        []
+
+      {:error, reason} ->
+        Logger.warning("mom: pipeline durable queue read failed #{inspect(reason)} path=#{path}")
+        []
+    end
+  end
+
+  defp safe_decode_jobs(binary) do
+    try do
+      case :erlang.binary_to_term(binary, [:safe]) do
+        jobs when is_list(jobs) -> {:ok, jobs}
+        _other -> {:error, :invalid_payload}
+      end
+    rescue
+      error -> {:error, error}
+    end
+  end
+
+  defp persist_queue_snapshot(%{durable_queue_path: nil} = state), do: state
+
+  defp persist_queue_snapshot(state) do
+    jobs =
+      state.queue
+      |> :queue.to_list()
+      |> Enum.map(fn {job, _signature} -> job end)
+
+    payload = :erlang.term_to_binary(jobs)
+    path = state.durable_queue_path
+
+    case File.mkdir_p(Path.dirname(path)) do
+      :ok ->
+        case File.write(path, payload) do
+          :ok ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning(
+              "mom: pipeline durable queue persist failed #{inspect(reason)} path=#{path}"
+            )
+        end
+
+      {:error, reason} ->
+        Logger.warning("mom: pipeline durable queue mkdir failed #{inspect(reason)} path=#{path}")
+    end
+
+    state
+  end
 
   defp maybe_start_worker_supervisor(opts, true) do
     case Keyword.get(opts, :worker_supervisor) do
@@ -300,18 +424,20 @@ defmodule Mom.Pipeline do
             telemetry(:started, %{count: 1}, metadata)
             log_pipeline(:info, "started", metadata)
 
-            next_state = %{
-              state
-              | queue: queue,
-                queue_depth: remaining_depth,
-                active_workers:
-                  Map.put(state.active_workers, ref, %{
-                    job: job,
-                    pid: pid,
-                    signature: signature,
-                    started_at: System.monotonic_time()
-                  })
-            }
+            next_state =
+              %{
+                state
+                | queue: queue,
+                  queue_depth: remaining_depth,
+                  active_workers:
+                    Map.put(state.active_workers, ref, %{
+                      job: job,
+                      pid: pid,
+                      signature: signature,
+                      started_at: System.monotonic_time()
+                    })
+              }
+              |> persist_queue_snapshot()
 
             dispatch_jobs(next_state)
 

@@ -225,6 +225,7 @@ Out of scope (for this phase):
 - Runtime fail-closed execution policy checks are implemented for restricted profiles (policy drift blocks LLM execution before command invocation), covered by ExUnit + Playwright acceptance tests.
 - Audit assertions for all agent-driven git mutations are implemented: worktree creation, patch apply, branch create/push, and GitHub mutation events now have ExUnit + Playwright acceptance coverage.
 - Production observability integration is implemented with Prometheus export and SLO-breach alert telemetry (`queue_depth`, `drop_rate`, `failure_rate`, `latency_p95_ms`), covered by ExUnit + Playwright acceptance tests.
+- Durable queue mode is implemented with disk-backed queue persistence and replay-on-restart (`durable_queue_path`), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -402,7 +403,8 @@ Out of scope (for this phase):
 ## Commercial Availability Backlog
 - [x] Define SLA/SLO targets (triage latency, queue durability, PR turnaround) and error budgets.
  - Status: complete (February 19, 2026) via explicit config targets/budgets, Prometheus export, and breach telemetry for budget burn.
-- [ ] Add durable queue mode (disk-backed persistence and replay on restart) for production resilience.
+- [x] Add durable queue mode (disk-backed persistence and replay on restart) for production resilience.
+ - Status: complete (February 19, 2026) via `durable_queue_path` persistence/replay in `Mom.Pipeline`, plus ExUnit + Playwright acceptance coverage.
 - [ ] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
 - [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
@@ -450,3 +452,4 @@ Out of scope (for this phase):
 - [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
 - [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
 - [ ] Add customer-managed encryption key lifecycle controls (KMS-backed key versioning, tenant-specific rekey workflows, and cryptographic deletion attestations).
+- [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.

@@ -12,7 +12,9 @@ defmodule Mom.Acceptance.MomCliConfigScript do
         "--job-timeout-ms",
         "15000",
         "--overflow-policy",
-        "drop_oldest"
+        "drop_oldest",
+        "--durable-queue-path",
+        "/tmp/mom/queue.bin"
       ])
 
     result = %{
@@ -20,7 +22,8 @@ defmodule Mom.Acceptance.MomCliConfigScript do
       max_concurrency: config.max_concurrency,
       queue_max_size: config.queue_max_size,
       job_timeout_ms: config.job_timeout_ms,
-      overflow_policy: config.overflow_policy
+      overflow_policy: config.overflow_policy,
+      durable_queue_path: config.durable_queue_path
     }
 
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
