@@ -1,5 +1,6 @@
 defmodule Mom.Acceptance.RunnerBurstScript do
   alias Mom.{Config, Runner}
+  require Logger
 
   defmodule FakeBeam do
     def ensure_node_started(_cookie), do: :ok
@@ -37,48 +38,57 @@ defmodule Mom.Acceptance.RunnerBurstScript do
   end
 
   def run do
-    {:ok, config} =
-      Config.from_opts(
-        repo: "/tmp/repo",
-        mode: :inproc,
-        poll_interval_ms: 100,
-        triage_on_diagnostics: true,
-        diag_cooldown_ms: 0
-      )
+    previous_level = Logger.level()
 
-    fail_id = "err-fail"
-    error_ids = [fail_id | Enum.map(1..14, &"err-#{&1}")]
+    try do
+      Logger.configure(level: :emergency)
 
-    {:ok, pid} =
-      Runner.start(config,
-        beam_module: FakeBeam,
-        diagnostics_module: BurstDiagnostics,
-        worker_module: BurstCaptureWorker,
-        worker_opts: [parent: self(), fail_id: fail_id],
-        max_concurrency: 4,
-        queue_max_size: 80
-      )
+      {:ok, config} =
+        Config.from_opts(
+          repo: "/tmp/repo",
+          mode: :inproc,
+          poll_interval_ms: 100,
+          triage_on_diagnostics: true,
+          diag_cooldown_ms: 0
+        )
 
-    Process.unlink(pid)
+      fail_id = "err-fail"
+      error_ids = [fail_id | Enum.map(1..14, &"err-#{&1}")]
 
-    Enum.each(error_ids, fn id ->
-      send(pid, {:mom_log, %{id: id}})
-    end)
+      {:ok, pid} =
+        Runner.start(config,
+          beam_module: FakeBeam,
+          diagnostics_module: BurstDiagnostics,
+          worker_module: BurstCaptureWorker,
+          worker_opts: [parent: self(), fail_id: fail_id],
+          max_concurrency: 4,
+          queue_max_size: 80
+        )
 
-    {error_seen, diagnostics_seen} = await_burst_results(MapSet.new(), 0, 120)
+      Process.unlink(pid)
 
-    alive_after_burst = Process.alive?(pid)
+      Enum.each(error_ids, fn id ->
+        send(pid, {:mom_log, %{id: id}})
+      end)
 
-    Process.exit(pid, :kill)
+      {error_seen, diagnostics_seen} = await_burst_results(MapSet.new(), 0, 120)
 
-    result = %{
-      mixed_types_seen: diagnostics_seen > 0 and MapSet.size(error_seen) > 0,
-      all_error_events_processed: MapSet.subset?(MapSet.new(error_ids), error_seen),
-      diagnostics_processed: diagnostics_seen,
-      runner_alive_after_burst: alive_after_burst
-    }
+      alive_after_burst = Process.alive?(pid)
 
-    IO.puts("RESULT_JSON:" <> Jason.encode!(result))
+      Process.exit(pid, :kill)
+
+      result = %{
+        mixed_types_seen: diagnostics_seen > 0 and MapSet.size(error_seen) > 0,
+        all_error_events_processed: MapSet.subset?(MapSet.new(error_ids), error_seen),
+        diagnostics_processed: diagnostics_seen,
+        runner_alive_after_burst: alive_after_burst
+      }
+
+      IO.puts("RESULT_JSON:" <> Jason.encode!(result))
+      System.halt(0)
+    after
+      Logger.configure(level: previous_level)
+    end
   end
 
   defp await_burst_results(error_seen, diagnostics_seen, 0), do: {error_seen, diagnostics_seen}
@@ -95,7 +105,6 @@ defmodule Mom.Acceptance.RunnerBurstScript do
         await_burst_results(error_seen, diagnostics_seen, attempts - 1)
     end
   end
-
 end
 
 Mom.Acceptance.RunnerBurstScript.run()

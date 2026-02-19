@@ -3,6 +3,7 @@ defmodule Mom.GitHub do
 
   alias Mom.Audit
   alias Mom.Config
+  alias Mom.Security
 
   @github_api "https://api.github.com"
 
@@ -13,13 +14,14 @@ defmodule Mom.GitHub do
           github_repo: repo,
           github_base_branch: base_branch,
           actor_id: actor_id
-        },
+        } = config,
         branch
       ) do
     with {:ok, repo} <- parse_repo(repo),
          :ok <- emit(:github_pr_attempt, %{repo: repo, actor_id: actor_id, branch: branch}),
          {:ok, body} <-
            request(
+             config,
              token,
              :post,
              "/repos/#{repo}/pulls",
@@ -64,7 +66,7 @@ defmodule Mom.GitHub do
           github_base_branch: base_branch,
           protected_branches: protected_branches,
           actor_id: actor_id
-        },
+        } = config,
         %{number: number}
       ) do
     with {:ok, repo} <- parse_repo(repo) do
@@ -82,7 +84,7 @@ defmodule Mom.GitHub do
         with :ok <-
                emit(:github_merge_attempt, %{repo: repo, actor_id: actor_id, pr_number: number}),
              {:ok, _} <-
-               request(token, :put, "/repos/#{repo}/pulls/#{number}/merge", %{
+               request(config, token, :put, "/repos/#{repo}/pulls/#{number}/merge", %{
                  "merge_method" => "squash"
                }) do
           :ok = emit(:github_merged, %{repo: repo, actor_id: actor_id, pr_number: number})
@@ -105,7 +107,7 @@ defmodule Mom.GitHub do
 
   @spec create_issue(Config.t(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
   def create_issue(
-        %Config{github_token: token, github_repo: repo, actor_id: actor_id},
+        %Config{github_token: token, github_repo: repo, actor_id: actor_id} = config,
         title,
         body
       ) do
@@ -113,6 +115,7 @@ defmodule Mom.GitHub do
          :ok <- emit(:github_issue_attempt, %{repo: repo, actor_id: actor_id}),
          {:ok, resp} <-
            request(
+             config,
              token,
              :post,
              "/repos/#{repo}/issues",
@@ -137,7 +140,7 @@ defmodule Mom.GitHub do
     end
   end
 
-  defp request(token, method, path, payload) do
+  defp request(%Config{} = config, token, method, path, payload) do
     headers = [
       {~c"authorization", ~c"Bearer " ++ to_charlist(token)},
       {~c"user-agent", ~c"mom"},
@@ -145,12 +148,21 @@ defmodule Mom.GitHub do
     ]
 
     body = Jason.encode!(payload)
-    url = String.to_charlist(@github_api <> path)
+    url = @github_api <> path
 
-    case http_client().request(method, {url, headers, ~c"application/json", body}, [], []) do
-      {:ok, {{_, status, _}, _headers, resp}} when status in 200..299 -> {:ok, resp}
-      {:ok, {{_, status, _}, _headers, resp}} -> {:error, {:http_error, status, resp}}
-      {:error, reason} -> {:error, reason}
+    if Security.egress_allowed?(url, config.allowed_egress_hosts) do
+      case http_client().request(
+             method,
+             {String.to_charlist(url), headers, ~c"application/json", body},
+             [],
+             []
+           ) do
+        {:ok, {{_, status, _}, _headers, resp}} when status in 200..299 -> {:ok, resp}
+        {:ok, {{_, status, _}, _headers, resp}} -> {:error, {:http_error, status, resp}}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, {:egress_blocked, Security.url_host(url)}}
     end
   end
 

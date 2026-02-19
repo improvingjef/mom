@@ -182,4 +182,20 @@ defmodule Mom.GitHubAuditTest do
     refute log =~ "Bearer abc"
     refute log =~ "_session=secret"
   end
+
+  test "github calls are blocked when egress host is not allowlisted" do
+    {:ok, base_config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        github_repo: "acme/mom",
+        github_token: "token",
+        actor_id: "machine-bot",
+        allowed_actor_ids: ["machine-bot"]
+      )
+
+    config = %{base_config | allowed_egress_hosts: ["api.openai.com"]}
+
+    assert {:error, {:egress_blocked, "api.github.com"}} =
+             GitHub.create_issue(config, "title", "body")
+  end
 end

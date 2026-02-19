@@ -149,6 +149,7 @@ defmodule Mix.Tasks.Mom do
       allowed_github_repos: :string,
       allowed_actor_ids: :string,
       branch_name_prefix: :string,
+      allowed_egress_hosts: :string,
       min_level: :string,
       dry_run: :boolean,
       github_token: :string,

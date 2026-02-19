@@ -2,6 +2,7 @@ defmodule Mom.LLM.API do
   @moduledoc false
 
   alias Mom.Config
+  alias Mom.Security
 
   @anthropic_url "https://api.anthropic.com/v1/messages"
   @openai_url "https://api.openai.com/v1/chat/completions"
@@ -24,7 +25,7 @@ defmodule Mom.LLM.API do
       {~c"anthropic-version", ~c"2023-06-01"}
     ]
 
-    request(url, headers, payload, fn body ->
+    request(url, headers, payload, config, fn body ->
       with {:ok, data} <- Jason.decode(body),
            content when is_list(content) <- data["content"],
            [%{"text" => text} | _] <- content do
@@ -54,7 +55,7 @@ defmodule Mom.LLM.API do
       {~c"authorization", ~c"Bearer " ++ to_charlist(key)}
     ]
 
-    request(url, headers, payload, fn body ->
+    request(url, headers, payload, config, fn body ->
       with {:ok, data} <- Jason.decode(body),
            [%{"message" => %{"content" => text}} | _] <- data["choices"] do
         {:ok, text}
@@ -66,19 +67,23 @@ defmodule Mom.LLM.API do
 
   def call_openai(_prompt, _config), do: {:error, "llm_api_key is required"}
 
-  defp request(url, headers, payload, decode_fun) do
+  defp request(url, headers, payload, %Config{} = config, decode_fun) do
     base_headers = [
       {~c"user-agent", ~c"mom"},
       {~c"content-type", ~c"application/json"}
     ]
 
-    body = Jason.encode!(payload)
-    url_char = String.to_charlist(url)
+    if Security.egress_allowed?(url, config.allowed_egress_hosts) do
+      body = Jason.encode!(payload)
+      url_char = String.to_charlist(url)
 
-    :inets.start()
-    :ssl.start()
+      :inets.start()
+      :ssl.start()
 
-    do_request(url_char, base_headers ++ headers, body, decode_fun, 0)
+      do_request(url_char, base_headers ++ headers, body, decode_fun, 0)
+    else
+      {:error, {:egress_blocked, Security.url_host(url)}}
+    end
   end
 
   defp do_request(url, headers, body, decode_fun, attempt) when attempt < 3 do

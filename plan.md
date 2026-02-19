@@ -216,6 +216,7 @@ Out of scope (for this phase):
 - PR-only workflow enforcement for protected base branches is implemented (merge attempts are blocked for protected branches), covered by ExUnit + Playwright acceptance tests.
 - Least-privilege credential identity enforcement is implemented via actor allowlist controls for GitHub-token flows, covered by ExUnit + Playwright acceptance tests.
 - Dedicated machine identity enforcement for GitHub-token flows is implemented (bot/app actor pattern required), covered by ExUnit + Playwright acceptance tests.
+- Network egress policy enforcement is implemented: outbound GitHub/LLM hosts are restricted to an allowlist with fail-closed validation/runtime checks, covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -358,7 +359,7 @@ Out of scope (for this phase):
 - [x] Confirm dedicated machine identity (or GitHub App) is used.
 - [x] Confirm secrets are injected securely and redacted in logs.
 - [x] Confirm isolated worktrees are used for all mutations.
-- [ ] Confirm network egress is restricted to required endpoints.
+- [x] Confirm network egress is restricted to required endpoints.
 - [ ] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
 
 ### Coverage and Validation
@@ -396,6 +397,8 @@ Out of scope (for this phase):
 - [ ] Add customer-facing change management controls (maintenance windows, tenant-targeted release channels, and backward-compatibility policy/versioning guarantees).
 - [ ] Add data loss prevention controls for generated patches/issues/PRs (secret scanning + policy enforcement before push/open PR).
 - [ ] Add customer support forensics tooling (tenant-scoped audit search, timeline reconstruction, and one-click incident evidence export).
+- [ ] Add third-party dependency governance controls (SBOM generation, vulnerability SLA policy, and automated dependency risk gates).
+- [ ] Add tenant-facing data processing controls (per-tenant model/data retention toggles, legal-hold exceptions, and export attestations).
 
 ## Commercial Availability Backlog (Additional)
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).

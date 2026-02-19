@@ -21,7 +21,7 @@ defmodule Mom.SecurityTest do
   end
 
   property "redacts password key in any map" do
-    check all value <- term() do
+    check all(value <- term()) do
       input = %{"password" => value, "ok" => 1}
       result = Security.sanitize(input, ["password"])
       assert result["password"] == "[REDACTED]"
@@ -30,7 +30,7 @@ defmodule Mom.SecurityTest do
   end
 
   property "redacts token key with mixed casing" do
-    check all value <- term() do
+    check all(value <- term()) do
       input = %{"ToKeN" => value, "ok" => 1}
       result = Security.sanitize(input, ["token"])
       assert result["ToKeN"] == "[REDACTED]"
@@ -41,5 +41,13 @@ defmodule Mom.SecurityTest do
   test "signature is deterministic" do
     value = %{a: 1, b: [2, 3]}
     assert Security.signature(value) == Security.signature(value)
+  end
+
+  test "egress_allowed? matches URL host against allowlist" do
+    assert Security.egress_allowed?("https://api.github.com/repos/acme/mom", ["api.github.com"])
+
+    refute Security.egress_allowed?("https://api.openai.com/v1/chat/completions", [
+             "api.github.com"
+           ])
   end
 end

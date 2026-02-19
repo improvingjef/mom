@@ -15,6 +15,7 @@ defmodule Mom.ConfigTest do
     assert config.queue_max_size == 200
     assert config.job_timeout_ms == 120_000
     assert config.overflow_policy == :drop_newest
+    assert "api.github.com" in config.allowed_egress_hosts
   end
 
   test "parses redact keys from comma-separated string" do
@@ -131,6 +132,31 @@ defmodule Mom.ConfigTest do
              )
   end
 
+  test "validates required egress hosts and llm api url host" do
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :api_openai,
+               allowed_egress_hosts: "api.github.com,api.openai.com"
+             )
+
+    assert config.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
+
+    assert {:error, "allowed_egress_hosts is missing required host api.openai.com"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :api_openai,
+               allowed_egress_hosts: "api.github.com,api.anthropic.com"
+             )
+
+    assert {:error, "llm_api_url must be a valid URL with a host"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :api_openai,
+               llm_api_url: "not-a-url"
+             )
+  end
+
   test "includes branch naming prefix default" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert config.branch_name_prefix == "mom"
@@ -233,7 +259,10 @@ defmodule Mom.ConfigTest do
 
   test "accepts explicit workdir when it is an isolated git worktree" do
     repo = Mom.TestHelper.create_repo()
-    workdir = Path.join(System.tmp_dir!(), "mom-config-worktree-#{System.unique_integer([:positive])}")
+
+    workdir =
+      Path.join(System.tmp_dir!(), "mom-config-worktree-#{System.unique_integer([:positive])}")
+
     File.rm_rf!(workdir)
     File.mkdir_p!(workdir)
     assert :ok = Mom.Git.add_worktree(repo, workdir)

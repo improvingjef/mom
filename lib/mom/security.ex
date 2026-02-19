@@ -12,6 +12,22 @@ defmodule Mom.Security do
     |> Base.encode16(case: :lower)
   end
 
+  @spec egress_allowed?(String.t(), [String.t()]) :: boolean()
+  def egress_allowed?(url, allowed_hosts) when is_binary(url) and is_list(allowed_hosts) do
+    host = url_host(url)
+
+    is_binary(host) and
+      Enum.map(allowed_hosts, &String.downcase/1)
+      |> Enum.member?(String.downcase(host))
+  end
+
+  @spec url_host(String.t()) :: String.t() | nil
+  def url_host(url) when is_binary(url) do
+    URI.parse(url).host
+  end
+
+  def url_host(_url), do: nil
+
   defp do_sanitize(map, redact_keys) when is_map(map) do
     map
     |> Enum.map(fn {k, v} ->

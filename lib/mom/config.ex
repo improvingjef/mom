@@ -33,6 +33,7 @@ defmodule Mom.Config do
     :allowed_github_repos,
     :allowed_actor_ids,
     :branch_name_prefix,
+    :allowed_egress_hosts,
     :min_level,
     :dry_run,
     :github_token,
@@ -73,6 +74,7 @@ defmodule Mom.Config do
           allowed_github_repos: [String.t()],
           allowed_actor_ids: [String.t()],
           branch_name_prefix: String.t(),
+          allowed_egress_hosts: [String.t()],
           min_level: :error | :warning | :info,
           dry_run: boolean(),
           github_token: String.t() | nil,
@@ -90,6 +92,7 @@ defmodule Mom.Config do
     redact_keys = normalize_redact_keys(Keyword.get(opts, :redact_keys) || runtime[:redact_keys])
     llm_provider = Keyword.get(opts, :llm_provider, :claude_code)
     llm_cmd = default_llm_cmd(llm_provider, Keyword.get(opts, :llm_cmd) || runtime[:llm_cmd])
+    llm_api_url = Keyword.get(opts, :llm_api_url) || runtime[:llm_api_url]
 
     cond do
       is_nil(repo) ->
@@ -107,6 +110,9 @@ defmodule Mom.Config do
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
              {:ok, allowed_actor_ids} <- parse_allowed_actor_ids(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
+             {:ok, allowed_egress_hosts} <- parse_allowed_egress_hosts(opts, runtime),
+             :ok <-
+               validate_required_egress_hosts(llm_provider, llm_api_url, allowed_egress_hosts),
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
@@ -123,7 +129,7 @@ defmodule Mom.Config do
              llm_provider: llm_provider,
              llm_cmd: llm_cmd,
              llm_api_key: llm_api_key,
-             llm_api_url: Keyword.get(opts, :llm_api_url) || runtime[:llm_api_url],
+             llm_api_url: llm_api_url,
              llm_model: Keyword.get(opts, :llm_model) || runtime[:llm_model],
              triage_on_diagnostics: Keyword.get(opts, :triage_on_diagnostics, false),
              triage_mode: Keyword.get(opts, :triage_mode, :report),
@@ -158,6 +164,7 @@ defmodule Mom.Config do
              allowed_github_repos: allowed_github_repos,
              allowed_actor_ids: allowed_actor_ids,
              branch_name_prefix: branch_name_prefix,
+             allowed_egress_hosts: allowed_egress_hosts,
              min_level: Keyword.get(opts, :min_level, :error),
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: github_token,
@@ -225,6 +232,23 @@ defmodule Mom.Config do
     {:ok, normalize_allowed_repos(value)}
   end
 
+  defp parse_allowed_egress_hosts(opts, runtime) do
+    value = Keyword.get(opts, :allowed_egress_hosts, runtime[:allowed_egress_hosts])
+
+    hosts =
+      case normalize_allowed_repos(value) do
+        [] -> default_allowed_egress_hosts()
+        parsed -> Enum.uniq(parsed)
+      end
+      |> Enum.map(&String.downcase/1)
+
+    if Enum.all?(hosts, &valid_host?/1) do
+      {:ok, hosts}
+    else
+      {:error, "allowed_egress_hosts must contain valid hostnames"}
+    end
+  end
+
   defp normalize_allowed_repos(nil), do: []
   defp normalize_allowed_repos([]), do: []
 
@@ -243,6 +267,10 @@ defmodule Mom.Config do
   end
 
   defp normalize_allowed_repos(_), do: []
+
+  defp default_allowed_egress_hosts do
+    ["api.github.com", "api.anthropic.com", "api.openai.com"]
+  end
 
   defp parse_non_neg_int(opts, runtime, key, default) do
     value = Keyword.get(opts, key, runtime[key])
@@ -408,4 +436,53 @@ defmodule Mom.Config do
   end
 
   defp machine_actor_identity?(_), do: false
+
+  defp validate_required_egress_hosts(llm_provider, llm_api_url, allowed_egress_hosts) do
+    with {:ok, required_llm_host} <- required_llm_host(llm_provider, llm_api_url),
+         :ok <- ensure_host_allowed("api.github.com", allowed_egress_hosts),
+         :ok <- maybe_ensure_host_allowed(required_llm_host, allowed_egress_hosts) do
+      :ok
+    end
+  end
+
+  defp required_llm_host(:api_anthropic, nil), do: {:ok, "api.anthropic.com"}
+  defp required_llm_host(:api_openai, nil), do: {:ok, "api.openai.com"}
+  defp required_llm_host(:api_anthropic, url), do: parse_url_host(url)
+  defp required_llm_host(:api_openai, url), do: parse_url_host(url)
+  defp required_llm_host(_other, nil), do: {:ok, nil}
+  defp required_llm_host(_other, url), do: parse_url_host(url)
+
+  defp parse_url_host(url) when is_binary(url) do
+    uri = URI.parse(url)
+
+    if valid_host?(uri.host) do
+      {:ok, String.downcase(uri.host)}
+    else
+      {:error, "llm_api_url must be a valid URL with a host"}
+    end
+  end
+
+  defp parse_url_host(_), do: {:error, "llm_api_url must be a valid URL with a host"}
+
+  defp maybe_ensure_host_allowed(nil, _allowed_hosts), do: :ok
+
+  defp maybe_ensure_host_allowed(host, allowed_hosts),
+    do: ensure_host_allowed(host, allowed_hosts)
+
+  defp ensure_host_allowed(host, allowed_hosts) do
+    if host in allowed_hosts do
+      :ok
+    else
+      {:error, "allowed_egress_hosts is missing required host #{host}"}
+    end
+  end
+
+  defp valid_host?(host) when is_binary(host) do
+    trimmed = String.trim(host)
+
+    trimmed == host and Regex.match?(~r/^[A-Za-z0-9.-]+$/, trimmed) and
+      String.contains?(trimmed, ".")
+  end
+
+  defp valid_host?(_), do: false
 end

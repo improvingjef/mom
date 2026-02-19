@@ -209,6 +209,31 @@ test("mom CLI enforces allowed github repo allowlist", async () => {
   expect(result.blocked_result).toEqual(["error", "github_repo is not allowed"]);
 });
 
+test("mom CLI enforces egress host allowlist for API providers", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_egress_policy_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.allowed_egress_hosts).toEqual(["api.github.com", "api.openai.com"]);
+  expect(result.blocked_result).toEqual([
+    "error",
+    "allowed_egress_hosts is missing required host api.openai.com"
+  ]);
+});
+
 test("mom CLI defaults codex to yolo exec profile", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

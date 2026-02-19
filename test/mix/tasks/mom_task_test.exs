@@ -151,4 +151,17 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.github_base_branch == "release"
     assert config.protected_branches == ["main", "release"]
   end
+
+  test "parse_args accepts allowed egress hosts flag" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--llm",
+        "api_openai",
+        "--allowed-egress-hosts",
+        "api.github.com,api.openai.com"
+      ])
+
+    assert config.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
+  end
 end

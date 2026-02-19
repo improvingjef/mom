@@ -8,4 +8,21 @@ defmodule Mom.LLMApiTest do
     context = %{report: %{}, issues: [], instructions: "say ok"}
     assert {:error, _} = LLM.generate_text(context, config)
   end
+
+  test "api provider blocks egress to non-allowlisted host" do
+    {:ok, base_config} = Config.from_opts(repo: "/tmp/repo")
+
+    config = %{
+      base_config
+      | llm_provider: :api_openai,
+        llm_api_key: "key",
+        llm_api_url: "https://proxy.invalid/v1/chat/completions",
+        allowed_egress_hosts: ["api.github.com", "api.openai.com"]
+    }
+
+    context = %{report: %{}, issues: [], instructions: "say ok"}
+
+    assert {:error, {:egress_blocked, "proxy.invalid"}} =
+             LLM.generate_text(context, config)
+  end
 end
