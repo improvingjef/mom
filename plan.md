@@ -210,6 +210,7 @@ Out of scope (for this phase):
 - Branch naming policy support for Mom-generated branches is implemented and covered by ExUnit + Playwright acceptance tests.
 - Codex invocation/outcome logging is implemented (`mom: codex invocation started/completed`) and covered by ExUnit + Playwright acceptance tests.
 - Structured git/GitHub audit events are implemented (repo, issue/branch/PR, merge attempt, actor id) and covered by ExUnit + Playwright acceptance tests.
+- Integration burst coverage for mixed diagnostics + error events is implemented with ExUnit + Playwright acceptance tests, including failure-isolation assertions under bounded concurrency.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -346,7 +347,7 @@ Out of scope (for this phase):
 - [ ] Run analysis/fix flow with `codex --yolo exec`.
 - [ ] Enforce PR-only workflow to protected branches.
 - [ ] Use least-privilege credential identity only.
-- [ ] Validate burst scenario remains stable under bounded concurrency.
+- [x] Validate burst scenario remains stable under bounded concurrency.
 
 ### Security Baseline
 - [ ] Confirm dedicated machine identity (or GitHub App) is used.
@@ -357,7 +358,7 @@ Out of scope (for this phase):
 
 ### Coverage and Validation
 - [x] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
-- [ ] Add integration burst tests for mixed diagnostics/error events.
+- [x] Add integration burst tests for mixed diagnostics/error events.
 - [ ] Add stress script/mix task for rapid local event generation.
 - [ ] Validate readiness gate before enabling automated PR creation.
 - [ ] Add/maintain ExUnit TDD coverage for every completed checklist task.
@@ -394,3 +395,4 @@ Out of scope (for this phase):
 - [ ] Add end-to-end trace correlation IDs linking pipeline jobs, Codex invocations, and Git/GitHub mutations for auditability and support forensics.
 - [ ] Add control-plane high-availability targets and validation (RPO/RTO objectives, automated failover, and recurring recovery drills).
 - [ ] Add customer trust portal capabilities (tenant-visible uptime/incidents, audit export self-service, and maintenance notification workflows).
+- [ ] Add model-provider governance controls (prompt/response retention policy enforcement, provider-level data use guarantees, and tenant-selectable model routing constraints).

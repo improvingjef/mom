@@ -260,6 +260,30 @@ test("mom logs codex invocation start and outcome", async () => {
   expect(result.saw_completed_failure).toBeTruthy();
 });
 
+test("runner handles burst mixed events and continues after an isolated worker failure", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/runner_burst_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.mixed_types_seen).toBeTruthy();
+  expect(result.all_error_events_processed).toBeTruthy();
+  expect(result.diagnostics_processed).toBeGreaterThan(0);
+  expect(result.runner_alive_after_burst).toBeTruthy();
+});
+
 test("mom emits structured git and GitHub audit events", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(
