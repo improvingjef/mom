@@ -242,6 +242,7 @@ defmodule Mom.ConfigTest do
 
   test "loads secrets from environment variables when runtime config is unset" do
     System.put_env("MOM_GITHUB_TOKEN", "env-github-token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
     System.put_env("MOM_LLM_API_KEY", "env-llm-key")
 
     {:ok, config} =
@@ -255,6 +256,7 @@ defmodule Mom.ConfigTest do
     assert config.llm_api_key == "env-llm-key"
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
     System.delete_env("MOM_LLM_API_KEY")
   end
 
@@ -697,7 +699,8 @@ defmodule Mom.ConfigTest do
                repo: "/tmp/repo",
                github_token: "token",
                actor_id: "mom-bot",
-               allowed_actor_ids: ["mom-bot", "mom-staging"]
+               allowed_actor_ids: ["mom-bot", "mom-staging"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
     assert config.actor_id == "mom-bot"
@@ -726,10 +729,76 @@ defmodule Mom.ConfigTest do
                repo: "/tmp/repo",
                github_token: "token",
                actor_id: "mom-app[bot]",
-               allowed_actor_ids: ["mom-app[bot]"]
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
     assert config.actor_id == "mom-app[bot]"
+  end
+
+  test "requires github credential scopes when github token is configured" do
+    assert {:error,
+            "github credential scopes must include: contents, pull_requests, issues"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"]
+             )
+
+    assert {:error,
+            "github credential scopes must include: contents, pull_requests, issues"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "issues"]
+             )
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"]
+             )
+
+    assert config.github_credential_scopes == ["contents", "pull_requests", "issues"]
+  end
+
+  test "emits audit event when github credential scopes are missing" do
+    handler_id = "mom-config-github-scope-blocked-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :github_credential_scope_blocked],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error,
+            "github credential scopes must include: contents, pull_requests, issues"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "issues"]
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :github_credential_scope_blocked], metadata}
+    assert metadata.repo == "acme/mom"
+    assert metadata.actor_id == "mom-app[bot]"
+    assert metadata.required_scopes == ["contents", "pull_requests", "issues"]
+    assert metadata.missing_scopes == ["pull_requests"]
   end
 
   test "requires explicit readiness gate approval before automated PR creation" do
@@ -739,7 +808,8 @@ defmodule Mom.ConfigTest do
                github_repo: "acme/mom",
                github_token: "token",
                actor_id: "mom-app[bot]",
-               allowed_actor_ids: ["mom-app[bot]"]
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
     assert {:ok, config} =
@@ -749,6 +819,7 @@ defmodule Mom.ConfigTest do
                github_token: "token",
                actor_id: "mom-app[bot]",
                allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"],
                readiness_gate_approved: true
              )
 
@@ -776,7 +847,8 @@ defmodule Mom.ConfigTest do
                github_repo: "acme/mom",
                github_token: "token",
                actor_id: "mom-app[bot]",
-               allowed_actor_ids: ["mom-app[bot]"]
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
     assert_receive {:telemetry_event, [:mom, :audit, :automated_pr_readiness_blocked], metadata}

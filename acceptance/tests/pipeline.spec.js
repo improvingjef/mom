@@ -315,6 +315,22 @@ test("mom CLI rejects non-machine actor ids for GitHub credentials", async () =>
   ]);
 });
 
+test("mom CLI verifies required GitHub credential scopes at startup", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs"
+  );
+
+  expect(result.missing_scopes_result).toEqual([
+    "error",
+    "github credential scopes must include: contents, pull_requests, issues"
+  ]);
+  expect(result.insufficient_scopes_result).toEqual([
+    "error",
+    "github credential scopes must include: contents, pull_requests, issues"
+  ]);
+  expect(result.parsed_scopes).toEqual(["contents", "pull_requests", "issues"]);
+});
+
 test("mom CLI requires readiness gate approval before enabling automated PR creation", async () => {
   const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_readiness_gate_acceptance.exs");
 

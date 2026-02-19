@@ -8,6 +8,7 @@ defmodule Mom.Config do
   @minimum_node_major 18
   @required_otp_version "28.0.2"
   @required_elixir_series "1.19"
+  @required_github_credential_scopes ["contents", "pull_requests", "issues"]
   @default_acceptance_build_artifact_retention_seconds 86_400
   @default_acceptance_build_artifact_keep_latest 8
 
@@ -90,6 +91,7 @@ defmodule Mom.Config do
     :min_level,
     :dry_run,
     :github_token,
+    :github_credential_scopes,
     :github_repo,
     :github_base_branch,
     :protected_branches,
@@ -161,6 +163,7 @@ defmodule Mom.Config do
           min_level: :error | :warning | :info,
           dry_run: boolean(),
           github_token: String.t() | nil,
+          github_credential_scopes: [String.t()],
           github_repo: String.t() | nil,
           github_base_branch: String.t(),
           protected_branches: [String.t()],
@@ -258,6 +261,7 @@ defmodule Mom.Config do
              {:ok, allowed_actor_ids} <- parse_allowed_actor_ids(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
              {:ok, allowed_egress_hosts} <- parse_allowed_egress_hosts(opts, runtime),
+             {:ok, github_credential_scopes} <- parse_github_credential_scopes(opts, runtime),
              :ok <-
                validate_required_egress_hosts(llm_provider, llm_api_url, allowed_egress_hosts),
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
@@ -283,6 +287,15 @@ defmodule Mom.Config do
                  readiness_gate_approved
                ),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
+             :ok <-
+               validate_github_credential_scopes(
+                 github_token,
+                 github_credential_scopes,
+                 open_pr,
+                 merge_pr,
+                 actor_id,
+                 Keyword.get(opts, :github_repo) || runtime[:github_repo]
+               ),
              :ok <-
                validate_automated_pr_readiness(
                  open_pr,
@@ -373,6 +386,7 @@ defmodule Mom.Config do
              min_level: Keyword.get(opts, :min_level, :error),
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: github_token,
+             github_credential_scopes: github_credential_scopes,
              github_repo: github_repo,
              github_base_branch: github_base_branch,
              protected_branches: protected_branches,
@@ -695,6 +709,21 @@ defmodule Mom.Config do
     else
       {:error, "allowed_egress_hosts must contain valid hostnames"}
     end
+  end
+
+  defp parse_github_credential_scopes(opts, runtime) do
+    value =
+      Keyword.get(opts, :github_credential_scopes) ||
+        runtime[:github_credential_scopes] ||
+        System.get_env("MOM_GITHUB_CREDENTIAL_SCOPES")
+
+    scopes =
+      value
+      |> normalize_allowed_repos()
+      |> Enum.map(&String.downcase/1)
+      |> Enum.uniq()
+
+    {:ok, scopes}
   end
 
   defp normalize_allowed_repos(nil), do: []
@@ -1247,6 +1276,36 @@ defmodule Mom.Config do
   end
 
   defp machine_actor_identity?(_), do: false
+
+  defp validate_github_credential_scopes(
+         github_token,
+         scopes,
+         open_pr,
+         merge_pr,
+         actor_id,
+         github_repo
+       ) do
+    if token_present?(github_token) and (open_pr or merge_pr) do
+      missing_scopes = @required_github_credential_scopes -- scopes
+
+      if missing_scopes == [] do
+        :ok
+      else
+        :ok =
+          Audit.emit(:github_credential_scope_blocked, %{
+            repo: github_repo,
+            actor_id: actor_id,
+            required_scopes: @required_github_credential_scopes,
+            provided_scopes: scopes,
+            missing_scopes: missing_scopes
+          })
+
+        {:error, "github credential scopes must include: contents, pull_requests, issues"}
+      end
+    else
+      :ok
+    end
+  end
 
   defp validate_automated_pr_readiness(
          open_pr,

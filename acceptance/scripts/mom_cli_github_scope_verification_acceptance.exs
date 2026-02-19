@@ -1,35 +1,43 @@
-defmodule Mom.Acceptance.MomCliReadinessGateScript do
+defmodule Mom.Acceptance.MomCliGitHubScopeVerificationScript do
   def run do
     System.put_env("MOM_GITHUB_TOKEN", "token")
-    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
 
-    blocked_result =
+    missing_scopes_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-repo",
-        "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
         "mom-app[bot]"
       ])
 
-    approved_result =
+    insufficient_scopes_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-repo",
-        "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
         "mom-app[bot]",
-        "--readiness-gate-approved"
+        "--github-credential-scopes",
+        "contents,issues"
+      ])
+
+    passing_result =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--actor-id",
+        "mom-app[bot]",
+        "--allowed-actor-ids",
+        "mom-app[bot]",
+        "--github-credential-scopes",
+        "contents,pull_requests,issues"
       ])
 
     result = %{
-      blocked_result: blocked_result,
-      approved_gate: readiness_gate_approved(approved_result),
-      approved_repo: github_repo(approved_result)
+      missing_scopes_result: missing_scopes_result,
+      insufficient_scopes_result: insufficient_scopes_result,
+      parsed_scopes: parsed_scopes(passing_result)
     }
 
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
@@ -38,11 +46,8 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
     System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
   end
 
-  defp readiness_gate_approved({:ok, config}), do: config.readiness_gate_approved
-  defp readiness_gate_approved(_), do: false
-
-  defp github_repo({:ok, config}), do: config.github_repo
-  defp github_repo(_), do: nil
+  defp parsed_scopes({:ok, config}), do: config.github_credential_scopes
+  defp parsed_scopes(_), do: []
 
   defp normalize(term) when is_tuple(term) do
     term
@@ -59,4 +64,4 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
   defp normalize(term), do: term
 end
 
-Mom.Acceptance.MomCliReadinessGateScript.run()
+Mom.Acceptance.MomCliGitHubScopeVerificationScript.run()

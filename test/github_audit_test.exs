@@ -44,6 +44,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        github_credential_scopes: ["contents", "pull_requests", "issues"],
         open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"]
@@ -85,6 +86,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        github_credential_scopes: ["contents", "pull_requests", "issues"],
         open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"],
@@ -133,6 +135,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        github_credential_scopes: ["contents", "pull_requests", "issues"],
         open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"],
@@ -192,6 +195,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        github_credential_scopes: ["contents", "pull_requests", "issues"],
         open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"]

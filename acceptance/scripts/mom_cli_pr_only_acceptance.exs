@@ -14,6 +14,7 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
 
   def run do
     System.put_env("MOM_GITHUB_TOKEN", "token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
     previous = Application.get_env(:mom, :github_http_client)
     Application.put_env(:mom, :github_http_client, FakeGitHubHttpClient)
     Process.put(:github_http_responses, [ok_merge_response()])
@@ -90,6 +91,7 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
       end
 
       System.delete_env("MOM_GITHUB_TOKEN")
+      System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
     end
   end
 

@@ -1,6 +1,7 @@
 defmodule Mom.Acceptance.MomCliActorAllowlistScript do
   def run do
     System.put_env("MOM_GITHUB_TOKEN", "token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
 
     allowed_result =
       Mix.Tasks.Mom.parse_args([
@@ -37,6 +38,7 @@ defmodule Mom.Acceptance.MomCliActorAllowlistScript do
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
   end
 
   defp allowed_actor_id({:ok, config}), do: config.actor_id

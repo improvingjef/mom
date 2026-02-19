@@ -180,6 +180,7 @@ defmodule Mix.Tasks.Mom do
       min_level: :string,
       dry_run: :boolean,
       github_token: :string,
+      github_credential_scopes: :string,
       github_repo: :string,
       github_base_branch: :string,
       protected_branches: :string,

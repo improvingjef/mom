@@ -30,7 +30,9 @@
 ## Priority 1: Operational Safety and Core Platform Readiness
 - [x] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
  - Status: complete (February 19, 2026) via `mix mom.runbook` generator/validator, committed `docs/disaster_recovery_runbook.md`, and ExUnit + Playwright acceptance coverage.
-- [ ] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
+- [x] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
+ - Status: complete (February 19, 2026) via fail-closed startup scope validation in `Mom.Config` (`github_credential_scopes` + `MOM_GITHUB_CREDENTIAL_SCOPES`), blocked-start audit evidence (`github_credential_scope_blocked`), `mix mom` CLI scope wiring, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
+- [ ] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
 - [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.

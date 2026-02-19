@@ -5,6 +5,7 @@ defmodule Mom.Acceptance.MomCliSecretHandlingScript do
     _ = Application.ensure_all_started(:ex_unit)
 
     System.put_env("MOM_GITHUB_TOKEN", "env-github-token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
     System.put_env("MOM_LLM_API_KEY", "env-llm-key")
 
     {:ok, env_config} =
@@ -56,6 +57,7 @@ defmodule Mom.Acceptance.MomCliSecretHandlingScript do
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
     System.delete_env("MOM_LLM_API_KEY")
   end
 

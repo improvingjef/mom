@@ -1,6 +1,7 @@
 defmodule Mom.Acceptance.MomCliMachineIdentityScript do
   def run do
     System.put_env("MOM_GITHUB_TOKEN", "token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
 
     machine_result =
       Mix.Tasks.Mom.parse_args([
@@ -28,6 +29,7 @@ defmodule Mom.Acceptance.MomCliMachineIdentityScript do
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
   end
 
   defp machine_actor({:ok, config}), do: config.actor_id

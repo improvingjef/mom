@@ -177,8 +177,20 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.actor_id == "machine-user"
   end
 
+  test "parse_args accepts github credential scopes flag" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--github-credential-scopes",
+        "contents,pull_requests,issues"
+      ])
+
+    assert config.github_credential_scopes == ["contents", "pull_requests", "issues"]
+  end
+
   test "parse_args enforces actor allowlist for github credentials" do
     System.put_env("MOM_GITHUB_TOKEN", "token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
 
     assert {:error, "allowed_actor_ids must be set when github_token is configured"} =
              Mix.Tasks.Mom.parse_args([
@@ -199,6 +211,7 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
   end
 
   test "parse_args rejects non-machine actor identities for github credentials" do
@@ -263,6 +276,7 @@ defmodule Mix.Tasks.MomTaskTest do
 
   test "parse_args requires readiness gate approval for automated PR flows" do
     System.put_env("MOM_GITHUB_TOKEN", "token")
+    System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
 
     assert {:error, "readiness_gate_approved must be true before enabling automated PR creation"} =
              Mix.Tasks.Mom.parse_args([
@@ -290,6 +304,7 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.readiness_gate_approved
   after
     System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
   end
 
   test "parse_args fails fast when toolchain prerequisites are not met" do
