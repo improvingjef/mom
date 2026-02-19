@@ -295,6 +295,7 @@ defmodule Mix.Tasks.MomTaskTest do
   test "parse_args fails fast when toolchain prerequisites are not met" do
     original_node = System.get_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE")
     original_otp = System.get_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE")
+    original_elixir = System.get_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE")
 
     try do
       System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", "v17.9.1")
@@ -307,6 +308,12 @@ defmodule Mix.Tasks.MomTaskTest do
 
       assert {:error, "erlang/otp version must be 28.0.2; found 28.0.1"} =
                Mix.Tasks.Mom.parse_args(["/tmp/repo"])
+
+      System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", "28.0.2")
+      System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.0-rc.0")
+
+      assert {:error, "elixir version must be stable 1.19.x; found 1.19.0-rc.0"} =
+               Mix.Tasks.Mom.parse_args(["/tmp/repo"])
     after
       if is_nil(original_node),
         do: System.delete_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE"),
@@ -315,6 +322,10 @@ defmodule Mix.Tasks.MomTaskTest do
       if is_nil(original_otp),
         do: System.delete_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE"),
         else: System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", original_otp)
+
+      if is_nil(original_elixir),
+        do: System.delete_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", original_elixir)
     end
   end
 

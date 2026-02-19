@@ -5,7 +5,8 @@
  - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 2. [x] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
  - Status: complete (February 19, 2026) via startup pruning in `Mom.Config` using retention + keep-latest policy controls, `Mom.AcceptanceLifecycle` stale-artifact pruning for `_build_runner_burst_*`/worker-scoped build dirs, and ExUnit + Playwright acceptance coverage.
-3. [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
+3. [x] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
+ - Status: complete (February 19, 2026) via startup fail-fast Elixir runtime validation in `Mom.Config` (stable `1.19.x` enforcement + RC rejection, with env/opts overrides for deterministic gating), and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 
 ## Priority 0: Failure Server and Acceptance Reliability
 - [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
@@ -23,7 +24,8 @@
  - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 - [x] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
  - Status: complete (February 19, 2026) via startup pruning in `Mom.Config` using retention + keep-latest policy controls, `Mom.AcceptanceLifecycle` stale-artifact pruning for `_build_runner_burst_*`/worker-scoped build dirs, and ExUnit + Playwright acceptance coverage.
-- [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
+- [x] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
+ - Status: complete (February 19, 2026) via startup fail-fast Elixir runtime validation in `Mom.Config` (stable `1.19.x` enforcement + RC rejection, with env/opts overrides for deterministic gating), and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 
 ## Priority 1: Operational Safety and Core Platform Readiness
 - [x] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
@@ -33,6 +35,7 @@
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
+- [ ] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
 - [ ] Replace static readiness-gate flag with signed/expiring readiness attestations (branch-protection check, credential-scope proof, and approval provenance).
 - [ ] Remove deprecated ExUnit property registration usage (`ExUnit.Case.register_test/4`) to keep CI/test tooling forward-compatible with upcoming Elixir releases.

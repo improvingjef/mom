@@ -294,6 +294,60 @@ defmodule Mom.ConfigTest do
     end
   end
 
+  test "fails closed when elixir version is outside stable 1.19.x baseline" do
+    original_node = System.get_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE")
+    original_otp = System.get_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE")
+    original_elixir = System.get_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE")
+
+    try do
+      System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", "v24.6.0")
+      System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", "28.0.2")
+      System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.18.4")
+
+      assert {:error, "elixir version must be stable 1.19.x; found 1.18.4"} =
+               Config.from_opts(repo: "/tmp/repo")
+    after
+      if is_nil(original_node),
+        do: System.delete_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", original_node)
+
+      if is_nil(original_otp),
+        do: System.delete_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", original_otp)
+
+      if is_nil(original_elixir),
+        do: System.delete_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", original_elixir)
+    end
+  end
+
+  test "fails closed when elixir version is release-candidate" do
+    original_node = System.get_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE")
+    original_otp = System.get_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE")
+    original_elixir = System.get_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE")
+
+    try do
+      System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", "v24.6.0")
+      System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", "28.0.2")
+      System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.0-rc.0")
+
+      assert {:error, "elixir version must be stable 1.19.x; found 1.19.0-rc.0"} =
+               Config.from_opts(repo: "/tmp/repo")
+    after
+      if is_nil(original_node),
+        do: System.delete_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", original_node)
+
+      if is_nil(original_otp),
+        do: System.delete_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", original_otp)
+
+      if is_nil(original_elixir),
+        do: System.delete_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", original_elixir)
+    end
+  end
+
   test "default redact keys include password" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert "password" in config.redact_keys

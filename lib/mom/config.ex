@@ -7,6 +7,7 @@ defmodule Mom.Config do
 
   @minimum_node_major 18
   @required_otp_version "28.0.2"
+  @required_elixir_series "1.19"
   @default_acceptance_build_artifact_retention_seconds 86_400
   @default_acceptance_build_artifact_keep_latest 8
 
@@ -386,7 +387,9 @@ defmodule Mom.Config do
     with {:ok, node_version} <- detect_node_version(opts, runtime),
          :ok <- validate_node_version(node_version, required_node_major(runtime)),
          {:ok, otp_version} <- detect_otp_version(opts, runtime),
-         :ok <- validate_otp_version(otp_version, required_otp_version(runtime)) do
+         :ok <- validate_otp_version(otp_version, required_otp_version(runtime)),
+         {:ok, elixir_version} <- detect_elixir_version(opts, runtime),
+         :ok <- validate_elixir_version(elixir_version, required_elixir_series(runtime)) do
       :ok
     end
   end
@@ -402,6 +405,13 @@ defmodule Mom.Config do
     case runtime[:required_otp_version] do
       value when is_binary(value) and value != "" -> String.trim(value)
       _ -> @required_otp_version
+    end
+  end
+
+  defp required_elixir_series(runtime) do
+    case runtime[:required_elixir_series] do
+      value when is_binary(value) and value != "" -> String.trim(value)
+      _ -> @required_elixir_series
     end
   end
 
@@ -468,6 +478,42 @@ defmodule Mom.Config do
       :ok
     else
       {:error, "erlang/otp version must be #{required_version}; found #{actual_version}"}
+    end
+  end
+
+  defp detect_elixir_version(opts, runtime) do
+    case Keyword.get(opts, :toolchain_elixir_version_override) ||
+           runtime[:toolchain_elixir_version_override] ||
+           System.get_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE") do
+      nil -> {:ok, System.version()}
+      value -> {:ok, normalize_version_string(value)}
+    end
+  end
+
+  defp validate_elixir_version(actual_version, required_series) do
+    with {:ok, required_major, required_minor} <- parse_elixir_series(required_series),
+         {:ok, parsed} <- Version.parse(actual_version),
+         true <- parsed.pre == [] do
+      if parsed.major == required_major and parsed.minor == required_minor do
+        :ok
+      else
+        {:error, "elixir version must be stable #{required_series}.x; found #{actual_version}"}
+      end
+    else
+      _ ->
+        {:error, "elixir version must be stable #{required_series}.x; found #{actual_version}"}
+    end
+  end
+
+  defp parse_elixir_series(series) do
+    case Regex.run(~r/^(\d+)\.(\d+)$/, series) do
+      [_full, major, minor] ->
+        {major_int, ""} = Integer.parse(major)
+        {minor_int, ""} = Integer.parse(minor)
+        {:ok, major_int, minor_int}
+
+      _ ->
+        {:error, :invalid_required_elixir_series}
     end
   end
 

@@ -49,6 +49,14 @@ test("mom CLI fails fast when runtime toolchain prerequisites are not met", asyn
     "error",
     "erlang/otp version must be 28.0.2; found 28.0.1"
   ]);
+  expect(result.elixir_rc_blocked).toEqual([
+    "error",
+    "elixir version must be stable 1.19.x; found 1.19.0-rc.0"
+  ]);
+  expect(result.elixir_series_blocked).toEqual([
+    "error",
+    "elixir version must be stable 1.19.x; found 1.18.4"
+  ]);
   expect(result.valid_mode).toBe("remote");
 });
 
