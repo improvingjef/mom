@@ -37,12 +37,27 @@ defmodule Mix.Tasks.Mom do
   end
 
   defp build_config(repo, opts) do
-    opts =
-      opts
-      |> Keyword.put(:repo, repo)
-      |> normalize_opts()
+    with :ok <- validate_secret_injection(opts) do
+      opts =
+        opts
+        |> Keyword.put(:repo, repo)
+        |> normalize_opts()
 
-    Config.from_opts(opts)
+      Config.from_opts(opts)
+    end
+  end
+
+  defp validate_secret_injection(opts) do
+    cond do
+      Keyword.has_key?(opts, :github_token) ->
+        {:error, "github_token must be provided via MOM_GITHUB_TOKEN environment variable"}
+
+      Keyword.has_key?(opts, :llm_api_key) ->
+        {:error, "llm_api_key must be provided via MOM_LLM_API_KEY environment variable"}
+
+      true ->
+        :ok
+    end
   end
 
   defp normalize_opts(opts) do

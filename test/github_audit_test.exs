@@ -162,4 +162,24 @@ defmodule Mom.GitHubAuditTest do
     assert metadata.base_branch == "main"
     assert log =~ "\"event\":\"github_merge_blocked\""
   end
+
+  test "audit logs redact sensitive metadata fields" do
+    log =
+      capture_log(fn ->
+        :ok =
+          Mom.Audit.emit(:github_issue_failed, %{
+            repo: "acme/mom",
+            token: "ghp_123",
+            nested: %{authorization: "Bearer abc", cookie: "_session=secret"}
+          })
+      end)
+
+    assert log =~ "\"event\":\"github_issue_failed\""
+    assert log =~ "\"token\":\"[REDACTED]\""
+    assert log =~ "\"authorization\":\"[REDACTED]\""
+    assert log =~ "\"cookie\":\"[REDACTED]\""
+    refute log =~ "ghp_123"
+    refute log =~ "Bearer abc"
+    refute log =~ "_session=secret"
+  end
 end

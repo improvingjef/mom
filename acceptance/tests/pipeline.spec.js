@@ -362,6 +362,42 @@ test("mom logs codex invocation start and outcome", async () => {
   expect(result.saw_completed_failure).toBeTruthy();
 });
 
+test("mom enforces env-only secret injection and redacts sensitive audit logs", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_secret_handling_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.github_token_from_env).toBe("env-github-token");
+  expect(result.llm_api_key_from_env).toBe("env-llm-key");
+  expect(result.github_token_flag_result).toEqual([
+    "error",
+    "github_token must be provided via MOM_GITHUB_TOKEN environment variable"
+  ]);
+  expect(result.llm_api_key_flag_result).toEqual([
+    "error",
+    "llm_api_key must be provided via MOM_LLM_API_KEY environment variable"
+  ]);
+  expect(result.token_redacted).toBeTruthy();
+  expect(result.authorization_redacted).toBeTruthy();
+  expect(result.cookie_redacted).toBeTruthy();
+  expect(result.leaked_github_token).toBeFalsy();
+  expect(result.leaked_authorization).toBeFalsy();
+  expect(result.leaked_cookie).toBeFalsy();
+});
+
 test("runner handles burst mixed events and continues after an isolated worker failure", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

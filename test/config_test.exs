@@ -44,6 +44,24 @@ defmodule Mom.ConfigTest do
     Application.delete_env(:mom, :llm_cmd)
   end
 
+  test "loads secrets from environment variables when runtime config is unset" do
+    System.put_env("MOM_GITHUB_TOKEN", "env-github-token")
+    System.put_env("MOM_LLM_API_KEY", "env-llm-key")
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        actor_id: "mom-app[bot]",
+        allowed_actor_ids: ["mom-app[bot]"]
+      )
+
+    assert config.github_token == "env-github-token"
+    assert config.llm_api_key == "env-llm-key"
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
+    System.delete_env("MOM_LLM_API_KEY")
+  end
+
   test "default redact keys include password" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert "password" in config.redact_keys

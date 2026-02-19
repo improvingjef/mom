@@ -210,6 +210,7 @@ Out of scope (for this phase):
 - Branch naming policy support for Mom-generated branches is implemented and covered by ExUnit + Playwright acceptance tests.
 - Codex invocation/outcome logging is implemented (`mom: codex invocation started/completed`) and covered by ExUnit + Playwright acceptance tests.
 - Structured git/GitHub audit events are implemented (repo, issue/branch/PR, merge attempt, actor id) and covered by ExUnit + Playwright acceptance tests.
+- Secret handling hardening is implemented: CLI secret flags are blocked in favor of environment injection, and sensitive audit-log fields are redacted, covered by ExUnit + Playwright acceptance tests.
 - Integration burst coverage for mixed diagnostics + error events is implemented with ExUnit + Playwright acceptance tests, including failure-isolation assertions under bounded concurrency.
 - Codex execution profile defaults to `codex --yolo exec` (with override support), covered by ExUnit + Playwright acceptance tests.
 - PR-only workflow enforcement for protected base branches is implemented (merge attempts are blocked for protected branches), covered by ExUnit + Playwright acceptance tests.
@@ -355,7 +356,7 @@ Out of scope (for this phase):
 
 ### Security Baseline
 - [x] Confirm dedicated machine identity (or GitHub App) is used.
-- [ ] Confirm secrets are injected securely and redacted in logs.
+- [x] Confirm secrets are injected securely and redacted in logs.
 - [ ] Confirm isolated worktrees are used for all mutations.
 - [ ] Confirm network egress is restricted to required endpoints.
 - [ ] Confirm unusual-activity alerts exist (PR spikes, auth failures, disallowed repo targets).
@@ -393,6 +394,8 @@ Out of scope (for this phase):
 - [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, key rotation, and optional BYOK support).
 - [ ] Add revenue operations controls for enterprise procurement (PO-based invoicing, payment terms enforcement, and collections escalation workflow).
 - [ ] Add customer-facing change management controls (maintenance windows, tenant-targeted release channels, and backward-compatibility policy/versioning guarantees).
+- [ ] Add data loss prevention controls for generated patches/issues/PRs (secret scanning + policy enforcement before push/open PR).
+- [ ] Add customer support forensics tooling (tenant-scoped audit search, timeline reconstruction, and one-click incident evidence export).
 
 ## Commercial Availability Backlog (Additional)
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).

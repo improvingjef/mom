@@ -82,11 +82,11 @@ defmodule Mix.Tasks.MomTaskTest do
   end
 
   test "parse_args enforces actor allowlist for github credentials" do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
+
     assert {:error, "allowed_actor_ids must be set when github_token is configured"} =
              Mix.Tasks.Mom.parse_args([
                "/tmp/repo",
-               "--github-token",
-               "token",
                "--actor-id",
                "mom-bot"
              ])
@@ -94,8 +94,6 @@ defmodule Mix.Tasks.MomTaskTest do
     assert {:ok, config} =
              Mix.Tasks.Mom.parse_args([
                "/tmp/repo",
-               "--github-token",
-               "token",
                "--actor-id",
                "mom-bot",
                "--allowed-actor-ids",
@@ -103,18 +101,40 @@ defmodule Mix.Tasks.MomTaskTest do
              ])
 
     assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
   end
 
   test "parse_args rejects non-machine actor identities for github credentials" do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
+
     assert {:error, "actor_id must be a dedicated machine identity"} =
              Mix.Tasks.Mom.parse_args([
                "/tmp/repo",
-               "--github-token",
-               "token",
                "--actor-id",
                "jef",
                "--allowed-actor-ids",
                "jef"
+             ])
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
+  end
+
+  test "parse_args rejects github token provided via CLI flag" do
+    assert {:error, "github_token must be provided via MOM_GITHUB_TOKEN environment variable"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--github-token",
+               "token-from-flag"
+             ])
+  end
+
+  test "parse_args rejects llm api key provided via CLI flag" do
+    assert {:error, "llm_api_key must be provided via MOM_LLM_API_KEY environment variable"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--llm-api-key",
+               "key-from-flag"
              ])
   end
 

@@ -13,6 +13,7 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
   end
 
   def run do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
     previous = Application.get_env(:mom, :github_http_client)
     Application.put_env(:mom, :github_http_client, FakeGitHubHttpClient)
     Process.put(:github_http_responses, [ok_merge_response()])
@@ -35,8 +36,6 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "/tmp/repo",
           "--github-repo",
           "acme/mom",
-          "--github-token",
-          "token",
           "--github-base-branch",
           "main",
           "--protected-branches",
@@ -52,8 +51,6 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "/tmp/repo",
           "--github-repo",
           "acme/mom",
-          "--github-token",
-          "token",
           "--github-base-branch",
           "dev",
           "--protected-branches",
@@ -89,6 +86,8 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
       else
         Application.delete_env(:mom, :github_http_client)
       end
+
+      System.delete_env("MOM_GITHUB_TOKEN")
     end
   end
 

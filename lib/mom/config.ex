@@ -96,7 +96,8 @@ defmodule Mom.Config do
         {:error, "repo is required"}
 
       true ->
-        github_token = Keyword.get(opts, :github_token) || runtime[:github_token]
+        github_token = secret_from_opts_or_env(opts, runtime, :github_token, "MOM_GITHUB_TOKEN")
+        llm_api_key = secret_from_opts_or_env(opts, runtime, :llm_api_key, "MOM_LLM_API_KEY")
         actor_id = parse_actor_id(opts, runtime)
 
         with {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
@@ -120,7 +121,7 @@ defmodule Mom.Config do
              mode: Keyword.get(opts, :mode, :remote),
              llm_provider: llm_provider,
              llm_cmd: llm_cmd,
-             llm_api_key: Keyword.get(opts, :llm_api_key) || runtime[:llm_api_key],
+             llm_api_key: llm_api_key,
              llm_api_url: Keyword.get(opts, :llm_api_url) || runtime[:llm_api_url],
              llm_model: Keyword.get(opts, :llm_model) || runtime[:llm_model],
              triage_on_diagnostics: Keyword.get(opts, :triage_on_diagnostics, false),
@@ -180,6 +181,10 @@ defmodule Mom.Config do
       {int, _} -> int
       :error -> nil
     end
+  end
+
+  defp secret_from_opts_or_env(opts, runtime, key, env_var) do
+    Keyword.get(opts, key) || runtime[key] || System.get_env(env_var)
   end
 
   defp normalize_redact_keys(nil), do: default_redact_keys()

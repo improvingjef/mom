@@ -1,10 +1,10 @@
 defmodule Mom.Acceptance.MomCliMachineIdentityScript do
   def run do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
+
     machine_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-token",
-        "token",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
@@ -14,8 +14,6 @@ defmodule Mom.Acceptance.MomCliMachineIdentityScript do
     human_actor_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-token",
-        "token",
         "--actor-id",
         "jef",
         "--allowed-actor-ids",
@@ -28,6 +26,8 @@ defmodule Mom.Acceptance.MomCliMachineIdentityScript do
     }
 
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
   end
 
   defp machine_actor({:ok, config}), do: config.actor_id

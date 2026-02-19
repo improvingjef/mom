@@ -1,10 +1,10 @@
 defmodule Mom.Acceptance.MomCliActorAllowlistScript do
   def run do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
+
     allowed_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-token",
-        "token",
         "--actor-id",
         "mom-bot",
         "--allowed-actor-ids",
@@ -14,8 +14,6 @@ defmodule Mom.Acceptance.MomCliActorAllowlistScript do
     blocked_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-token",
-        "token",
         "--actor-id",
         "personal-user",
         "--allowed-actor-ids",
@@ -25,8 +23,6 @@ defmodule Mom.Acceptance.MomCliActorAllowlistScript do
     missing_allowlist_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
-        "--github-token",
-        "token",
         "--actor-id",
         "mom-bot"
       ])
@@ -39,6 +35,8 @@ defmodule Mom.Acceptance.MomCliActorAllowlistScript do
     }
 
     IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
   end
 
   defp allowed_actor_id({:ok, config}), do: config.actor_id
