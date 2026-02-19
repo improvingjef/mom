@@ -18,7 +18,11 @@ defmodule Mom.Engine do
          :ok <- Git.apply_patch(workdir, patch),
          :ok <- ensure_test_patch(event, config, workdir),
          :ok <- Git.run_tests(workdir),
-         {:ok, branch} <- Git.commit_changes(workdir, "mom: fix error"),
+         {:ok, branch} <-
+           Git.commit_changes(workdir, "mom: fix error", config.branch_name_prefix,
+             actor_id: config.actor_id,
+             repo: target_repo(config)
+           ),
          {:ok, pr} <- maybe_open_pr(workdir, branch, config),
          :ok <- maybe_merge(pr, config) do
       Logger.info("mom: fix prepared #{inspect(pr)}")
@@ -73,7 +77,11 @@ defmodule Mom.Engine do
              :ok <- Git.apply_patch(workdir, patch),
              :ok <- ensure_test_patch(%{diagnostics: report, issues: issues}, config, workdir),
              :ok <- Git.run_tests(workdir),
-             {:ok, branch} <- Git.commit_changes(workdir, "mom: diagnostics fix"),
+             {:ok, branch} <-
+               Git.commit_changes(workdir, "mom: diagnostics fix", config.branch_name_prefix,
+                 actor_id: config.actor_id,
+                 repo: target_repo(config)
+               ),
              {:ok, pr} <- maybe_open_pr(workdir, branch, config),
              :ok <- maybe_merge(pr, config) do
           Logger.info("mom: diagnostics fix prepared #{inspect(pr)}")
@@ -96,7 +104,7 @@ defmodule Mom.Engine do
        repo: repo,
        workdir: workdir,
        event: event,
-         instructions:
+       instructions:
          "Create a minimal regression test and propose a patch. Return a unified diff only."
      }}
   end
@@ -145,6 +153,7 @@ defmodule Mom.Engine do
 
   defp record_issue_for_error(event, %Config{} = config) do
     title = "mom: production error detected"
+
     body = """
     Mom detected an error event.
 
@@ -159,6 +168,7 @@ defmodule Mom.Engine do
 
   defp record_issue_for_diagnostics(report, issues, %Config{} = config) do
     title = "mom: diagnostics threshold exceeded"
+
     body = """
     Mom detected a diagnostics anomaly.
 
@@ -190,14 +200,17 @@ defmodule Mom.Engine do
       :ok
     else
       case GitHub.create_issue(config, title, body) do
-      {:ok, issue} ->
-        Logger.info("mom: issue created #{inspect(issue)}")
-        :ok
+        {:ok, issue} ->
+          Logger.info("mom: issue created #{inspect(issue)}")
+          :ok
 
-      {:error, reason} ->
-        Logger.error("mom: issue creation failed #{inspect(reason)}")
-        :ok
+        {:error, reason} ->
+          Logger.error("mom: issue creation failed #{inspect(reason)}")
+          :ok
       end
     end
   end
+
+  defp target_repo(%Config{github_repo: nil, repo: repo}), do: repo
+  defp target_repo(%Config{github_repo: github_repo}), do: github_repo
 end

@@ -100,4 +100,29 @@ defmodule Mom.ConfigTest do
                allowed_github_repos: ["acme/mom"]
              )
   end
+
+  test "includes branch naming prefix default" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo")
+    assert config.branch_name_prefix == "mom"
+  end
+
+  test "accepts custom branch naming prefix" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo", branch_name_prefix: "mom/incidents")
+    assert config.branch_name_prefix == "mom/incidents"
+  end
+
+  test "rejects invalid branch naming prefix" do
+    assert {:error, "branch_name_prefix is not a valid git branch prefix"} =
+             Config.from_opts(repo: "/tmp/repo", branch_name_prefix: "bad prefix")
+  end
+
+  test "includes default actor id" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo")
+    assert config.actor_id == "mom"
+  end
+
+  test "accepts custom actor id" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo", actor_id: "machine-user")
+    assert config.actor_id == "machine-user"
+  end
 end

@@ -46,4 +46,26 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.github_repo == "acme/mom"
     assert config.allowed_github_repos == ["acme/mom", "acme/other"]
   end
+
+  test "parse_args accepts branch naming prefix flag" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--branch-name-prefix",
+        "mom/incidents"
+      ])
+
+    assert config.branch_name_prefix == "mom/incidents"
+  end
+
+  test "parse_args accepts actor id flag" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--actor-id",
+        "machine-user"
+      ])
+
+    assert config.actor_id == "machine-user"
+  end
 end

@@ -31,10 +31,12 @@ defmodule Mom.Config do
     :job_timeout_ms,
     :overflow_policy,
     :allowed_github_repos,
+    :branch_name_prefix,
     :min_level,
     :dry_run,
     :github_token,
     :github_repo,
+    :actor_id,
     :workdir
   ]
 
@@ -66,10 +68,12 @@ defmodule Mom.Config do
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           allowed_github_repos: [String.t()],
+          branch_name_prefix: String.t(),
           min_level: :error | :warning | :info,
           dry_run: boolean(),
           github_token: String.t() | nil,
           github_repo: String.t() | nil,
+          actor_id: String.t(),
           workdir: String.t() | nil
         }
 
@@ -89,7 +93,9 @@ defmodule Mom.Config do
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
-             {:ok, github_repo} <- parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
+             {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
+             {:ok, github_repo} <-
+               parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
           {:ok,
            %__MODULE__{
              repo: repo,
@@ -107,13 +113,20 @@ defmodule Mom.Config do
              diag_mem_high_bytes: Keyword.get(opts, :diag_mem_high_bytes, 2 * 1024 * 1024 * 1024),
              diag_cooldown_ms: Keyword.get(opts, :diag_cooldown_ms, 300_000),
              issue_rate_limit_per_hour:
-               parse_int(Keyword.get(opts, :issue_rate_limit_per_hour) || runtime[:issue_rate_limit_per_hour]) ||
+               parse_int(
+                 Keyword.get(opts, :issue_rate_limit_per_hour) ||
+                   runtime[:issue_rate_limit_per_hour]
+               ) ||
                  60,
              llm_rate_limit_per_hour:
-               parse_int(Keyword.get(opts, :llm_rate_limit_per_hour) || runtime[:llm_rate_limit_per_hour]) ||
+               parse_int(
+                 Keyword.get(opts, :llm_rate_limit_per_hour) || runtime[:llm_rate_limit_per_hour]
+               ) ||
                  60,
              issue_dedupe_window_ms:
-               parse_int(Keyword.get(opts, :issue_dedupe_window_ms) || runtime[:issue_dedupe_window_ms]) ||
+               parse_int(
+                 Keyword.get(opts, :issue_dedupe_window_ms) || runtime[:issue_dedupe_window_ms]
+               ) ||
                  3_600_000,
              redact_keys: redact_keys,
              git_ssh_command: Keyword.get(opts, :git_ssh_command) || runtime[:git_ssh_command],
@@ -125,18 +138,21 @@ defmodule Mom.Config do
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
              allowed_github_repos: allowed_github_repos,
+             branch_name_prefix: branch_name_prefix,
              min_level: Keyword.get(opts, :min_level, :error),
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: Keyword.get(opts, :github_token) || runtime[:github_token],
              github_repo: github_repo,
+             actor_id: parse_actor_id(opts, runtime),
              workdir: Keyword.get(opts, :workdir)
-        }}
+           }}
         end
     end
   end
 
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value
+
   defp parse_int(value) when is_binary(value) do
     case Integer.parse(value) do
       {int, _} -> int
@@ -241,6 +257,46 @@ defmodule Mom.Config do
 
       true ->
         {:error, "github_repo is not allowed"}
+    end
+  end
+
+  defp parse_branch_name_prefix(opts, runtime) do
+    prefix = Keyword.get(opts, :branch_name_prefix, runtime[:branch_name_prefix]) || "mom"
+
+    if valid_branch_prefix?(prefix) do
+      {:ok, prefix}
+    else
+      {:error, "branch_name_prefix is not a valid git branch prefix"}
+    end
+  end
+
+  defp valid_branch_prefix?(prefix) when is_binary(prefix) do
+    trimmed = String.trim(prefix)
+
+    trimmed == prefix and
+      trimmed != "" and
+      Regex.match?(~r/^[0-9A-Za-z._\/-]+$/, trimmed) and
+      not String.contains?(trimmed, ["..", "@{"]) and
+      not String.starts_with?(trimmed, ["/", ".", "-"]) and
+      not String.ends_with?(trimmed, ["/", ".", ".lock"]) and
+      Enum.all?(String.split(trimmed, "/"), &valid_branch_segment?/1)
+  end
+
+  defp valid_branch_prefix?(_), do: false
+
+  defp valid_branch_segment?(segment) do
+    segment != "" and
+      segment != "." and
+      segment != ".." and
+      not String.starts_with?(segment, ".") and
+      not String.ends_with?(segment, ".lock")
+  end
+
+  defp parse_actor_id(opts, runtime) do
+    case Keyword.get(opts, :actor_id) || runtime[:actor_id] || System.get_env("GITHUB_ACTOR") do
+      nil -> "mom"
+      actor when is_binary(actor) -> String.trim(actor)
+      actor -> to_string(actor) |> String.trim()
     end
   end
 end

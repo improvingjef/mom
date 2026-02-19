@@ -1,13 +1,15 @@
 defmodule Mom.GitHub do
   @moduledoc false
 
+  alias Mom.Audit
   alias Mom.Config
 
   @github_api "https://api.github.com"
 
   @spec create_pr(Config.t(), String.t()) :: {:ok, map()} | {:error, term()}
-  def create_pr(%Config{github_token: token, github_repo: repo}, branch) do
+  def create_pr(%Config{github_token: token, github_repo: repo, actor_id: actor_id}, branch) do
     with {:ok, repo} <- parse_repo(repo),
+         :ok <- emit(:github_pr_attempt, %{repo: repo, actor_id: actor_id, branch: branch}),
          {:ok, body} <-
            request(
              token,
@@ -21,24 +23,65 @@ defmodule Mom.GitHub do
              }
            ),
          {:ok, data} <- decode(body) do
-      {:ok, %{url: data["html_url"], number: data["number"]}}
+      pr = %{url: data["html_url"], number: data["number"]}
+
+      :ok =
+        emit(:github_pr_created, %{
+          repo: repo,
+          actor_id: actor_id,
+          branch: branch,
+          pr_number: pr.number
+        })
+
+      {:ok, pr}
+    else
+      {:error, reason} ->
+        :ok =
+          emit(:github_pr_failed, %{
+            repo: repo,
+            actor_id: actor_id,
+            branch: branch,
+            reason: inspect(reason)
+          })
+
+        {:error, reason}
     end
   end
 
   @spec merge_pr(Config.t(), map()) :: :ok | {:error, term()}
-  def merge_pr(%Config{github_token: token, github_repo: repo}, %{number: number}) do
+  def merge_pr(%Config{github_token: token, github_repo: repo, actor_id: actor_id}, %{
+        number: number
+      }) do
     with {:ok, repo} <- parse_repo(repo),
+         :ok <- emit(:github_merge_attempt, %{repo: repo, actor_id: actor_id, pr_number: number}),
          {:ok, _} <-
            request(token, :put, "/repos/#{repo}/pulls/#{number}/merge", %{
              "merge_method" => "squash"
            }) do
+      :ok = emit(:github_merged, %{repo: repo, actor_id: actor_id, pr_number: number})
       :ok
+    else
+      {:error, reason} ->
+        :ok =
+          emit(:github_merge_failed, %{
+            repo: repo,
+            actor_id: actor_id,
+            pr_number: number,
+            reason: inspect(reason)
+          })
+
+        {:error, reason}
     end
   end
 
   @spec create_issue(Config.t(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
-  def create_issue(%Config{github_token: token, github_repo: repo}, title, body) do
+  def create_issue(
+        %Config{github_token: token, github_repo: repo, actor_id: actor_id},
+        title,
+        body
+      ) do
     with {:ok, repo} <- parse_repo(repo),
+         :ok <- emit(:github_issue_attempt, %{repo: repo, actor_id: actor_id}),
          {:ok, resp} <-
            request(
              token,
@@ -50,7 +93,18 @@ defmodule Mom.GitHub do
              }
            ),
          {:ok, data} <- decode(resp) do
-      {:ok, %{url: data["html_url"], number: data["number"]}}
+      issue = %{url: data["html_url"], number: data["number"]}
+
+      :ok =
+        emit(:github_issue_created, %{repo: repo, actor_id: actor_id, issue_number: issue.number})
+
+      {:ok, issue}
+    else
+      {:error, reason} ->
+        :ok =
+          emit(:github_issue_failed, %{repo: repo, actor_id: actor_id, reason: inspect(reason)})
+
+        {:error, reason}
     end
   end
 
@@ -64,10 +118,7 @@ defmodule Mom.GitHub do
     body = Jason.encode!(payload)
     url = String.to_charlist(@github_api <> path)
 
-    :inets.start()
-    :ssl.start()
-
-    case :httpc.request(method, {url, headers, ~c"application/json", body}, [], []) do
+    case http_client().request(method, {url, headers, ~c"application/json", body}, [], []) do
       {:ok, {{_, status, _}, _headers, resp}} when status in 200..299 -> {:ok, resp}
       {:ok, {{_, status, _}, _headers, resp}} -> {:error, {:http_error, status, resp}}
       {:error, reason} -> {:error, reason}
@@ -88,5 +139,23 @@ defmodule Mom.GitHub do
       [owner, name] -> {:ok, "#{owner}/#{name}"}
       _ -> {:error, "github_repo must be in owner/name format"}
     end
+  end
+
+  defp emit(event, metadata) do
+    Audit.emit(event, metadata)
+  end
+
+  defp http_client do
+    Application.get_env(:mom, :github_http_client, Mom.GitHub.HttpClient)
+  end
+end
+
+defmodule Mom.GitHub.HttpClient do
+  @moduledoc false
+
+  def request(method, request, http_options, options) do
+    :inets.start()
+    :ssl.start()
+    :httpc.request(method, request, http_options, options)
   end
 end

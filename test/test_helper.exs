@@ -10,6 +10,7 @@ defmodule Mom.TestHelper do
 
   def create_repo do
     base = Path.join(System.tmp_dir!(), "mom-test-repo-#{System.unique_integer([:positive])}")
+    File.rm_rf!(base)
     :ok = File.mkdir_p(base)
 
     git(base, ["init"])

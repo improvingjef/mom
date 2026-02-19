@@ -1,6 +1,8 @@
 defmodule Mom.GitTest do
   use ExUnit.Case
 
+  import ExUnit.CaptureLog
+
   alias Mom.{Git, Isolation, Config}
 
   test "touches_tests? detects test changes" do
@@ -46,5 +48,53 @@ defmodule Mom.GitTest do
 
     {:ok, workdir} = Isolation.prepare_workdir(config)
     assert File.exists?(Path.join(workdir, ".git"))
+  end
+
+  test "commit_changes uses configured branch naming prefix" do
+    repo = Mom.TestHelper.create_repo()
+    File.mkdir_p!(Path.join(repo, "lib"))
+    File.write!(Path.join(repo, "lib/new_file.ex"), "defmodule NewFile do end\n")
+
+    assert {:ok, branch} = Git.commit_changes(repo, "mom: branch prefix", "mom/incidents")
+    assert String.starts_with?(branch, "mom/incidents-")
+  end
+
+  test "commit_changes emits audit event with repo, branch, and actor id" do
+    repo = Mom.TestHelper.create_repo()
+    File.write!(Path.join(repo, "AUDIT.md"), "audit\n")
+
+    telemetry_handler = "git-branch-created-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_branch_created]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert {:ok, branch} =
+                 Git.commit_changes(
+                   repo,
+                   "mom: branch audit",
+                   "mom/audit",
+                   actor_id: "machine-user",
+                   repo: "acme/mom"
+                 )
+
+        assert String.starts_with?(branch, "mom/audit-")
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_branch_created], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert String.starts_with?(metadata.branch, "mom/audit-")
+    assert log =~ "\"event\":\"git_branch_created\""
+    assert log =~ "\"actor_id\":\"machine-user\""
   end
 end

@@ -1,6 +1,8 @@
 defmodule Mom.Git do
   @moduledoc false
 
+  alias Mom.Audit
+
   @spec add_worktree(String.t(), String.t()) :: :ok | {:error, term()}
   def add_worktree(repo, workdir) do
     cmd(repo, ["worktree", "add", workdir]) |> ok_or_error()
@@ -45,13 +47,15 @@ defmodule Mom.Git do
     end
   end
 
-  @spec commit_changes(String.t(), String.t()) :: {:ok, String.t()} | {:error, term()}
-  def commit_changes(workdir, message) do
-    branch = "mom-#{System.unique_integer([:positive])}"
+  @spec commit_changes(String.t(), String.t(), String.t(), keyword()) ::
+          {:ok, String.t()} | {:error, term()}
+  def commit_changes(workdir, message, branch_name_prefix \\ "mom", audit_opts \\ []) do
+    branch = "#{branch_name_prefix}-#{System.unique_integer([:positive])}"
 
     with :ok <- cmd(workdir, ["checkout", "-b", branch]) |> ok_or_error(),
          :ok <- cmd(workdir, ["add", "."]) |> ok_or_error(),
          :ok <- cmd(workdir, ["commit", "-m", message]) |> ok_or_error() do
+      emit_branch_audit(branch, audit_opts)
       {:ok, branch}
     end
   end
@@ -67,4 +71,14 @@ defmodule Mom.Git do
 
   defp ok_or_error({_, 0}), do: :ok
   defp ok_or_error({out, code}), do: {:error, {:git_failed, code, out}}
+
+  defp emit_branch_audit(branch, audit_opts) do
+    metadata = %{
+      repo: Keyword.get(audit_opts, :repo),
+      actor_id: Keyword.get(audit_opts, :actor_id, "mom"),
+      branch: branch
+    }
+
+    Audit.emit(:git_branch_created, metadata)
+  end
 end

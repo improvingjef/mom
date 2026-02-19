@@ -259,3 +259,34 @@ test("mom logs codex invocation start and outcome", async () => {
   expect(result.saw_start_failure).toBeTruthy();
   expect(result.saw_completed_failure).toBeTruthy();
 });
+
+test("mom emits structured git and GitHub audit events", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/github_audit_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.saw_branch_event).toBeTruthy();
+  expect(result.saw_issue_event).toBeTruthy();
+  expect(result.saw_pr_event).toBeTruthy();
+  expect(result.saw_merge_attempt_event).toBeTruthy();
+  expect(result.branch_event_fields).toBeTruthy();
+  expect(result.issue_event_fields).toBeTruthy();
+  expect(result.pr_event_fields).toBeTruthy();
+  expect(result.merge_attempt_fields).toBeTruthy();
+  expect(result.branch.startsWith("mom/audit-")).toBeTruthy();
+  expect(result.issue_number).toBe(7);
+  expect(result.pr_number).toBe(9);
+});

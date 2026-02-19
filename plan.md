@@ -209,6 +209,7 @@ Out of scope (for this phase):
 - Step 5 complete: pipeline telemetry events (`enqueued`, `dropped`, `started`, `completed`, `failed`) and queue/worker structured lifecycle logs are implemented with ExUnit + Playwright acceptance coverage.
 - Branch naming policy support for Mom-generated branches is implemented and covered by ExUnit + Playwright acceptance tests.
 - Codex invocation/outcome logging is implemented (`mom: codex invocation started/completed`) and covered by ExUnit + Playwright acceptance tests.
+- Structured git/GitHub audit events are implemented (repo, issue/branch/PR, merge attempt, actor id) and covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -339,7 +340,7 @@ Out of scope (for this phase):
 - [x] Emit pipeline telemetry for enqueued/dropped/started/completed/failed jobs.
 - [x] Include queue depth, active worker count, job type, duration, and failure reason.
 - [x] Log Codex invocation + outcome for each run.
-- [ ] Emit structured git/GitHub audit events (repo, issue/branch/PR, merge attempt, actor id).
+- [x] Emit structured git/GitHub audit events (repo, issue/branch/PR, merge attempt, actor id).
 
 ### Test Execution Profile (Current)
 - [ ] Run analysis/fix flow with `codex --yolo exec`.
@@ -391,3 +392,5 @@ Out of scope (for this phase):
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add finance and tax operations readiness (sales tax/VAT handling, invoice delivery/collections workflow, and revenue-recognition reporting exports).
 - [ ] Add end-to-end trace correlation IDs linking pipeline jobs, Codex invocations, and Git/GitHub mutations for auditability and support forensics.
+- [ ] Add control-plane high-availability targets and validation (RPO/RTO objectives, automated failover, and recurring recovery drills).
+- [ ] Add customer trust portal capabilities (tenant-visible uptime/incidents, audit export self-service, and maintenance notification workflows).

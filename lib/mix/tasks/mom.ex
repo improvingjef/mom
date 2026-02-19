@@ -132,10 +132,12 @@ defmodule Mix.Tasks.Mom do
       job_timeout_ms: :integer,
       overflow_policy: :string,
       allowed_github_repos: :string,
+      branch_name_prefix: :string,
       min_level: :string,
       dry_run: :boolean,
       github_token: :string,
       github_repo: :string,
+      actor_id: :string,
       workdir: :string
     ]
   end
