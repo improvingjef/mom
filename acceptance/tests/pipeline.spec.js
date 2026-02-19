@@ -109,6 +109,15 @@ test("mom harness task confirms baseline harness scenarios and records private r
   );
   expect(result.traceability_path).toContain("mom-harness-traceability-acceptance-");
   expect(result.traceability_mapped_capability_count).toBe(10);
+  expect(result.branch_protection_branch).toBe("main");
+  expect(result.branch_protection_required_checks).toEqual(["ci/exunit", "ci/playwright"]);
+  expect(result.branch_protection_min_approvals).toBe(1);
+  expect(result.branch_protection_evidence_path).toContain(
+    "mom-harness-branch-protection-evidence-acceptance-"
+  );
+  expect(result.branch_protection_verified).toBeTruthy();
+  expect(result.branch_protection_observed_checks).toEqual(["ci/exunit", "ci/playwright"]);
+  expect(result.branch_protection_observed_min_approvals).toBe(1);
   expect(result.loaded_matches).toBeTruthy();
   expect(result.loaded_count_matches).toBeTruthy();
 });

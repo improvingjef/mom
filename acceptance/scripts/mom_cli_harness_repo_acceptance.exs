@@ -12,7 +12,14 @@ traceability_path =
     "mom-harness-traceability-acceptance-#{System.unique_integer([:positive])}.json"
   )
 
+evidence_path =
+  Path.join(
+    System.tmp_dir!(),
+    "mom-harness-branch-protection-evidence-acceptance-#{System.unique_integer([:positive])}.json"
+  )
+
 File.rm(record_path)
+File.rm(evidence_path)
 
 traceability = %{
   "capabilities" => [
@@ -98,6 +105,10 @@ fake_runner = fn
 
   "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
     {:ok, ~s({"path":"ok"})}
+
+  "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+    {:ok,
+     ~s({"required_status_checks":{"contexts":["ci/exunit","ci/playwright"]},"required_pull_request_reviews":{"required_approving_review_count":1}})}
 end
 
 {:ok, record} =
@@ -106,10 +117,13 @@ end
     recorded_at: "2026-02-19T00:00:00Z",
     baseline_error_path: "priv/replay/error_path.ex",
     baseline_diagnostics_path: "priv/replay/diagnostics_path.ex",
-    traceability_path: traceability_path
+    traceability_path: traceability_path,
+    branch_protection_evidence_path: evidence_path
   )
 
 {:ok, loaded} = Mom.HarnessRepo.load_record(record_path)
+{:ok, evidence_body} = File.read(evidence_path)
+{:ok, evidence} = Jason.decode(evidence_body)
 
 IO.puts(
   "RESULT_JSON:" <>
@@ -121,6 +135,13 @@ IO.puts(
       baseline_diagnostics_path: record.baseline_diagnostics_path,
       traceability_path: record.traceability_path,
       traceability_mapped_capability_count: record.traceability_mapped_capability_count,
+      branch_protection_branch: record.branch_protection_branch,
+      branch_protection_required_checks: record.branch_protection_required_checks,
+      branch_protection_min_approvals: record.branch_protection_min_approvals,
+      branch_protection_evidence_path: record.branch_protection_evidence_path,
+      branch_protection_verified: evidence["verified"],
+      branch_protection_observed_checks: evidence["observed_checks"],
+      branch_protection_observed_min_approvals: evidence["observed_min_approvals"],
       loaded_matches: loaded.name_with_owner == "acme/harness",
       loaded_count_matches: loaded.traceability_mapped_capability_count == 10
     })

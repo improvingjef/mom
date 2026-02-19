@@ -14,6 +14,10 @@ defmodule Mom.HarnessRepo do
     "egress_policy_fail_closed",
     "observability_slo_alerts"
   ]
+  @default_branch_protection_branch "main"
+  @default_required_checks ["ci/exunit", "ci/playwright"]
+  @default_min_approvals 1
+  @default_branch_protection_evidence_path "acceptance/harness_branch_protection_evidence.json"
 
   @type record :: %{
           name_with_owner: String.t(),
@@ -24,6 +28,10 @@ defmodule Mom.HarnessRepo do
           baseline_diagnostics_path: String.t(),
           traceability_path: String.t(),
           traceability_mapped_capability_count: pos_integer(),
+          branch_protection_branch: String.t(),
+          branch_protection_required_checks: [String.t()],
+          branch_protection_min_approvals: non_neg_integer(),
+          branch_protection_evidence_path: String.t(),
           recorded_at: String.t()
         }
 
@@ -36,22 +44,52 @@ defmodule Mom.HarnessRepo do
     baseline_error_path = Keyword.get(opts, :baseline_error_path)
     baseline_diagnostics_path = Keyword.get(opts, :baseline_diagnostics_path)
     traceability_path = Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
+    branch_protection_branch =
+      Keyword.get(opts, :branch_protection_branch, @default_branch_protection_branch)
+
+    required_checks = Keyword.get(opts, :required_checks, @default_required_checks)
+    min_approvals = Keyword.get(opts, :min_approvals, @default_min_approvals)
+
+    branch_protection_evidence_path =
+      Keyword.get(
+        opts,
+        :branch_protection_evidence_path,
+        @default_branch_protection_evidence_path
+      )
 
     with {:ok, payload} <- run_gh_view(repo, runner),
          {:ok, record} <- build_record(payload, recorded_at),
          :ok <- validate_scenario_path_arg(:baseline_error_path, baseline_error_path),
          :ok <- validate_scenario_path_arg(:baseline_diagnostics_path, baseline_diagnostics_path),
          :ok <- validate_traceability_path_arg(traceability_path),
+         :ok <- validate_branch_protection_branch(branch_protection_branch),
+         :ok <- validate_required_checks(required_checks),
+         :ok <- validate_min_approvals(min_approvals),
+         :ok <- validate_branch_protection_evidence_path(branch_protection_evidence_path),
          {:ok, traceability_entries} <- load_traceability(traceability_path),
          :ok <- validate_traceability_entries(traceability_entries),
          :ok <- verify_traceability_paths(repo, traceability_entries, runner),
          :ok <- verify_harness_path(repo, baseline_error_path, runner),
          :ok <- verify_harness_path(repo, baseline_diagnostics_path, runner),
+         {:ok, branch_protection_evidence} <-
+           verify_branch_protection(
+             repo,
+             branch_protection_branch,
+             required_checks,
+             min_approvals,
+             runner
+           ),
+         :ok <- write_branch_protection_evidence(branch_protection_evidence_path, branch_protection_evidence),
          record <- Map.put(record, :baseline_error_path, baseline_error_path),
          record <- Map.put(record, :baseline_diagnostics_path, baseline_diagnostics_path),
          record <- Map.put(record, :traceability_path, traceability_path),
          record <-
            Map.put(record, :traceability_mapped_capability_count, length(traceability_entries)),
+         record <- Map.put(record, :branch_protection_branch, branch_protection_branch),
+         record <- Map.put(record, :branch_protection_required_checks, required_checks),
+         record <- Map.put(record, :branch_protection_min_approvals, min_approvals),
+         record <-
+           Map.put(record, :branch_protection_evidence_path, branch_protection_evidence_path),
          :ok <- validate_record(record, true),
          :ok <- write_record(record_path, record) do
       {:ok, record}
@@ -127,6 +165,10 @@ defmodule Mom.HarnessRepo do
        baseline_diagnostics_path: payload["baseline_diagnostics_path"],
        traceability_path: payload["traceability_path"],
        traceability_mapped_capability_count: payload["traceability_mapped_capability_count"],
+       branch_protection_branch: payload["branch_protection_branch"],
+       branch_protection_required_checks: payload["branch_protection_required_checks"],
+       branch_protection_min_approvals: payload["branch_protection_min_approvals"],
+       branch_protection_evidence_path: payload["branch_protection_evidence_path"],
        recorded_at: payload["recorded_at"]
      }}
   end
@@ -154,12 +196,35 @@ defmodule Mom.HarnessRepo do
              :traceability_mapped_capability_count,
              baseline_required?
            ),
+         :ok <- maybe_require_baseline_field(record, :branch_protection_branch, baseline_required?),
+         :ok <-
+           maybe_require_baseline_field(
+             record,
+             :branch_protection_required_checks,
+             baseline_required?
+           ),
+         :ok <-
+           maybe_require_baseline_field(
+             record,
+             :branch_protection_min_approvals,
+             baseline_required?
+           ),
+         :ok <-
+           maybe_require_baseline_field(
+             record,
+             :branch_protection_evidence_path,
+             baseline_required?
+           ),
          :ok <- require_field(record, :recorded_at),
          :ok <- validate_private(record),
          :ok <- validate_url(record),
          :ok <- maybe_validate_path(record, :baseline_error_path, baseline_required?),
          :ok <- maybe_validate_path(record, :baseline_diagnostics_path, baseline_required?),
          :ok <- maybe_validate_path(record, :traceability_path, baseline_required?),
+         :ok <- maybe_validate_path(record, :branch_protection_branch, baseline_required?),
+         :ok <- maybe_validate_required_checks(record, baseline_required?),
+         :ok <- maybe_validate_min_approvals(record, baseline_required?),
+         :ok <- maybe_validate_path(record, :branch_protection_evidence_path, baseline_required?),
          :ok <-
            maybe_validate_mapped_count(record, :traceability_mapped_capability_count, baseline_required?),
          :ok <- validate_timestamp(record.recorded_at) do
@@ -216,6 +281,29 @@ defmodule Mom.HarnessRepo do
     end
   end
 
+  defp validate_branch_protection_branch(value), do: validate_path(value, "branch_protection_branch")
+
+  defp validate_required_checks(value) when is_list(value) do
+    if Enum.all?(value, &(is_binary(&1) and &1 != "")) and value != [] do
+      :ok
+    else
+      {:error, "harness branch protection required checks must be a non-empty list"}
+    end
+  end
+
+  defp validate_required_checks(_value) do
+    {:error, "harness branch protection required checks must be a non-empty list"}
+  end
+
+  defp validate_min_approvals(value) when is_integer(value) and value >= 0, do: :ok
+
+  defp validate_min_approvals(_value) do
+    {:error, "harness branch protection min approvals must be a non-negative integer"}
+  end
+
+  defp validate_branch_protection_evidence_path(value),
+    do: validate_path(value, "branch_protection_evidence_path")
+
   defp verify_harness_path(repo, path, runner) do
     args = ["api", "repos/#{repo}/contents/#{path}"]
 
@@ -236,6 +324,18 @@ defmodule Mom.HarnessRepo do
   end
 
   defp maybe_validate_mapped_count(_record, _field, false), do: :ok
+
+  defp maybe_validate_required_checks(record, true) do
+    validate_required_checks(Map.get(record, :branch_protection_required_checks))
+  end
+
+  defp maybe_validate_required_checks(_record, false), do: :ok
+
+  defp maybe_validate_min_approvals(record, true) do
+    validate_min_approvals(Map.get(record, :branch_protection_min_approvals))
+  end
+
+  defp maybe_validate_min_approvals(_record, false), do: :ok
 
   defp validate_path(value, _field) when is_binary(value) and value != "", do: :ok
   defp validate_path(_value, field), do: {:error, "harness record has invalid #{field}"}
@@ -306,6 +406,90 @@ defmodule Mom.HarnessRepo do
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+  end
+
+  defp verify_branch_protection(repo, branch, required_checks, min_approvals, runner) do
+    args = ["api", "repos/#{repo}/branches/#{branch}/protection"]
+
+    with {:ok, payload} <- runner.("gh", args),
+         {:ok, decoded} <- Jason.decode(payload),
+         observed_checks <- extract_required_status_checks(decoded),
+         observed_min_approvals <- extract_required_min_approvals(decoded),
+         :ok <- ensure_required_status_checks(required_checks, observed_checks),
+         :ok <- ensure_required_min_approvals(min_approvals, observed_min_approvals) do
+      {:ok,
+       %{
+         verified: true,
+         repo: repo,
+         branch: branch,
+         required_checks: required_checks,
+         observed_checks: observed_checks,
+         required_min_approvals: min_approvals,
+         observed_min_approvals: observed_min_approvals,
+         verified_at: DateTime.utc_now() |> DateTime.to_iso8601()
+       }}
+    else
+      {:error, reason} when is_binary(reason) ->
+        {:error, reason}
+
+      {:error, reason} ->
+        {:error, "failed to verify harness branch protection: #{inspect(reason)}"}
+    end
+  end
+
+  defp extract_required_status_checks(decoded) do
+    case get_in(decoded, ["required_status_checks", "contexts"]) do
+      contexts when is_list(contexts) ->
+        contexts
+        |> Enum.filter(&is_binary/1)
+        |> Enum.reject(&(&1 == ""))
+
+      _ ->
+        []
+    end
+  end
+
+  defp extract_required_min_approvals(decoded) do
+    case get_in(decoded, ["required_pull_request_reviews", "required_approving_review_count"]) do
+      value when is_integer(value) and value >= 0 -> value
+      _ -> 0
+    end
+  end
+
+  defp ensure_required_status_checks(required_checks, observed_checks) do
+    observed_set = MapSet.new(observed_checks)
+
+    missing =
+      Enum.reject(required_checks, fn check ->
+        MapSet.member?(observed_set, check)
+      end)
+
+    if missing == [] do
+      :ok
+    else
+      {:error,
+       "harness branch protection is missing required status checks: #{Enum.join(missing, ", ")}"}
+    end
+  end
+
+  defp ensure_required_min_approvals(required, observed) when observed >= required, do: :ok
+
+  defp ensure_required_min_approvals(required, observed) do
+    {:error,
+     "harness branch protection requires at least #{required} approving review(s); found #{observed}"}
+  end
+
+  defp write_branch_protection_evidence(path, evidence) do
+    path
+    |> Path.dirname()
+    |> File.mkdir_p()
+
+    body = Jason.encode_to_iodata!(evidence, pretty: true)
+
+    case File.write(path, body ++ "\n") do
+      :ok -> :ok
+      {:error, reason} -> {:error, "failed to write branch protection evidence: #{inspect(reason)}"}
+    end
   end
 
   defp write_record(record_path, record) do

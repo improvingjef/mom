@@ -7,5 +7,12 @@
   "baseline_diagnostics_path": "priv/replay/diagnostics_path.ex",
   "traceability_path": "acceptance/harness_traceability.json",
   "traceability_mapped_capability_count": 10,
+  "branch_protection_branch": "main",
+  "branch_protection_required_checks": [
+    "ci/exunit",
+    "ci/playwright"
+  ],
+  "branch_protection_min_approvals": 1,
+  "branch_protection_evidence_path": "acceptance/harness_branch_protection_evidence.json",
   "recorded_at": "2026-02-19T22:01:42.959142Z"
 }

@@ -1,19 +1,13 @@
-# Mom Remaining Plan (Harness-First)
-
-## Loop Guidance
-- The loop can reprioritize and add tasks as it discovers work.
-- Until ship, failure-server/harness reliability work takes precedence over net-new feature work.
+# Mom Remaining Plan (Failure Server First)
 
 ## Next 3 Tasks
-1. [x] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers).
- - Status: complete (February 19, 2026) via shared Playwright `mix_runner` lifecycle guard, pre/post leak checks, forced cleanup on detected lingering children, and ExUnit + Playwright lifecycle coverage.
-2. [x] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention.
- - Status: complete (February 19, 2026) via deterministic per-worker `MIX_BUILD_PATH` isolation in the Playwright acceptance runner, serialized execution toggle support (`MOM_ACCEPTANCE_SERIALIZED`/`MOM_ACCEPTANCE_BUILD_MODE=serialized`), and ExUnit + Playwright lifecycle coverage.
-3. [x] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy).
- - Status: complete (February 19, 2026) via stable multi-snapshot lingering-process detection, retry-budget/fail-on-flaky acceptance runner policy, deterministic attempt IDs with CI instrumentation reports, and ExUnit + Playwright coverage.
+1. [ ] Check in CI workflow manifests and required-check wiring for ExUnit + Playwright gates (including concurrency-report artifacts and fail-on-flaky enforcement) so branch protection can enforce reliability controls.
+2. [ ] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
+3. [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
 
-## Priority 0: Failure Harness and Acceptance Reliability
-- [ ] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
+## Priority 0: Failure Server and Acceptance Reliability
+- [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
+ - Status: complete (February 19, 2026) via `mix mom.harness` branch-protection policy verification (`required_checks` + minimum approvals), persisted branch-protection evidence output (`acceptance/harness_branch_protection_evidence.json` by default), and ExUnit + Playwright acceptance coverage.
 - [x] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
 - [x] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention under parallel Playwright execution.
 - [x] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
@@ -71,3 +65,5 @@
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
 - [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, KMS-backed key versioning, key rotation, optional BYOK support, and cryptographic deletion attestations).
 - [ ] Add automated fix-quality and safety gates (regression benchmark suite, semantic diff risk scoring, and mandatory human approval path for high-risk patches).
+- [ ] Add public launch-readiness controls (GA go/no-go checklist, rollback gate criteria, and launch-approver signoff evidence capture) to make release decisions auditable.
+- [ ] Add self-serve customer operations control plane (tenant admin for billing/contact/security settings, delegated admin roles, and audit-visible change history) to reduce enterprise onboarding/support friction.

@@ -6,6 +6,7 @@ defmodule Mom.HarnessRepoTest do
   test "confirm_and_record stores private harness repo metadata and baseline scenarios" do
     record_path = unique_record_path()
     traceability_path = unique_traceability_path()
+    evidence_path = unique_evidence_path()
 
     write_traceability!(
       traceability_path,
@@ -91,6 +92,10 @@ defmodule Mom.HarnessRepoTest do
 
       "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
         {:ok, ~s({"path":"ok"})}
+
+      "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+        {:ok,
+         ~s({"required_status_checks":{"contexts":["ci/exunit","ci/playwright"]},"required_pull_request_reviews":{"required_approving_review_count":1}})}
     end
 
     assert {:ok, record} =
@@ -99,7 +104,8 @@ defmodule Mom.HarnessRepoTest do
                recorded_at: "2026-02-19T00:00:00Z",
                baseline_error_path: "priv/replay/error_path.ex",
                baseline_diagnostics_path: "priv/replay/diagnostics_path.ex",
-               traceability_path: traceability_path
+               traceability_path: traceability_path,
+               branch_protection_evidence_path: evidence_path
              )
 
     assert record.name_with_owner == "acme/harness"
@@ -109,11 +115,26 @@ defmodule Mom.HarnessRepoTest do
     assert record.baseline_diagnostics_path == "priv/replay/diagnostics_path.ex"
     assert record.traceability_path == traceability_path
     assert record.traceability_mapped_capability_count == 10
+    assert record.branch_protection_branch == "main"
+    assert record.branch_protection_required_checks == ["ci/exunit", "ci/playwright"]
+    assert record.branch_protection_min_approvals == 1
+    assert record.branch_protection_evidence_path == evidence_path
     assert File.exists?(record_path)
+    assert File.exists?(evidence_path)
 
     assert {:ok, loaded} = HarnessRepo.load_record(record_path)
     assert loaded.name_with_owner == "acme/harness"
     assert loaded.traceability_mapped_capability_count == 10
+
+    {:ok, evidence_body} = File.read(evidence_path)
+    {:ok, evidence} = Jason.decode(evidence_body)
+    assert evidence["verified"] == true
+    assert evidence["repo"] == "acme/harness"
+    assert evidence["branch"] == "main"
+    assert evidence["required_checks"] == ["ci/exunit", "ci/playwright"]
+    assert evidence["observed_checks"] == ["ci/exunit", "ci/playwright"]
+    assert evidence["required_min_approvals"] == 1
+    assert evidence["observed_min_approvals"] == 1
   end
 
   test "confirm_and_record rejects non-private harness repo" do
@@ -191,6 +212,10 @@ defmodule Mom.HarnessRepoTest do
 
       "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
         {:ok, ~s({"path":"ok"})}
+
+      "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+        {:ok,
+         ~s({"required_status_checks":{"contexts":["ci/exunit","ci/playwright"]},"required_pull_request_reviews":{"required_approving_review_count":1}})}
     end
 
     assert {:error, reason} =
@@ -204,6 +229,75 @@ defmodule Mom.HarnessRepoTest do
     assert String.contains?(reason, "harness traceability matrix is missing capability mappings")
   end
 
+  test "confirm_and_record rejects missing required branch protection status checks" do
+    record_path = unique_record_path()
+    traceability_path = unique_traceability_path()
+
+    write_traceability!(traceability_path, full_traceability_entries())
+
+    fake_runner = fn
+      "gh",
+      ["repo", "view", "acme/harness", "--json", "nameWithOwner,isPrivate,url,visibility"] ->
+        {:ok,
+         ~s({"nameWithOwner":"acme/harness","isPrivate":true,"url":"https://github.com/acme/harness","visibility":"PRIVATE"})}
+
+      "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
+        {:ok, ~s({"path":"ok"})}
+
+      "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+        {:ok,
+         ~s({"required_status_checks":{"contexts":["ci/exunit"]},"required_pull_request_reviews":{"required_approving_review_count":1}})}
+    end
+
+    assert {:error, reason} =
+             HarnessRepo.confirm_and_record("acme/harness", record_path,
+               cmd_runner: fake_runner,
+               baseline_error_path: "priv/replay/error_path.ex",
+               baseline_diagnostics_path: "priv/replay/diagnostics_path.ex",
+               traceability_path: traceability_path
+             )
+
+    assert String.contains?(
+             reason,
+             "harness branch protection is missing required status checks: ci/playwright"
+           )
+  end
+
+  test "confirm_and_record rejects insufficient required branch protection approvals" do
+    record_path = unique_record_path()
+    traceability_path = unique_traceability_path()
+
+    write_traceability!(traceability_path, full_traceability_entries())
+
+    fake_runner = fn
+      "gh",
+      ["repo", "view", "acme/harness", "--json", "nameWithOwner,isPrivate,url,visibility"] ->
+        {:ok,
+         ~s({"nameWithOwner":"acme/harness","isPrivate":true,"url":"https://github.com/acme/harness","visibility":"PRIVATE"})}
+
+      "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
+        {:ok, ~s({"path":"ok"})}
+
+      "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+        {:ok,
+         ~s({"required_status_checks":{"contexts":["ci/exunit","ci/playwright"]},"required_pull_request_reviews":{"required_approving_review_count":0}})}
+    end
+
+    assert {:error, reason} =
+             HarnessRepo.confirm_and_record("acme/harness", record_path,
+               cmd_runner: fake_runner,
+               baseline_error_path: "priv/replay/error_path.ex",
+               baseline_diagnostics_path: "priv/replay/diagnostics_path.ex",
+               traceability_path: traceability_path,
+               min_approvals: 1
+             )
+
+    assert String.contains?(
+             reason,
+             "harness branch protection requires at least 1 approving review(s); found 0"
+           )
+  end
+
   defp unique_record_path do
     Path.join(System.tmp_dir!(), "mom-harness-record-#{System.unique_integer([:positive])}.json")
   end
@@ -215,8 +309,90 @@ defmodule Mom.HarnessRepoTest do
     )
   end
 
+  defp unique_evidence_path do
+    Path.join(
+      System.tmp_dir!(),
+      "mom-harness-branch-protection-evidence-#{System.unique_integer([:positive])}.json"
+    )
+  end
+
   defp write_traceability!(path, entries) do
     payload = %{"capabilities" => entries}
     File.write!(path, Jason.encode!(payload, pretty: true))
+  end
+
+  defp full_traceability_entries do
+    [
+      %{
+        "capability_id" => "pipeline_concurrency",
+        "capability_name" => "Concurrent pipeline dispatch",
+        "scenario_path" => "priv/replay/concurrency/pipeline_concurrency.exs",
+        "playwright_spec_path" => "playwright/tests/pipeline_concurrency.spec.ts",
+        "mode" => "burst"
+      },
+      %{
+        "capability_id" => "job_timeout_cancellation",
+        "capability_name" => "Timed out jobs release capacity",
+        "scenario_path" => "priv/replay/concurrency/job_timeout_cancellation.exs",
+        "playwright_spec_path" => "playwright/tests/job_timeout_cancellation.spec.ts",
+        "mode" => "burst"
+      },
+      %{
+        "capability_id" => "inflight_signature_dedupe",
+        "capability_name" => "In-flight signature dedupe",
+        "scenario_path" => "priv/replay/concurrency/inflight_signature_dedupe.exs",
+        "playwright_spec_path" => "playwright/tests/inflight_signature_dedupe.spec.ts",
+        "mode" => "burst"
+      },
+      %{
+        "capability_id" => "pipeline_telemetry_visibility",
+        "capability_name" => "Pipeline telemetry visibility",
+        "scenario_path" => "priv/replay/observability/pipeline_telemetry_visibility.exs",
+        "playwright_spec_path" => "playwright/tests/pipeline_telemetry_visibility.spec.ts",
+        "mode" => "baseline"
+      },
+      %{
+        "capability_id" => "durable_queue_replay",
+        "capability_name" => "Durable queue replay on restart",
+        "scenario_path" => "priv/replay/reliability/durable_queue_replay.exs",
+        "playwright_spec_path" => "playwright/tests/durable_queue_replay.spec.ts",
+        "mode" => "burst"
+      },
+      %{
+        "capability_id" => "multi_tenant_fairness",
+        "capability_name" => "Multi-tenant fair scheduling",
+        "scenario_path" => "priv/replay/multi_tenant/fair_scheduler.exs",
+        "playwright_spec_path" => "playwright/tests/multi_tenant_fairness.spec.ts",
+        "mode" => "burst"
+      },
+      %{
+        "capability_id" => "security_allowlist_enforcement",
+        "capability_name" => "Repo allowlist enforcement",
+        "scenario_path" => "priv/replay/security/allowlist_enforcement.exs",
+        "playwright_spec_path" => "playwright/tests/security_allowlist_enforcement.spec.ts",
+        "mode" => "baseline"
+      },
+      %{
+        "capability_id" => "machine_identity_enforcement",
+        "capability_name" => "Machine identity enforcement",
+        "scenario_path" => "priv/replay/security/machine_identity_enforcement.exs",
+        "playwright_spec_path" => "playwright/tests/machine_identity_enforcement.spec.ts",
+        "mode" => "baseline"
+      },
+      %{
+        "capability_id" => "egress_policy_fail_closed",
+        "capability_name" => "Egress policy fail-closed",
+        "scenario_path" => "priv/replay/security/egress_policy_fail_closed.exs",
+        "playwright_spec_path" => "playwright/tests/egress_policy_fail_closed.spec.ts",
+        "mode" => "baseline"
+      },
+      %{
+        "capability_id" => "observability_slo_alerts",
+        "capability_name" => "SLO alerts and metrics export",
+        "scenario_path" => "priv/replay/observability/observability_slo_alerts.exs",
+        "playwright_spec_path" => "playwright/tests/observability_slo_alerts.spec.ts",
+        "mode" => "baseline"
+      }
+    ]
   end
 end
