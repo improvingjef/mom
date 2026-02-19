@@ -31,6 +31,7 @@ defmodule Mom.Config do
     :job_timeout_ms,
     :overflow_policy,
     :allowed_github_repos,
+    :allowed_actor_ids,
     :branch_name_prefix,
     :min_level,
     :dry_run,
@@ -70,6 +71,7 @@ defmodule Mom.Config do
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           allowed_github_repos: [String.t()],
+          allowed_actor_ids: [String.t()],
           branch_name_prefix: String.t(),
           min_level: :error | :warning | :info,
           dry_run: boolean(),
@@ -94,15 +96,20 @@ defmodule Mom.Config do
         {:error, "repo is required"}
 
       true ->
+        github_token = Keyword.get(opts, :github_token) || runtime[:github_token]
+        actor_id = parse_actor_id(opts, runtime)
+
         with {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
+             {:ok, allowed_actor_ids} <- parse_allowed_actor_ids(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
+             :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              {:ok, github_repo} <-
                parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
           {:ok,
@@ -147,14 +154,15 @@ defmodule Mom.Config do
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
              allowed_github_repos: allowed_github_repos,
+             allowed_actor_ids: allowed_actor_ids,
              branch_name_prefix: branch_name_prefix,
              min_level: Keyword.get(opts, :min_level, :error),
              dry_run: Keyword.get(opts, :dry_run, false),
-             github_token: Keyword.get(opts, :github_token) || runtime[:github_token],
+             github_token: github_token,
              github_repo: github_repo,
              github_base_branch: github_base_branch,
              protected_branches: protected_branches,
-             actor_id: parse_actor_id(opts, runtime),
+             actor_id: actor_id,
              workdir: Keyword.get(opts, :workdir)
            }}
         end
@@ -203,6 +211,11 @@ defmodule Mom.Config do
 
   defp parse_allowed_github_repos(opts, runtime) do
     value = Keyword.get(opts, :allowed_github_repos, runtime[:allowed_github_repos])
+    {:ok, normalize_allowed_repos(value)}
+  end
+
+  defp parse_allowed_actor_ids(opts, runtime) do
+    value = Keyword.get(opts, :allowed_actor_ids, runtime[:allowed_actor_ids])
     {:ok, normalize_allowed_repos(value)}
   end
 
@@ -339,6 +352,22 @@ defmodule Mom.Config do
       nil -> "mom"
       actor when is_binary(actor) -> String.trim(actor)
       actor -> to_string(actor) |> String.trim()
+    end
+  end
+
+  defp validate_actor_identity(actor_id, github_token, allowed_actor_ids) do
+    cond do
+      actor_id == "" ->
+        {:error, "actor_id must not be empty"}
+
+      is_binary(github_token) and String.trim(github_token) != "" and allowed_actor_ids == [] ->
+        {:error, "allowed_actor_ids must be set when github_token is configured"}
+
+      allowed_actor_ids != [] and actor_id not in allowed_actor_ids ->
+        {:error, "actor_id is not allowed"}
+
+      true ->
+        :ok
     end
   end
 end

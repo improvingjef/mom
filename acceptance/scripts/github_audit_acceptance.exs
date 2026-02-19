@@ -28,7 +28,8 @@ defmodule Mom.Acceptance.GitHubAuditScript do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user"
+        actor_id: "machine-user",
+        allowed_actor_ids: ["machine-user"]
       )
 
     events = capture_events(fn ->

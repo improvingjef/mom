@@ -213,6 +213,7 @@ Out of scope (for this phase):
 - Integration burst coverage for mixed diagnostics + error events is implemented with ExUnit + Playwright acceptance tests, including failure-isolation assertions under bounded concurrency.
 - Codex execution profile defaults to `codex --yolo exec` (with override support), covered by ExUnit + Playwright acceptance tests.
 - PR-only workflow enforcement for protected base branches is implemented (merge attempts are blocked for protected branches), covered by ExUnit + Playwright acceptance tests.
+- Least-privilege credential identity enforcement is implemented via actor allowlist controls for GitHub-token flows, covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -348,7 +349,7 @@ Out of scope (for this phase):
 ### Test Execution Profile (Current)
 - [x] Run analysis/fix flow with `codex --yolo exec`.
 - [x] Enforce PR-only workflow to protected branches.
-- [ ] Use least-privilege credential identity only.
+- [x] Use least-privilege credential identity only.
 - [x] Validate burst scenario remains stable under bounded concurrency.
 
 ### Security Baseline
@@ -396,6 +397,7 @@ Out of scope (for this phase):
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add finance and tax operations readiness (sales tax/VAT handling, invoice delivery/collections workflow, and revenue-recognition reporting exports).
+- [ ] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
 - [ ] Add end-to-end trace correlation IDs linking pipeline jobs, Codex invocations, and Git/GitHub mutations for auditability and support forensics.
 - [ ] Add control-plane high-availability targets and validation (RPO/RTO objectives, automated failover, and recurring recovery drills).
 - [ ] Add customer trust portal capabilities (tenant-visible uptime/incidents, audit export self-service, and maintenance notification workflows).

@@ -42,6 +42,8 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "--protected-branches",
           "main,release",
           "--actor-id",
+          "machine-user",
+          "--allowed-actor-ids",
           "machine-user"
         ])
 
@@ -57,6 +59,8 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "--protected-branches",
           "main,release",
           "--actor-id",
+          "machine-user",
+          "--allowed-actor-ids",
           "machine-user"
         ])
 

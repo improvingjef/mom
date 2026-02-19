@@ -138,6 +138,36 @@ defmodule Mom.ConfigTest do
     assert config.actor_id == "machine-user"
   end
 
+  test "requires actor allowlist when github token is configured" do
+    assert {:error, "allowed_actor_ids must be set when github_token is configured"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "machine-user"
+             )
+  end
+
+  test "enforces actor allowlist when configured" do
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "mom-bot",
+               allowed_actor_ids: ["mom-bot", "mom-staging"]
+             )
+
+    assert config.actor_id == "mom-bot"
+    assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
+
+    assert {:error, "actor_id is not allowed"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "personal-user",
+               allowed_actor_ids: ["mom-bot", "mom-staging"]
+             )
+  end
+
   test "defaults to protected main branch with PR-only enforcement target" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert config.github_base_branch == "main"

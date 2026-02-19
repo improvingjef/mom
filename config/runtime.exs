@@ -17,5 +17,6 @@ if config_env() in [:dev, :prod] do
     job_timeout_ms: System.get_env("MOM_JOB_TIMEOUT_MS"),
     overflow_policy: System.get_env("MOM_OVERFLOW_POLICY"),
     allowed_github_repos: System.get_env("MOM_ALLOWED_GITHUB_REPOS"),
+    allowed_actor_ids: System.get_env("MOM_ALLOWED_ACTOR_IDS"),
     redact_keys: System.get_env("MOM_REDACT_KEYS")
 end

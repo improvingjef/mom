@@ -44,7 +44,8 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user"
+        actor_id: "machine-user",
+        allowed_actor_ids: ["machine-user"]
       )
 
     telemetry_handler = "github-audit-issue-#{System.unique_integer([:positive])}"
@@ -84,6 +85,7 @@ defmodule Mom.GitHubAuditTest do
         github_repo: "acme/mom",
         github_token: "token",
         actor_id: "machine-user",
+        allowed_actor_ids: ["machine-user"],
         github_base_branch: "release",
         protected_branches: ["main"]
       )
@@ -130,6 +132,7 @@ defmodule Mom.GitHubAuditTest do
         github_repo: "acme/mom",
         github_token: "token",
         actor_id: "machine-user",
+        allowed_actor_ids: ["machine-user"],
         github_base_branch: "main",
         protected_branches: ["main", "release"]
       )

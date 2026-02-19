@@ -259,6 +259,33 @@ test("mom CLI applies branch naming policy to generated branches", async () => {
   ]);
 });
 
+test("mom CLI enforces machine actor allowlist for GitHub credentials", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.allowed_actor_id).toBe("mom-bot");
+  expect(result.allowed_actor_ids).toEqual(["mom-bot", "mom-staging"]);
+  expect(result.blocked_result).toEqual(["error", "actor_id is not allowed"]);
+  expect(result.missing_allowlist_result).toEqual([
+    "error",
+    "allowed_actor_ids must be set when github_token is configured"
+  ]);
+});
+
 test("mom enforces PR-only workflow for protected branches", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(
