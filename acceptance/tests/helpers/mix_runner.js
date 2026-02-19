@@ -2,6 +2,7 @@ const { execFileSync } = require("node:child_process");
 const path = require("node:path");
 
 const MIX_RUN_ACCEPTANCE_PATTERN = /\bmix\b.*\brun\b.*acceptance\/scripts\//;
+const TRUTHY_VALUES = new Set(["1", "true", "yes", "on"]);
 
 function parseProcessRow(line) {
   const trimmed = line.trim();
@@ -159,6 +160,58 @@ function parseResultJson(output, scriptPath) {
   return JSON.parse(marker.replace("RESULT_JSON:", ""));
 }
 
+function asTruthyFlag(value) {
+  if (typeof value !== "string") {
+    return false;
+  }
+
+  return TRUTHY_VALUES.has(value.trim().toLowerCase());
+}
+
+function resolveBuildIsolationMode(env = process.env) {
+  if (asTruthyFlag(env.MOM_ACCEPTANCE_SERIALIZED)) {
+    return "serialized";
+  }
+
+  const requestedMode = (env.MOM_ACCEPTANCE_BUILD_MODE || "").trim().toLowerCase();
+  if (requestedMode === "serialized") {
+    return "serialized";
+  }
+
+  return "worker-isolated";
+}
+
+function sanitizeSegment(value) {
+  return (value || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_") || "default";
+}
+
+function resolveBuildArtifactPath({
+  env = process.env,
+  workerIndex = env.TEST_WORKER_INDEX || "0",
+  parentPid = process.ppid || process.pid
+} = {}) {
+  const mode = resolveBuildIsolationMode(env);
+  const runId = sanitizeSegment(env.MOM_ACCEPTANCE_RUN_ID || `pw${parentPid}`);
+
+  if (mode === "serialized") {
+    return `_build_acceptance_serialized_${runId}`;
+  }
+
+  const worker = sanitizeSegment(String(workerIndex));
+  return `_build_acceptance_worker_${runId}_${worker}`;
+}
+
+function withBuildIsolationEnv(baseEnv, options = {}) {
+  if (baseEnv.MIX_BUILD_PATH) {
+    return baseEnv;
+  }
+
+  return {
+    ...baseEnv,
+    MIX_BUILD_PATH: resolveBuildArtifactPath(options)
+  };
+}
+
 function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {} } = {}) {
   const repoRoot = path.resolve(__dirname, "..", "..", "..");
 
@@ -167,9 +220,11 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {} } = {})
   let output;
 
   try {
+    const baseEnv = { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28", ...env };
+
     output = execFileSync("mix", ["run", scriptPath], {
       cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28", ...env },
+      env: withBuildIsolationEnv(baseEnv),
       timeout: timeoutMs,
       killSignal: "SIGKILL"
     }).toString();
@@ -191,6 +246,9 @@ module.exports = {
     descendantPids,
     findLingeringMixRunChildren,
     cleanupLingeringMixRunChildren,
-    parseResultJson
+    parseResultJson,
+    resolveBuildIsolationMode,
+    resolveBuildArtifactPath,
+    withBuildIsolationEnv
   }
 };

@@ -37,4 +37,19 @@ defmodule Mom.AcceptanceLifecycleTest do
 
     assert Enum.map(AcceptanceLifecycle.descendants(rows, 10), & &1.pid) == [11, 12]
   end
+
+  test "defaults build artifact mode to worker-isolated and honors serialized env flags" do
+    assert :worker_isolated == AcceptanceLifecycle.build_artifact_mode(%{})
+    assert :serialized == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_BUILD_MODE" => "serialized"})
+    assert :serialized == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_SERIALIZED" => "true"})
+    assert :worker_isolated == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_BUILD_MODE" => "unknown"})
+  end
+
+  test "builds deterministic sanitized build artifact paths" do
+    assert "_build_acceptance_worker_ci-run_42_3" ==
+             AcceptanceLifecycle.build_artifact_path(:worker_isolated, "ci-run#42", 3)
+
+    assert "_build_acceptance_serialized_ci_run_42" ==
+             AcceptanceLifecycle.build_artifact_path(:serialized, "ci run 42", 9)
+  end
 end
