@@ -79,3 +79,25 @@ test("mom CLI parses pipeline concurrency flags", async () => {
   expect(result.job_timeout_ms).toBe(15000);
   expect(result.overflow_policy).toBe("drop_oldest");
 });
+
+test("runner routes logs and diagnostics through pipeline workers", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/runner_pipeline_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.saw_error_event).toBeTruthy();
+  expect(result.saw_diagnostics_event).toBeTruthy();
+});

@@ -192,6 +192,10 @@ Out of scope (for this phase):
 - Implement worker supervision and job lifecycle handling.
 - Wire `Mom.Runner` to enqueue events instead of direct engine call.
 
+### Progress Update (February 19, 2026)
+- Step 2 complete: concurrency config/flags and validation are implemented and covered by ExUnit + acceptance tests.
+- Step 3 complete: `Mom.Runner` now routes error and diagnostics work through `Mom.Pipeline`, with worker-based engine execution and acceptance coverage.
+
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
 - Ensure cleanup on both success and failure.
@@ -218,6 +222,32 @@ Out of scope (for this phase):
 8. Readiness Gate for E2E Harness
 - Proceed to Phoenix + Playwright harness only after criteria are met.
 - Security checklist above must pass before enabling automated PR creation.
+
+## Commercial Availability Backlog (New)
+
+9. Multi-tenant and Access Control Foundations
+- Add tenant/project scoping for repos, credentials, limits, and audit history.
+- Introduce operator authn/authz (role-based controls for run/approve/merge operations).
+
+10. Durable State + Recovery
+- Persist queue/job state and retry metadata across process restarts.
+- Add restart/replay semantics so in-flight work can resume safely after crashes.
+
+11. Production Observability + Alerting
+- Export metrics for queue depth, worker saturation, drop rates, and job latency.
+- Add alert rules and runbooks for saturation, auth failures, and repeated job failures.
+
+12. Reliability Controls for LLM/Git Operations
+- Add explicit retry/backoff/circuit-breaker policies per external dependency.
+- Add idempotency keys for issue/PR creation to prevent duplicate mutations.
+
+13. Compliance and Governance
+- Add immutable audit log sinks and retention controls.
+- Add policy checks for approved repo targets, branch naming, and restricted operations.
+
+14. Packaging and Operability
+- Ship a container image + deployment manifests for at least one production target (Kubernetes or systemd).
+- Add operator docs: install, upgrade, rollback, incident handling, and credential rotation.
 
 ## Risks and Mitigations
 - Risk: parallel LLM/test/git operations overload local machine
