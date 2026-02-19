@@ -447,7 +447,8 @@ Out of scope (for this phase):
  - Status: complete (February 19, 2026) via `tenant_queue_max_size`, tenant-scoped dedupe keys, and fair tenant dispatch in `Mom.Pipeline` with ExUnit + Playwright acceptance coverage.
 - [x] Add cost controls and spend caps for LLM/token/test execution per repository.
  - Status: complete (February 19, 2026) via per-repo LLM cost/token caps and test-execution spend caps, with ExUnit + Playwright acceptance coverage.
-- [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
+- [x] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
+ - Status: complete (February 19, 2026) via `audit_retention_days`, `soc2_evidence_path`, and `pii_handling_policy` controls with ExUnit + Playwright acceptance coverage.
 - [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
 - [ ] Add customer billing and entitlement enforcement (seat/repo plans, plan limits, overage policy, grace behavior, downgrade flow).
 - [ ] Define 24x7 support and incident operations model (on-call rotations, incident response SLAs, escalation policy, status communication).
@@ -493,3 +494,4 @@ Out of scope (for this phase):
 - [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
 - [ ] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention under parallel Playwright execution.
 - [ ] Remove deprecated ExUnit property registration usage (`ExUnit.Case.register_test/4`) to keep CI/test tooling forward-compatible with upcoming Elixir releases.
+- [ ] Add scalable SOC2 evidence sink lifecycle controls (append-only writer, scheduled compaction, and file-locking strategy) to prevent audit-write contention and unbounded rewrite overhead under sustained production event rates.

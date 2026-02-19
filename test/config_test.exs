@@ -36,6 +36,9 @@ defmodule Mom.ConfigTest do
     assert config.llm_tokens_per_call_estimate == 0
     assert config.test_spend_cap_cents_per_hour == nil
     assert config.test_run_cost_cents == 0
+    assert config.audit_retention_days == 30
+    assert config.soc2_evidence_path == nil
+    assert config.pii_handling_policy == :redact
   end
 
   test "parses redact keys from comma-separated string" do
@@ -276,7 +279,10 @@ defmodule Mom.ConfigTest do
         tenant_queue_max_size: 120,
         job_timeout_ms: 9_000,
         overflow_policy: :drop_oldest,
-        durable_queue_path: "/tmp/mom/queue.bin"
+        durable_queue_path: "/tmp/mom/queue.bin",
+        audit_retention_days: 45,
+        soc2_evidence_path: "/tmp/mom/evidence.jsonl",
+        pii_handling_policy: :drop
       )
 
     assert config.max_concurrency == 8
@@ -285,6 +291,9 @@ defmodule Mom.ConfigTest do
     assert config.job_timeout_ms == 9_000
     assert config.overflow_policy == :drop_oldest
     assert config.durable_queue_path == "/tmp/mom/queue.bin"
+    assert config.audit_retention_days == 45
+    assert config.soc2_evidence_path == "/tmp/mom/evidence.jsonl"
+    assert config.pii_handling_policy == :drop
   end
 
   test "parses spend control values from opts" do
@@ -325,6 +334,15 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "durable_queue_path must be nil or a non-empty string"} =
              Config.from_opts(repo: "/tmp/repo", durable_queue_path: "")
+
+    assert {:error, "audit_retention_days must be a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", audit_retention_days: 0)
+
+    assert {:error, "soc2_evidence_path must be nil or a non-empty string"} =
+             Config.from_opts(repo: "/tmp/repo", soc2_evidence_path: "")
+
+    assert {:error, "pii_handling_policy must be :redact or :drop"} =
+             Config.from_opts(repo: "/tmp/repo", pii_handling_policy: :mask)
   end
 
   test "validates spend control values" do

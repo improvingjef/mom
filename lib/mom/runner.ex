@@ -37,6 +37,7 @@ defmodule Mom.Runner do
 
   defp do_start(%Config{} = config, pipeline, beam_module, diagnostics_module, pipeline_module) do
     maybe_set_git_ssh_command(config)
+    maybe_set_audit_compliance_runtime(config)
     _ = Mom.RateLimiter.ensure_table()
 
     pid =
@@ -59,6 +60,13 @@ defmodule Mom.Runner do
     if is_binary(config.git_ssh_command) do
       System.put_env("GIT_SSH_COMMAND", config.git_ssh_command)
     end
+  end
+
+  defp maybe_set_audit_compliance_runtime(%Config{} = config) do
+    Application.put_env(:mom, :redact_keys, config.redact_keys)
+    Application.put_env(:mom, :audit_retention_days, config.audit_retention_days)
+    Application.put_env(:mom, :soc2_evidence_path, config.soc2_evidence_path)
+    Application.put_env(:mom, :pii_handling_policy, config.pii_handling_policy)
   end
 
   defp loop(%Config{} = config, state) do

@@ -45,6 +45,9 @@ defmodule Mom.Config do
     :job_timeout_ms,
     :overflow_policy,
     :durable_queue_path,
+    :audit_retention_days,
+    :soc2_evidence_path,
+    :pii_handling_policy,
     :observability_backend,
     :observability_export_path,
     :observability_export_interval_ms,
@@ -112,6 +115,9 @@ defmodule Mom.Config do
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           durable_queue_path: String.t() | nil,
+          audit_retention_days: pos_integer(),
+          soc2_evidence_path: String.t() | nil,
+          pii_handling_policy: :redact | :drop,
           observability_backend: :none | :prometheus,
           observability_export_path: String.t() | nil,
           observability_export_interval_ms: pos_integer(),
@@ -176,6 +182,9 @@ defmodule Mom.Config do
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
+             {:ok, audit_retention_days} <- parse_pos_int(opts, runtime, :audit_retention_days, 30),
+             {:ok, soc2_evidence_path} <- parse_soc2_evidence_path(opts, runtime),
+             {:ok, pii_handling_policy} <- parse_pii_handling_policy(opts, runtime),
              {:ok, observability_backend} <- parse_observability_backend(opts, runtime),
              {:ok, observability_export_path} <-
                parse_observability_export_path(opts, runtime, observability_backend),
@@ -294,6 +303,9 @@ defmodule Mom.Config do
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
              durable_queue_path: durable_queue_path,
+             audit_retention_days: audit_retention_days,
+             soc2_evidence_path: soc2_evidence_path,
+             pii_handling_policy: pii_handling_policy,
              observability_backend: observability_backend,
              observability_export_path: observability_export_path,
              observability_export_interval_ms: observability_export_interval_ms,
@@ -715,6 +727,34 @@ defmodule Mom.Config do
 
       _other ->
         {:error, "durable_queue_path must be nil or a non-empty string"}
+    end
+  end
+
+  defp parse_soc2_evidence_path(opts, runtime) do
+    case Keyword.get(opts, :soc2_evidence_path, runtime[:soc2_evidence_path]) do
+      nil ->
+        {:ok, nil}
+
+      path when is_binary(path) ->
+        trimmed = String.trim(path)
+
+        if trimmed == "",
+          do: {:error, "soc2_evidence_path must be nil or a non-empty string"},
+          else: {:ok, trimmed}
+
+      _other ->
+        {:error, "soc2_evidence_path must be nil or a non-empty string"}
+    end
+  end
+
+  defp parse_pii_handling_policy(opts, runtime) do
+    case Keyword.get(opts, :pii_handling_policy, runtime[:pii_handling_policy]) do
+      nil -> {:ok, :redact}
+      :redact -> {:ok, :redact}
+      :drop -> {:ok, :drop}
+      "redact" -> {:ok, :redact}
+      "drop" -> {:ok, :drop}
+      _other -> {:error, "pii_handling_policy must be :redact or :drop"}
     end
   end
 
