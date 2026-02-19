@@ -331,6 +331,19 @@ test("mom CLI verifies required GitHub credential scopes at startup", async () =
   expect(result.parsed_scopes).toEqual(["contents", "pull_requests", "issues"]);
 });
 
+test("mom CLI verifies live GitHub permission evidence and blocks insufficient permissions", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs"
+  );
+
+  expect(result.blocked_result).toEqual([
+    "error",
+    "github credential permissions must include live evidence for: contents, pull_requests, issues"
+  ]);
+  expect(result.passing_result.actor_id).toBe("mom-app[bot]");
+  expect(result.passing_result.github_repo).toBe("acme/mom");
+});
+
 test("mom CLI requires readiness gate approval before enabling automated PR creation", async () => {
   const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_readiness_gate_acceptance.exs");
 

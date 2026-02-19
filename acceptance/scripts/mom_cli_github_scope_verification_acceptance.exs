@@ -6,32 +6,41 @@ defmodule Mom.Acceptance.MomCliGitHubScopeVerificationScript do
     missing_scopes_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
+        "--github-repo",
+        "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
-        "mom-app[bot]"
+        "mom-app[bot]",
+        "--readiness-gate-approved"
       ])
 
     insufficient_scopes_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
+        "--github-repo",
+        "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
         "mom-app[bot]",
         "--github-credential-scopes",
-        "contents,issues"
+        "contents,issues",
+        "--readiness-gate-approved"
       ])
 
     passing_result =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
+        "--github-repo",
+        "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
         "mom-app[bot]",
         "--github-credential-scopes",
-        "contents,pull_requests,issues"
+        "contents,pull_requests,issues",
+        "--readiness-gate-approved"
       ])
 
     result = %{

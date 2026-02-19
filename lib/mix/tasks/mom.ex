@@ -55,6 +55,10 @@ defmodule Mix.Tasks.Mom do
       Keyword.has_key?(opts, :llm_api_key) ->
         {:error, "llm_api_key must be provided via MOM_LLM_API_KEY environment variable"}
 
+      Keyword.has_key?(opts, :startup_attestation_signing_key) ->
+        {:error,
+         "startup_attestation_signing_key must be provided via MOM_STARTUP_ATTESTATION_SIGNING_KEY environment variable"}
+
       true ->
         :ok
     end
@@ -130,6 +134,8 @@ defmodule Mix.Tasks.Mom do
       llm_api_key: :string,
       llm_api_url: :string,
       llm_model: :string,
+      github_live_permission_verification: :boolean,
+      startup_attestation_signing_key: :string,
       triage_on_diagnostics: :boolean,
       triage_mode: :string,
       diag_run_queue_mult: :integer,

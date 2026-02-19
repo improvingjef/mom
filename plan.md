@@ -1,12 +1,10 @@
 # Mom Remaining Plan (Failure Server First)
 
 ## Next 3 Tasks
-1. [x] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
- - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
-2. [x] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
- - Status: complete (February 19, 2026) via startup pruning in `Mom.Config` using retention + keep-latest policy controls, `Mom.AcceptanceLifecycle` stale-artifact pruning for `_build_runner_burst_*`/worker-scoped build dirs, and ExUnit + Playwright acceptance coverage.
-3. [x] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
- - Status: complete (February 19, 2026) via startup fail-fast Elixir runtime validation in `Mom.Config` (stable `1.19.x` enforcement + RC rejection, with env/opts overrides for deterministic gating), and ExUnit + Playwright acceptance coverage for blocked and passing paths.
+1. [x] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
+ - Status: complete (February 19, 2026) via live GitHub permission evidence verification in `Mom.GitHubCredentialEvidence` (`x-oauth-scopes` PAT introspection + `/repos/{repo}/installation` permission checks), fail-closed startup gating with HMAC-signed attestation audit events in `Mom.Config`, and ExUnit + Playwright acceptance coverage.
+2. [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
+3. [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 
 ## Priority 0: Failure Server and Acceptance Reliability
 - [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
@@ -32,7 +30,8 @@
  - Status: complete (February 19, 2026) via `mix mom.runbook` generator/validator, committed `docs/disaster_recovery_runbook.md`, and ExUnit + Playwright acceptance coverage.
 - [x] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
  - Status: complete (February 19, 2026) via fail-closed startup scope validation in `Mom.Config` (`github_credential_scopes` + `MOM_GITHUB_CREDENTIAL_SCOPES`), blocked-start audit evidence (`github_credential_scope_blocked`), `mix mom` CLI scope wiring, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
-- [ ] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
+- [x] Add live GitHub credential permission evidence collection (App installation permissions + PAT scope introspection) with signed startup attestation to replace operator-declared scope inputs before GA.
+ - Status: complete (February 19, 2026) via `Mom.GitHubCredentialEvidence` PAT scope introspection (`x-oauth-scopes`) + installation permission evidence (`/repos/{repo}/installation`), HMAC-signed startup attestation audit events (`github_credential_permission_attested` / `github_credential_permission_blocked`), and ExUnit + Playwright acceptance coverage.
 - [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.
@@ -54,6 +53,8 @@
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add enterprise procurement security review workflow (security questionnaire automation, evidence bundle generation, and renewal tracking).
 - [ ] Add software supply-chain trust controls (release artifact signing, provenance attestations/SLSA, and verification gates for customer deployments).
+- [ ] Add startup attestation signing-key rotation controls (dual-key overlap window, key-id governance, and forced re-attestation rollout) to support enterprise cryptographic hygiene.
+- [ ] Add customer-verifiable attestation export and verification tooling (signed startup proof bundle + offline verifier) to reduce security-review friction during enterprise procurement.
 
 ## Priority 3: Multi-Tenant Production Controls and Observability
 - [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.

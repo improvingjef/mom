@@ -2,6 +2,7 @@ defmodule Mom.Config do
   @moduledoc false
 
   alias Mom.{AcceptanceLifecycle, Audit}
+  alias Mom.GitHubCredentialEvidence
 
   require Logger
 
@@ -92,6 +93,7 @@ defmodule Mom.Config do
     :dry_run,
     :github_token,
     :github_credential_scopes,
+    :github_live_permission_verification,
     :github_repo,
     :github_base_branch,
     :protected_branches,
@@ -164,6 +166,7 @@ defmodule Mom.Config do
           dry_run: boolean(),
           github_token: String.t() | nil,
           github_credential_scopes: [String.t()],
+          github_live_permission_verification: boolean(),
           github_repo: String.t() | nil,
           github_base_branch: String.t(),
           protected_branches: [String.t()],
@@ -187,6 +190,15 @@ defmodule Mom.Config do
       true ->
         github_token = secret_from_opts_or_env(opts, runtime, :github_token, "MOM_GITHUB_TOKEN")
         llm_api_key = secret_from_opts_or_env(opts, runtime, :llm_api_key, "MOM_LLM_API_KEY")
+
+        startup_attestation_signing_key =
+          secret_from_opts_or_env(
+            opts,
+            runtime,
+            :startup_attestation_signing_key,
+            "MOM_STARTUP_ATTESTATION_SIGNING_KEY"
+          )
+
         actor_id = parse_actor_id(opts, runtime)
 
         with :ok <- validate_toolchain_prerequisites(opts, runtime),
@@ -262,6 +274,8 @@ defmodule Mom.Config do
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
              {:ok, allowed_egress_hosts} <- parse_allowed_egress_hosts(opts, runtime),
              {:ok, github_credential_scopes} <- parse_github_credential_scopes(opts, runtime),
+             {:ok, github_live_permission_verification} <-
+               parse_github_live_permission_verification(opts, runtime),
              :ok <-
                validate_required_egress_hosts(llm_provider, llm_api_url, allowed_egress_hosts),
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
@@ -288,13 +302,16 @@ defmodule Mom.Config do
                ),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              :ok <-
-               validate_github_credential_scopes(
+               validate_github_credential_permissions(
                  github_token,
                  github_credential_scopes,
+                 github_live_permission_verification,
+                 startup_attestation_signing_key,
                  open_pr,
                  merge_pr,
                  actor_id,
-                 Keyword.get(opts, :github_repo) || runtime[:github_repo]
+                 Keyword.get(opts, :github_repo) || runtime[:github_repo],
+                 allowed_egress_hosts
                ),
              :ok <-
                validate_automated_pr_readiness(
@@ -387,6 +404,7 @@ defmodule Mom.Config do
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: github_token,
              github_credential_scopes: github_credential_scopes,
+             github_live_permission_verification: github_live_permission_verification,
              github_repo: github_repo,
              github_base_branch: github_base_branch,
              protected_branches: protected_branches,
@@ -724,6 +742,16 @@ defmodule Mom.Config do
       |> Enum.uniq()
 
     {:ok, scopes}
+  end
+
+  defp parse_github_live_permission_verification(opts, runtime) do
+    parse_boolean_opt(
+      opts,
+      runtime,
+      :github_live_permission_verification,
+      false,
+      "github_live_permission_verification must be a boolean"
+    )
   end
 
   defp normalize_allowed_repos(nil), do: []
@@ -1277,33 +1305,83 @@ defmodule Mom.Config do
 
   defp machine_actor_identity?(_), do: false
 
-  defp validate_github_credential_scopes(
+  defp validate_github_credential_permissions(
          github_token,
          scopes,
+         github_live_permission_verification,
+         startup_attestation_signing_key,
          open_pr,
          merge_pr,
          actor_id,
-         github_repo
+         github_repo,
+         allowed_egress_hosts
        ) do
-    if token_present?(github_token) and (open_pr or merge_pr) do
-      missing_scopes = @required_github_credential_scopes -- scopes
-
-      if missing_scopes == [] do
-        :ok
+    if token_present?(github_token) and value_present?(github_repo) and (open_pr or merge_pr) do
+      if github_live_permission_verification or token_present?(startup_attestation_signing_key) do
+        verify_live_github_permissions(
+          github_token,
+          github_repo,
+          actor_id,
+          startup_attestation_signing_key,
+          allowed_egress_hosts
+        )
       else
-        :ok =
-          Audit.emit(:github_credential_scope_blocked, %{
-            repo: github_repo,
-            actor_id: actor_id,
-            required_scopes: @required_github_credential_scopes,
-            provided_scopes: scopes,
-            missing_scopes: missing_scopes
-          })
-
-        {:error, "github credential scopes must include: contents, pull_requests, issues"}
+        validate_declared_github_credential_scopes(scopes, actor_id, github_repo)
       end
     else
       :ok
+    end
+  end
+
+  defp verify_live_github_permissions(
+         github_token,
+         github_repo,
+         actor_id,
+         startup_attestation_signing_key,
+         allowed_egress_hosts
+       ) do
+    if token_present?(startup_attestation_signing_key) do
+      case GitHubCredentialEvidence.verify(
+             github_token: github_token,
+             github_repo: github_repo,
+             actor_id: actor_id,
+             required_scopes: @required_github_credential_scopes,
+             allowed_egress_hosts: allowed_egress_hosts,
+             startup_attestation_signing_key: startup_attestation_signing_key
+           ) do
+        {:ok, _metadata} ->
+          :ok
+
+        {:error, {:missing_permissions, missing_scopes}} ->
+          {:error,
+           "github credential permissions must include live evidence for: #{Enum.join(missing_scopes, ", ")}"}
+
+        {:error, _reason} ->
+          {:error,
+           "github credential live permission verification failed; startup blocked by fail-closed policy"}
+      end
+    else
+      {:error,
+       "startup_attestation_signing_key is required for live github permission verification"}
+    end
+  end
+
+  defp validate_declared_github_credential_scopes(scopes, actor_id, github_repo) do
+    missing_scopes = @required_github_credential_scopes -- scopes
+
+    if missing_scopes == [] do
+      :ok
+    else
+      :ok =
+        Audit.emit(:github_credential_scope_blocked, %{
+          repo: github_repo,
+          actor_id: actor_id,
+          required_scopes: @required_github_credential_scopes,
+          provided_scopes: scopes,
+          missing_scopes: missing_scopes
+        })
+
+      {:error, "github credential scopes must include: contents, pull_requests, issues"}
     end
   end
 

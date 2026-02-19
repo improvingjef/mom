@@ -247,6 +247,16 @@ defmodule Mix.Tasks.MomTaskTest do
              ])
   end
 
+  test "parse_args rejects startup attestation signing key provided via CLI flag" do
+    assert {:error,
+            "startup_attestation_signing_key must be provided via MOM_STARTUP_ATTESTATION_SIGNING_KEY environment variable"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--startup-attestation-signing-key",
+               "key-from-flag"
+             ])
+  end
+
   test "parse_args accepts protected branch controls" do
     {:ok, config} =
       Mix.Tasks.Mom.parse_args([

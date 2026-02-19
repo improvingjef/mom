@@ -3,6 +3,19 @@ defmodule Mom.ConfigTest do
 
   alias Mom.Config
 
+  defmodule FakeGitHubPermissionHttpClient do
+    def request(_method, _request, _http_options, _options) do
+      case Process.get(:github_permission_http_responses, []) do
+        [response | rest] ->
+          Process.put(:github_permission_http_responses, rest)
+          response
+
+        [] ->
+          {:error, :no_response}
+      end
+    end
+  end
+
   test "builds config from opts" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", mode: :remote)
     assert config.repo == "/tmp/repo"
@@ -736,39 +749,44 @@ defmodule Mom.ConfigTest do
     assert config.actor_id == "mom-app[bot]"
   end
 
-  test "requires github credential scopes when github token is configured" do
-    assert {:error,
-            "github credential scopes must include: contents, pull_requests, issues"} =
+  test "requires github credential scopes when github token is configured when live verification is disabled" do
+    assert {:error, "github credential scopes must include: contents, pull_requests, issues"} =
              Config.from_opts(
                repo: "/tmp/repo",
-               github_token: "token",
-               actor_id: "mom-app[bot]",
-               allowed_actor_ids: ["mom-app[bot]"]
-             )
-
-    assert {:error,
-            "github credential scopes must include: contents, pull_requests, issues"} =
-             Config.from_opts(
-               repo: "/tmp/repo",
+               github_repo: "acme/mom",
                github_token: "token",
                actor_id: "mom-app[bot]",
                allowed_actor_ids: ["mom-app[bot]"],
-               github_credential_scopes: ["contents", "issues"]
+               github_live_permission_verification: false
+             )
+
+    assert {:error, "github credential scopes must include: contents, pull_requests, issues"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "issues"],
+               github_live_permission_verification: false
              )
 
     assert {:ok, config} =
              Config.from_opts(
                repo: "/tmp/repo",
+               github_repo: "acme/mom",
                github_token: "token",
                actor_id: "mom-app[bot]",
                allowed_actor_ids: ["mom-app[bot]"],
-               github_credential_scopes: ["contents", "pull_requests", "issues"]
+               github_credential_scopes: ["contents", "pull_requests", "issues"],
+               github_live_permission_verification: false,
+               readiness_gate_approved: true
              )
 
     assert config.github_credential_scopes == ["contents", "pull_requests", "issues"]
   end
 
-  test "emits audit event when github credential scopes are missing" do
+  test "emits audit event when github credential scopes are missing when live verification is disabled" do
     handler_id = "mom-config-github-scope-blocked-#{System.unique_integer([:positive])}"
 
     :ok =
@@ -783,15 +801,15 @@ defmodule Mom.ConfigTest do
 
     on_exit(fn -> :telemetry.detach(handler_id) end)
 
-    assert {:error,
-            "github credential scopes must include: contents, pull_requests, issues"} =
+    assert {:error, "github credential scopes must include: contents, pull_requests, issues"} =
              Config.from_opts(
                repo: "/tmp/repo",
                github_repo: "acme/mom",
                github_token: "token",
                actor_id: "mom-app[bot]",
                allowed_actor_ids: ["mom-app[bot]"],
-               github_credential_scopes: ["contents", "issues"]
+               github_credential_scopes: ["contents", "issues"],
+               github_live_permission_verification: false
              )
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_credential_scope_blocked], metadata}
@@ -799,6 +817,138 @@ defmodule Mom.ConfigTest do
     assert metadata.actor_id == "mom-app[bot]"
     assert metadata.required_scopes == ["contents", "pull_requests", "issues"]
     assert metadata.missing_scopes == ["pull_requests"]
+  end
+
+  test "verifies live github credential permissions and emits signed startup attestation" do
+    previous_http_client = Application.get_env(:mom, :github_http_client)
+    Application.put_env(:mom, :github_http_client, FakeGitHubPermissionHttpClient)
+
+    signing_key = "test-attestation-signing-key"
+    previous_signing_key = System.get_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY")
+
+    handler_id = "mom-config-github-live-attested-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :github_credential_permission_attested],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn ->
+      :telemetry.detach(handler_id)
+
+      if previous_http_client do
+        Application.put_env(:mom, :github_http_client, previous_http_client)
+      else
+        Application.delete_env(:mom, :github_http_client)
+      end
+
+      if is_nil(previous_signing_key) do
+        System.delete_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY")
+      else
+        System.put_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY", previous_signing_key)
+      end
+    end)
+
+    System.put_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY", signing_key)
+
+    Process.put(:github_permission_http_responses, [
+      {:ok, {{~c"HTTP/1.1", 200, ~c"OK"}, [{~c"x-oauth-scopes", ~c"repo,workflow"}], ~c"{}"}},
+      {:ok,
+       {{~c"HTTP/1.1", 200, ~c"OK"}, [],
+        ~s({"permissions":{"contents":"write","pull_requests":"write","issues":"write"}})}}
+    ])
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               readiness_gate_approved: true
+             )
+
+    assert config.github_credential_scopes == []
+
+    assert_receive {:telemetry_event, [:mom, :audit, :github_credential_permission_attested],
+                    metadata}
+
+    assert metadata.repo == "acme/mom"
+    assert metadata.actor_id == "mom-app[bot]"
+    assert metadata.missing_scopes == []
+    assert metadata.attestation_signature != nil
+    assert metadata.attestation_signature != ""
+    assert String.starts_with?(metadata.attestation_key_id, "sha256:")
+  end
+
+  test "blocks startup when live github permission evidence is missing required scopes" do
+    previous_http_client = Application.get_env(:mom, :github_http_client)
+    Application.put_env(:mom, :github_http_client, FakeGitHubPermissionHttpClient)
+
+    signing_key = "test-attestation-signing-key"
+    previous_signing_key = System.get_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY")
+
+    handler_id = "mom-config-github-live-blocked-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :github_credential_permission_blocked],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn ->
+      :telemetry.detach(handler_id)
+
+      if previous_http_client do
+        Application.put_env(:mom, :github_http_client, previous_http_client)
+      else
+        Application.delete_env(:mom, :github_http_client)
+      end
+
+      if is_nil(previous_signing_key) do
+        System.delete_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY")
+      else
+        System.put_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY", previous_signing_key)
+      end
+    end)
+
+    System.put_env("MOM_STARTUP_ATTESTATION_SIGNING_KEY", signing_key)
+
+    Process.put(:github_permission_http_responses, [
+      {:ok, {{~c"HTTP/1.1", 200, ~c"OK"}, [{~c"x-oauth-scopes", ~c"read:user"}], ~c"{}"}},
+      {:ok,
+       {{~c"HTTP/1.1", 200, ~c"OK"}, [],
+        ~s({"permissions":{"contents":"read","pull_requests":"read","issues":"read"}})}}
+    ])
+
+    assert {:error,
+            "github credential permissions must include live evidence for: contents, pull_requests, issues"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               readiness_gate_approved: true
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :github_credential_permission_blocked],
+                    metadata}
+
+    assert metadata.repo == "acme/mom"
+    assert metadata.actor_id == "mom-app[bot]"
+    assert metadata.missing_scopes == ["contents", "pull_requests", "issues"]
+    assert metadata.attestation_signature != nil
+    assert metadata.attestation_signature != ""
   end
 
   test "requires explicit readiness gate approval before automated PR creation" do
