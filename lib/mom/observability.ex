@@ -58,6 +58,11 @@ defmodule Mom.Observability do
     GenServer.call(server, :snapshot)
   end
 
+  @spec sync_export(pid() | atom()) :: :ok
+  def sync_export(server) do
+    GenServer.call(server, :sync_export)
+  end
+
   @impl true
   def init(opts) do
     export_path = Keyword.fetch!(opts, :export_path)
@@ -121,6 +126,10 @@ defmodule Mom.Observability do
   @impl true
   def handle_call(:snapshot, _from, state) do
     {:reply, snapshot_from_state(state), state}
+  end
+
+  def handle_call(:sync_export, _from, state) do
+    {:reply, :ok, export_metrics(state)}
   end
 
   @impl true

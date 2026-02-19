@@ -220,6 +220,72 @@ defmodule Mom.ObservabilityTest do
     assert snapshot.pr_turnaround_p95_ms == 1500.0
   end
 
+  test "sync_export/1 deterministically flushes full metrics snapshot to disk" do
+    export_path = unique_export_path()
+
+    pid =
+      start_supervised!(
+        {Observability,
+         export_path: export_path,
+         export_interval_ms: 60_000,
+         queue_depth_threshold: 1,
+         drop_rate_threshold: 0.25,
+         failure_rate_threshold: 0.25,
+         latency_p95_ms_threshold: 100,
+         triage_latency_p95_ms_target: 100,
+         queue_durability_target: 0.99,
+         pr_turnaround_p95_ms_target: 1_000,
+         triage_latency_overage_budget_rate: 0.1,
+         queue_loss_budget_rate: 0.01,
+         pr_turnaround_overage_budget_rate: 0.05}
+      )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :enqueued],
+      %{count: 1},
+      %{job_type: :error_event, queue_depth: 2, active_workers: 0}
+    )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :dropped],
+      %{count: 1},
+      %{drop_reason: :newest, queue_depth: 2, active_workers: 0}
+    )
+
+    :telemetry.execute(
+      [:mom, :pipeline, :failed],
+      %{duration: System.convert_time_unit(250, :millisecond, :native)},
+      %{job_type: :error_event, queue_depth: 0, active_workers: 0, reason: :boom}
+    )
+
+    :telemetry.execute(
+      [:mom, :audit, :github_issue_created],
+      %{count: 1},
+      %{occurred_at_ms: 1_000}
+    )
+
+    :telemetry.execute(
+      [:mom, :audit, :github_pr_created],
+      %{count: 1},
+      %{occurred_at_ms: 2_500}
+    )
+
+    :ok = Observability.sync_export(pid)
+
+    contents = File.read!(export_path)
+
+    assert contents =~ "mom_pipeline_enqueued_total 1"
+    assert contents =~ "mom_pipeline_dropped_total 1"
+    assert contents =~ "mom_pipeline_failed_total 1"
+    assert contents =~ "mom_pipeline_drop_rate 0.5"
+    assert contents =~ "mom_pipeline_failure_rate 1.0"
+    assert contents =~ "mom_pipeline_latency_p95_ms 250.0"
+    assert contents =~ "mom_sla_queue_durability 0.5"
+    assert contents =~ "mom_sla_pr_turnaround_p95_ms "
+    assert contents =~ "mom_error_budget_queue_loss_rate 0.5"
+    assert contents =~ "mom_error_budget_pr_turnaround_overage_rate 1.0"
+  end
+
   defp eventually(fun, retries \\ 40)
 
   defp eventually(fun, 0), do: fun.()

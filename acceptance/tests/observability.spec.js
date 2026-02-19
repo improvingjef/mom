@@ -20,6 +20,8 @@ test("mom exports pipeline observability metrics and emits SLO breaches", async 
   expect(result.saw_latency_budget_breach).toBeTruthy();
   expect(result.saw_queue_budget_breach).toBeTruthy();
   expect(result.saw_pr_turnaround_budget_breach).toBeTruthy();
+  expect(result.post_export_assertions_passed).toBeTruthy();
+  expect(result.post_export_retry_attempts).toBeLessThanOrEqual(result.post_export_retry_limit);
   expect(result.snapshot_drop_rate).toBe(0.5);
   expect(result.snapshot_failure_rate).toBe(1.0);
   expect(result.snapshot_queue_durability).toBe(0.5);

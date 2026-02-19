@@ -75,14 +75,9 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
         %{occurred_at_ms: 2_500}
       )
 
-      wait_for(fn ->
-        case File.read(export_path) do
-          {:ok, contents} -> String.contains?(contents, "mom_pipeline_enqueued_total 1")
-          _ -> false
-        end
-      end)
-
-      metrics = File.read!(export_path)
+      :ok = Observability.sync_export(pid)
+      max_export_retries = 25
+      {metrics, post_export_retry_attempts} = wait_for_expected_metrics(export_path, max_export_retries)
       snapshot = Observability.snapshot(pid)
       breaches = collect_breaches([])
       budget_breaches = collect_budget_breaches([])
@@ -105,6 +100,9 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
         saw_latency_budget_breach: :triage_latency_overage_rate in budget_breaches,
         saw_queue_budget_breach: :queue_loss_rate in budget_breaches,
         saw_pr_turnaround_budget_breach: :pr_turnaround_overage_rate in budget_breaches,
+        post_export_assertions_passed: true,
+        post_export_retry_attempts: post_export_retry_attempts,
+        post_export_retry_limit: max_export_retries + 1,
         snapshot_drop_rate: snapshot.drop_rate,
         snapshot_failure_rate: snapshot.failure_rate,
         snapshot_queue_durability: snapshot.queue_durability,
@@ -138,19 +136,42 @@ defmodule Mom.Acceptance.ObservabilityPrometheusScript do
     end
   end
 
-  defp wait_for(fun, retries \\ 500)
+  defp wait_for_expected_metrics(export_path, retries, attempts \\ 1)
 
-  defp wait_for(fun, 0) do
-    if fun.(), do: :ok, else: raise("timed out waiting for condition")
+  defp wait_for_expected_metrics(export_path, retries, attempts) do
+    expected_snippets = [
+      "mom_pipeline_enqueued_total 1",
+      "mom_pipeline_dropped_total 1",
+      "mom_pipeline_failed_total 1",
+      "mom_pipeline_drop_rate 0.5",
+      "mom_pipeline_failure_rate 1.0",
+      "mom_pipeline_latency_p95_ms 250.0",
+      "mom_sla_queue_durability 0.5",
+      "mom_sla_pr_turnaround_p95_ms ",
+      "mom_error_budget_queue_loss_rate 0.5",
+      "mom_error_budget_pr_turnaround_overage_rate 1.0"
+    ]
+
+    case File.read(export_path) do
+      {:ok, contents} ->
+        if Enum.all?(expected_snippets, &String.contains?(contents, &1)) do
+          {contents, attempts}
+        else
+          retry_expected_metrics(export_path, retries, attempts)
+        end
+
+      {:error, _reason} ->
+        retry_expected_metrics(export_path, retries, attempts)
+    end
   end
 
-  defp wait_for(fun, retries) do
-    if fun.() do
-      :ok
-    else
-      Process.sleep(20)
-      wait_for(fun, retries - 1)
-    end
+  defp retry_expected_metrics(_export_path, 0, attempts) do
+    raise("timed out waiting for full metrics export after #{attempts} attempts")
+  end
+
+  defp retry_expected_metrics(export_path, retries, attempts) do
+    Process.sleep(20)
+    wait_for_expected_metrics(export_path, retries - 1, attempts + 1)
   end
 
   defp export_path do
