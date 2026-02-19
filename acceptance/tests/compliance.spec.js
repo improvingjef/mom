@@ -1,24 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { execFileSync } = require("node:child_process");
-const path = require("node:path");
+const { runAcceptanceScript } = require("./helpers/mix_runner");
 
 test("mom enforces compliance controls for retention, evidence hooks, and PII policy", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_compliance_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_compliance_acceptance.exs");
 
   expect(result.audit_retention_days).toBe(1);
   expect(result.soc2_evidence_path_set).toBeTruthy();
@@ -34,22 +18,7 @@ test("mom enforces compliance controls for retention, evidence hooks, and PII po
 });
 
 test("mom CLI generates a validated disaster recovery runbook", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_runbook_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_runbook_acceptance.exs");
 
   expect(result.output_exists).toBeTruthy();
   expect(result.generated_on_present).toBeTruthy();

@@ -1,24 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { execFileSync } = require("node:child_process");
-const path = require("node:path");
+const { runAcceptanceScript } = require("./helpers/mix_runner");
 
 test("mom exports pipeline observability metrics and emits SLO breaches", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/observability_prometheus_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/observability_prometheus_acceptance.exs");
 
   expect(result.has_enqueued_metric).toBeTruthy();
   expect(result.has_dropped_metric).toBeTruthy();

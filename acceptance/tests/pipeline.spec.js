@@ -1,24 +1,8 @@
 const { test, expect } = require("@playwright/test");
-const { execFileSync } = require("node:child_process");
-const path = require("node:path");
+const { runAcceptanceScript } = require("./helpers/mix_runner");
 
 test("pipeline ingests incidents and applies overflow policy", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_acceptance.exs");
 
   expect(result.first).toBe("ok");
   expect(result.second).toBe("ok");
@@ -30,22 +14,7 @@ test("pipeline ingests incidents and applies overflow policy", async () => {
 });
 
 test("pipeline enforces max concurrency while dispatching workers", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_dispatch_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_dispatch_acceptance.exs");
 
   expect(result.started_initial_count).toBe(2);
   expect(result.third_started_early).toBeFalsy();
@@ -56,22 +25,7 @@ test("pipeline enforces max concurrency while dispatching workers", async () => 
 });
 
 test("mom CLI parses pipeline concurrency flags", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_config_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_config_acceptance.exs");
 
   expect(result.mode).toBe("inproc");
   expect(result.max_concurrency).toBe(7);
@@ -82,44 +36,14 @@ test("mom CLI parses pipeline concurrency flags", async () => {
 });
 
 test("runner routes logs and diagnostics through pipeline workers", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/runner_pipeline_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/runner_pipeline_acceptance.exs");
 
   expect(result.saw_error_event).toBeTruthy();
   expect(result.saw_diagnostics_event).toBeTruthy();
 });
 
 test("pipeline cancels timed out jobs and continues queued work", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_timeout_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_timeout_acceptance.exs");
 
   expect(result.slow_started).toBeTruthy();
   expect(result.fast_started_early).toBeFalsy();
@@ -130,22 +54,7 @@ test("pipeline cancels timed out jobs and continues queued work", async () => {
 });
 
 test("pipeline emits telemetry lifecycle events with queue visibility metadata", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_telemetry_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_telemetry_acceptance.exs");
 
   expect(result.saw_enqueued).toBeTruthy();
   expect(result.saw_dropped).toBeTruthy();
@@ -157,22 +66,7 @@ test("pipeline emits telemetry lifecycle events with queue visibility metadata",
 });
 
 test("pipeline durable queue mode replays queued jobs after restart", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_durable_queue_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_durable_queue_acceptance.exs");
 
   expect(result.durable_queue_path_exists).toBeTruthy();
   expect(result.first).toBe("ok");
@@ -188,22 +82,7 @@ test("pipeline durable queue mode replays queued jobs after restart", async () =
 });
 
 test("pipeline drops duplicate in-flight incidents and allows retry after completion", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/pipeline_inflight_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/pipeline_inflight_acceptance.exs");
 
   expect(result.first).toBe("ok");
   expect(result.started_id).toBe(41);
@@ -219,22 +98,7 @@ test("pipeline drops duplicate in-flight incidents and allows retry after comple
 });
 
 test("mom harness task confirms baseline harness scenarios and records private repo location", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_harness_repo_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_harness_repo_acceptance.exs");
 
   expect(result.name_with_owner).toBe("acme/harness");
   expect(result.is_private).toBeTruthy();
@@ -250,22 +114,7 @@ test("mom harness task confirms baseline harness scenarios and records private r
 });
 
 test("mom CLI enforces allowed github repo allowlist", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_allowlist_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_allowlist_acceptance.exs");
 
   expect(result.allowed_repo).toBe("acme/mom");
   expect(result.allowed_list).toEqual(["acme/mom", "acme/other"]);
@@ -275,22 +124,7 @@ test("mom CLI enforces allowed github repo allowlist", async () => {
 });
 
 test("mom CLI enforces egress host allowlist for API providers", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_egress_policy_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_egress_policy_acceptance.exs");
 
   expect(result.allowed_egress_hosts).toEqual(["api.github.com", "api.openai.com"]);
   expect(result.blocked_result).toEqual([
@@ -300,22 +134,7 @@ test("mom CLI enforces egress host allowlist for API providers", async () => {
 });
 
 test("mom CLI enforces per-repo spend caps for llm and test execution", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_spend_caps_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_spend_caps_acceptance.exs");
 
   expect(result.parsed_llm_spend_cap_cents_per_hour).toBe(500);
   expect(result.parsed_llm_call_cost_cents).toBe(25);
@@ -330,22 +149,7 @@ test("mom CLI enforces per-repo spend caps for llm and test execution", async ()
 });
 
 test("mom CLI defaults codex to yolo exec profile", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_codex_profile_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_codex_profile_acceptance.exs");
 
   expect(result.default_provider).toBe("codex");
   expect(result.default_llm_cmd).toBe("codex --yolo exec");
@@ -353,22 +157,7 @@ test("mom CLI defaults codex to yolo exec profile", async () => {
 });
 
 test("mom CLI defines staging_restricted profile guardrails", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_staging_profile_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_staging_profile_acceptance.exs");
 
   expect(result.execution_profile).toBe("staging_restricted");
   expect(result.llm_cmd).toBe("codex exec --sandbox workspace-write");
@@ -386,22 +175,7 @@ test("mom CLI defines staging_restricted profile guardrails", async () => {
 });
 
 test("mom CLI defines production_hardened profile guardrails", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_production_profile_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_production_profile_acceptance.exs");
 
   expect(result.execution_profile).toBe("production_hardened");
   expect(result.llm_cmd).toBe("codex exec --sandbox read-only");
@@ -425,22 +199,7 @@ test("mom CLI defines production_hardened profile guardrails", async () => {
 });
 
 test("mom fails closed when runtime execution policy is violated", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs");
 
   expect(result.execution_profile).toBe("staging_restricted");
   expect(result.blocked_result).toEqual([
@@ -450,22 +209,7 @@ test("mom fails closed when runtime execution policy is violated", async () => {
 });
 
 test("mom stress mix task generates rapid event summary", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_stress_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_stress_acceptance.exs");
 
   expect(result.events_submitted).toBe(40);
   expect(result.accepted).toBeGreaterThan(0);
@@ -475,22 +219,7 @@ test("mom stress mix task generates rapid event summary", async () => {
 });
 
 test("mom CLI applies branch naming policy to generated branches", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_branch_policy_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_branch_policy_acceptance.exs");
 
   expect(result.branch_name_prefix).toBe("mom/incidents");
   expect(result.prefix_matches).toBeTruthy();
@@ -502,22 +231,7 @@ test("mom CLI applies branch naming policy to generated branches", async () => {
 });
 
 test("mom CLI enforces isolated git worktree for mutation workdir", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs");
 
   expect(result.invalid).toEqual([
     "error",
@@ -528,22 +242,7 @@ test("mom CLI enforces isolated git worktree for mutation workdir", async () => 
 });
 
 test("mom CLI enforces machine actor allowlist for GitHub credentials", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs");
 
   expect(result.allowed_actor_id).toBe("mom-bot");
   expect(result.allowed_actor_ids).toEqual(["mom-bot", "mom-staging"]);
@@ -555,22 +254,7 @@ test("mom CLI enforces machine actor allowlist for GitHub credentials", async ()
 });
 
 test("mom CLI rejects non-machine actor ids for GitHub credentials", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_machine_identity_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_machine_identity_acceptance.exs");
 
   expect(result.machine_actor).toBe("mom-app[bot]");
   expect(result.human_actor_result).toEqual([
@@ -580,22 +264,7 @@ test("mom CLI rejects non-machine actor ids for GitHub credentials", async () =>
 });
 
 test("mom CLI requires readiness gate approval before enabling automated PR creation", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_readiness_gate_acceptance.exs");
 
   expect(result.blocked_result).toEqual([
     "error",
@@ -606,22 +275,7 @@ test("mom CLI requires readiness gate approval before enabling automated PR crea
 });
 
 test("mom enforces PR-only workflow for protected branches", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_pr_only_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_pr_only_acceptance.exs");
 
   expect(result.protected_base_branch).toBe("main");
   expect(result.protected_branches).toEqual(["main", "release"]);
@@ -633,22 +287,7 @@ test("mom enforces PR-only workflow for protected branches", async () => {
 });
 
 test("mom logs codex invocation start and outcome", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/llm_codex_logging_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/llm_codex_logging_acceptance.exs");
 
   expect(result.saw_start_success).toBeTruthy();
   expect(result.saw_completed_success).toBeTruthy();
@@ -657,22 +296,7 @@ test("mom logs codex invocation start and outcome", async () => {
 });
 
 test("mom enforces env-only secret injection and redacts sensitive audit logs", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/mom_cli_secret_handling_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_secret_handling_acceptance.exs");
 
   expect(result.github_token_from_env).toBe("env-github-token");
   expect(result.llm_api_key_from_env).toBe("env-llm-key");
@@ -693,30 +317,10 @@ test("mom enforces env-only secret injection and redacts sensitive audit logs", 
 });
 
 test("runner handles burst mixed events and continues after an isolated worker failure", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const burstBuildPath = path.join(
-    repoRoot,
-    "_build_runner_burst_" + Date.now().toString()
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/runner_burst_acceptance.exs",
+    { env: { MIX_BUILD_PATH: `_build_runner_burst_${Date.now()}` } }
   );
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/runner_burst_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: {
-        ...process.env,
-        ASDF_ELIXIR_VERSION: "1.19.4-otp-28",
-        MIX_BUILD_PATH: burstBuildPath
-      }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
 
   expect(result.mixed_types_seen).toBeTruthy();
   expect(result.all_error_events_processed).toBeTruthy();
@@ -725,22 +329,7 @@ test("runner handles burst mixed events and continues after an isolated worker f
 });
 
 test("mom emits structured git and GitHub audit events", async () => {
-  const repoRoot = path.resolve(__dirname, "..", "..");
-  const output = execFileSync(
-    "mix",
-    ["run", "acceptance/scripts/github_audit_acceptance.exs"],
-    {
-      cwd: repoRoot,
-      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
-    }
-  ).toString();
-
-  const marker = output
-    .split("\n")
-    .find((line) => line.startsWith("RESULT_JSON:"));
-
-  expect(marker).toBeTruthy();
-  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+  const { result } = runAcceptanceScript("acceptance/scripts/github_audit_acceptance.exs");
 
   expect(result.saw_worktree_event).toBeTruthy();
   expect(result.saw_patch_event).toBeTruthy();
