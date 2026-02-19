@@ -26,6 +26,7 @@ defmodule Mom.MixProject do
   defp deps do
     [
       {:jason, "~> 1.4"},
+      {:telemetry, "~> 1.2"},
       {:stream_data, "~> 0.6", only: :test}
     ]
   end

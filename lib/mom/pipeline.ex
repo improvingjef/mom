@@ -4,6 +4,7 @@ defmodule Mom.Pipeline do
   use GenServer
 
   alias Mom.WorkerSupervisor
+  require Logger
 
   @type overflow_policy :: :drop_newest | :drop_oldest
   @type supported_job ::
@@ -35,6 +36,7 @@ defmodule Mom.Pipeline do
           queue_depth: non_neg_integer(),
           active_workers: non_neg_integer(),
           completed_count: non_neg_integer(),
+          failed_count: non_neg_integer(),
           dropped_count: non_neg_integer(),
           queue_max_size: pos_integer(),
           overflow_policy: overflow_policy(),
@@ -79,7 +81,8 @@ defmodule Mom.Pipeline do
        worker_supervisor: worker_supervisor,
        max_concurrency: max_concurrency,
        active_workers: %{},
-       completed_count: 0
+       completed_count: 0,
+       failed_count: 0
      }, {:continue, :dispatch}}
   end
 
@@ -110,6 +113,7 @@ defmodule Mom.Pipeline do
        queue_depth: state.queue_depth,
        active_workers: map_size(state.active_workers),
        completed_count: state.completed_count,
+       failed_count: state.failed_count,
        dropped_count: state.dropped_count,
        queue_max_size: state.queue_max_size,
        overflow_policy: state.overflow_policy,
@@ -123,16 +127,37 @@ defmodule Mom.Pipeline do
   end
 
   @impl true
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
+  def handle_info({:DOWN, ref, :process, _pid, reason}, state) do
     case Map.pop(state.active_workers, ref) do
       {nil, _active_workers} ->
         {:noreply, state}
 
-      {_job, active_workers} ->
+      {active_job, active_workers} ->
+        now = System.monotonic_time()
+        measurements = %{duration: now - active_job.started_at}
+
+        metadata =
+          common_metadata(
+            active_job.job,
+            state.queue_depth,
+            map_size(active_workers)
+          )
+
         next_state =
-          state
+          if completed_reason?(reason) do
+            telemetry(:completed, measurements, metadata)
+            log_pipeline(:info, "completed", metadata, measurements)
+            Map.update!(state, :completed_count, &(&1 + 1))
+          else
+            failure_metadata = Map.put(metadata, :reason, reason)
+            telemetry(:failed, measurements, failure_metadata)
+            log_pipeline(:warning, "failed", failure_metadata, measurements)
+            Map.update!(state, :failed_count, &(&1 + 1))
+          end
+
+        next_state =
+          next_state
           |> Map.put(:active_workers, active_workers)
-          |> Map.update!(:completed_count, &(&1 + 1))
           |> dispatch_jobs()
 
         {:noreply, next_state}
@@ -146,21 +171,38 @@ defmodule Mom.Pipeline do
   defp enqueue_job(_job, %{overflow_policy: :drop_oldest}), do: {:dropped, :oldest}
 
   defp maybe_state(job, %{queue_depth: depth, queue_max_size: max} = state) when depth < max do
-    %{state | queue: :queue.in(job, state.queue), queue_depth: depth + 1}
+    next_state = %{state | queue: :queue.in(job, state.queue), queue_depth: depth + 1}
+    metadata = common_metadata(job, next_state.queue_depth, map_size(next_state.active_workers))
+    telemetry(:enqueued, %{count: 1}, metadata)
+    log_pipeline(:debug, "enqueued", metadata)
+    next_state
   end
 
   defp maybe_state(_job, %{overflow_policy: :drop_newest} = state) do
-    %{state | dropped_count: state.dropped_count + 1}
+    next_state = %{state | dropped_count: state.dropped_count + 1}
+    metadata = %{drop_reason: :newest, queue_depth: state.queue_depth, active_workers: map_size(state.active_workers)}
+    telemetry(:dropped, %{count: 1}, metadata)
+    log_pipeline(:warning, "dropped", metadata)
+    next_state
   end
 
   defp maybe_state(job, %{overflow_policy: :drop_oldest} = state) do
-    {_removed, queue} = :queue.out(state.queue)
+    {{:value, dropped_job}, queue} = :queue.out(state.queue)
 
-    %{
+    next_state = %{
       state
       | queue: :queue.in(job, queue),
         dropped_count: state.dropped_count + 1
     }
+
+    metadata =
+      common_metadata(job, state.queue_depth, map_size(state.active_workers))
+      |> Map.put(:drop_reason, :oldest)
+      |> Map.put(:dropped_job_type, job_type(dropped_job))
+
+    telemetry(:dropped, %{count: 1}, metadata)
+    log_pipeline(:warning, "dropped", metadata)
+    next_state
   end
 
   defp valid_job?({:error_event, event}) when is_map(event), do: true
@@ -213,12 +255,22 @@ defmodule Mom.Pipeline do
         case DynamicSupervisor.start_child(state.worker_supervisor, {Task, task_fun}) do
           {:ok, pid} ->
             ref = Process.monitor(pid)
+            remaining_depth = state.queue_depth - 1
+            active_count = map_size(state.active_workers) + 1
+            metadata = common_metadata(job, remaining_depth, active_count)
+            telemetry(:started, %{count: 1}, metadata)
+            log_pipeline(:info, "started", metadata)
 
             next_state = %{
               state
               | queue: queue,
-                queue_depth: state.queue_depth - 1,
-                active_workers: Map.put(state.active_workers, ref, job)
+                queue_depth: remaining_depth,
+                active_workers:
+                  Map.put(state.active_workers, ref, %{
+                    job: job,
+                    pid: pid,
+                    started_at: System.monotonic_time()
+                  })
             }
 
             dispatch_jobs(next_state)
@@ -227,5 +279,36 @@ defmodule Mom.Pipeline do
             state
         end
     end
+  end
+
+  defp job_type({:error_event, _event}), do: :error_event
+  defp job_type({:diagnostics_event, _report, _issues}), do: :diagnostics_event
+
+  defp common_metadata(job, queue_depth, active_workers) do
+    %{job_type: job_type(job), queue_depth: queue_depth, active_workers: active_workers}
+  end
+
+  defp telemetry(event, measurements, metadata) do
+    :telemetry.execute([:mom, :pipeline, event], measurements, metadata)
+  end
+
+  defp completed_reason?(:normal), do: true
+  defp completed_reason?(:noproc), do: true
+  defp completed_reason?(_reason), do: false
+
+  defp log_pipeline(level, lifecycle, metadata, measurements \\ %{}) do
+    measurements_text =
+      measurements
+      |> Enum.map(fn {k, v} -> "#{k}=#{inspect(v)}" end)
+      |> Enum.join(" ")
+
+    metadata_text =
+      metadata
+      |> Enum.map(fn {k, v} -> "#{k}=#{inspect(v)}" end)
+      |> Enum.join(" ")
+
+    msg = "mom: pipeline #{lifecycle} #{metadata_text} #{measurements_text}" |> String.trim()
+
+    Logger.log(level, msg)
   end
 end

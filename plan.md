@@ -196,6 +196,7 @@ Out of scope (for this phase):
 - Step 2 complete: concurrency config/flags and validation are implemented and covered by ExUnit + acceptance tests.
 - Step 3 complete: `Mom.Runner` now routes error and diagnostics work through `Mom.Pipeline`, with worker-based engine execution and acceptance coverage.
 - Step 3/4 follow-through complete: per-job timeout/cancellation handling is now covered by ExUnit worker tests and Playwright acceptance coverage.
+- Step 5 complete: pipeline telemetry events (`enqueued`, `dropped`, `started`, `completed`, `failed`) and queue/worker structured lifecycle logs are implemented with ExUnit + Playwright acceptance coverage.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -203,6 +204,7 @@ Out of scope (for this phase):
 
 5. Telemetry + Structured Logs
 - Add events and log fields for queue/worker visibility.
+ - Status: complete (February 19, 2026).
 
 6. Test Coverage
 - Unit tests:
@@ -218,6 +220,26 @@ Out of scope (for this phase):
 
 7. Load Simulation
 - Add a local stress script (`mix` task) to generate N events quickly.
+
+## Commercial Availability Additions (New)
+
+1. Production Observability Integration
+- Export pipeline telemetry to a production backend (OpenTelemetry/Prometheus), with dashboards and SLO alerts for queue depth, drop rate, failure rate, and triage latency.
+
+2. Delivery Safety and Governance
+- Enforce protected-branch PR approvals, required CI checks, and policy gates for Mom-authored changes before merge.
+
+3. End-to-End Security Hardening
+- Implement restricted execution profiles (remove default `--yolo` in production), outbound egress controls, and audited command allowlists.
+
+4. Credential and Secret Operations
+- Move all credentials to managed secret storage, add rotation automation, and add startup/runtime checks for stale or over-scoped credentials.
+
+5. Release and Rollback Readiness
+- Add versioned release pipeline, artifact signing/provenance, staged rollout (dev/stage/prod), and documented rollback playbook.
+
+6. Multi-Tenant and Abuse Controls
+- Add per-repo quotas, per-tenant concurrency isolation, and anomaly throttling to prevent noisy or malicious workloads from starving capacity.
 - Validate stability and throughput against success criteria.
 
 8. Readiness Gate for E2E Harness

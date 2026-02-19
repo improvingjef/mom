@@ -1,6 +1,8 @@
 defmodule Mom.PipelineTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureLog
+
   alias Mom.Pipeline
 
   defmodule TestWorker do
@@ -10,6 +12,13 @@ defmodule Mom.PipelineTest do
       receive do
         :release -> :ok
       end
+    end
+  end
+
+  defmodule FailingWorker do
+    def perform({:error_event, %{id: id, test_pid: test_pid}}, _opts) do
+      send(test_pid, {:started, id, self()})
+      raise "worker boom"
     end
   end
 
@@ -78,6 +87,104 @@ defmodule Mom.PipelineTest do
     eventually(fn ->
       assert %{queue_depth: 0, active_workers: 0, completed_count: 3} = Pipeline.stats(pid)
     end)
+  end
+
+  test "emits telemetry for enqueue, dispatch, completion, drop, and failure" do
+    handler_id = "pipeline-test-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach_many(
+        handler_id,
+        [
+          [:mom, :pipeline, :enqueued],
+          [:mom, :pipeline, :dropped],
+          [:mom, :pipeline, :started],
+          [:mom, :pipeline, :completed],
+          [:mom, :pipeline, :failed]
+        ],
+        fn event, measurements, metadata, _config ->
+          send(test_pid, {:telemetry_event, event, measurements, metadata})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    success_pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []},
+        id: "pipeline-success-#{System.unique_integer([:positive])}"
+      )
+
+    assert :ok == Pipeline.enqueue(success_pid, {:error_event, %{id: 1, test_pid: self()}})
+    assert_receive {:started, 1, worker1}
+    send(worker1, :release)
+
+    assert_receive {:telemetry_event, [:mom, :pipeline, :enqueued], _, %{job_type: :error_event}}
+    assert_receive {:telemetry_event, [:mom, :pipeline, :started], _, %{job_type: :error_event}}
+
+    assert_receive {:telemetry_event, [:mom, :pipeline, :completed], measurements,
+                    %{job_type: :error_event}}
+
+    assert is_integer(measurements.duration)
+    assert measurements.duration >= 0
+
+    drop_pid =
+      start_supervised!(
+        {Pipeline, queue_max_size: 1, overflow_policy: :drop_newest},
+        id: "pipeline-drop-#{System.unique_integer([:positive])}"
+      )
+
+    assert :ok == Pipeline.enqueue(drop_pid, {:error_event, %{id: 2}})
+    assert {:dropped, :newest} == Pipeline.enqueue(drop_pid, {:error_event, %{id: 3}})
+    assert_receive {:telemetry_event, [:mom, :pipeline, :dropped], _, %{drop_reason: :newest}}
+
+    fail_pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true,
+         max_concurrency: 1,
+         worker_module: FailingWorker,
+         worker_opts: []},
+        id: "pipeline-fail-#{System.unique_integer([:positive])}"
+      )
+
+    assert :ok == Pipeline.enqueue(fail_pid, {:error_event, %{id: 4, test_pid: self()}})
+    assert_receive {:started, 4, _worker}
+
+    assert_receive {:telemetry_event, [:mom, :pipeline, :failed], failed_measurements,
+                    %{job_type: :error_event, reason: {_kind, _reason}}}
+
+    assert is_integer(failed_measurements.duration)
+    assert failed_measurements.duration >= 0
+  end
+
+  test "logs queue and worker lifecycle fields" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []}
+      )
+
+    log =
+      capture_log(fn ->
+        assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 7, test_pid: self()}})
+        assert_receive {:started, 7, worker}
+        send(worker, :release)
+
+        eventually(fn ->
+          assert %{completed_count: 1} = Pipeline.stats(pid)
+        end)
+      end)
+
+    assert log =~ "mom: pipeline enqueued"
+    assert log =~ "job_type=:error_event"
+    assert log =~ "mom: pipeline started"
+    assert log =~ "queue_depth="
+    assert log =~ "active_workers="
+    assert log =~ "mom: pipeline completed"
   end
 
   defp eventually(fun, retries \\ 20)

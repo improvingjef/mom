@@ -127,3 +127,30 @@ test("pipeline cancels timed out jobs and continues queued work", async () => {
   expect(result.completed_count).toBe(2);
   expect(result.queue_depth).toBe(0);
 });
+
+test("pipeline emits telemetry lifecycle events with queue visibility metadata", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/pipeline_telemetry_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.saw_enqueued).toBeTruthy();
+  expect(result.saw_dropped).toBeTruthy();
+  expect(result.saw_started).toBeTruthy();
+  expect(result.saw_completed).toBeTruthy();
+  expect(result.saw_failed).toBeTruthy();
+  expect(result.event_has_fields).toBeTruthy();
+  expect(result.failed_count).toBe(1);
+});
