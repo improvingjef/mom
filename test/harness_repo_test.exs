@@ -3,7 +3,7 @@ defmodule Mom.HarnessRepoTest do
 
   alias Mom.HarnessRepo
 
-  test "confirm_and_record stores private harness repo metadata" do
+  test "confirm_and_record stores private harness repo metadata and baseline scenarios" do
     record_path = unique_record_path()
 
     fake_runner = fn
@@ -11,17 +11,27 @@ defmodule Mom.HarnessRepoTest do
       ["repo", "view", "acme/harness", "--json", "nameWithOwner,isPrivate,url,visibility"] ->
         {:ok,
          ~s({"nameWithOwner":"acme/harness","isPrivate":true,"url":"https://github.com/acme/harness","visibility":"PRIVATE"})}
+
+      "gh", ["api", "repos/acme/harness/contents/priv/replay/error_path.ex"] ->
+        {:ok, ~s({"path":"priv/replay/error_path.ex"})}
+
+      "gh", ["api", "repos/acme/harness/contents/priv/replay/diagnostics_path.ex"] ->
+        {:ok, ~s({"path":"priv/replay/diagnostics_path.ex"})}
     end
 
     assert {:ok, record} =
              HarnessRepo.confirm_and_record("acme/harness", record_path,
                cmd_runner: fake_runner,
-               recorded_at: "2026-02-19T00:00:00Z"
+               recorded_at: "2026-02-19T00:00:00Z",
+               baseline_error_path: "priv/replay/error_path.ex",
+               baseline_diagnostics_path: "priv/replay/diagnostics_path.ex"
              )
 
     assert record.name_with_owner == "acme/harness"
     assert record.is_private
     assert record.visibility == "PRIVATE"
+    assert record.baseline_error_path == "priv/replay/error_path.ex"
+    assert record.baseline_diagnostics_path == "priv/replay/diagnostics_path.ex"
     assert File.exists?(record_path)
 
     assert {:ok, loaded} = HarnessRepo.load_record(record_path)
@@ -48,6 +58,31 @@ defmodule Mom.HarnessRepoTest do
 
     assert {:error, "harness record is missing required field: url"} =
              HarnessRepo.load_record(record_path)
+  end
+
+  test "confirm_and_record rejects missing baseline scenario path in harness repo" do
+    record_path = unique_record_path()
+
+    fake_runner = fn
+      "gh",
+      ["repo", "view", "acme/harness", "--json", "nameWithOwner,isPrivate,url,visibility"] ->
+        {:ok,
+         ~s({"nameWithOwner":"acme/harness","isPrivate":true,"url":"https://github.com/acme/harness","visibility":"PRIVATE"})}
+
+      "gh", ["api", "repos/acme/harness/contents/priv/replay/error_path.ex"] ->
+        {:ok, ~s({"path":"priv/replay/error_path.ex"})}
+
+      "gh", ["api", "repos/acme/harness/contents/priv/replay/missing_diagnostics_path.ex"] ->
+        {:error, "404 Not Found"}
+    end
+
+    assert {:error,
+            "harness baseline scenario path not found: priv/replay/missing_diagnostics_path.ex"} =
+             HarnessRepo.confirm_and_record("acme/harness", record_path,
+               cmd_runner: fake_runner,
+               baseline_error_path: "priv/replay/error_path.ex",
+               baseline_diagnostics_path: "priv/replay/missing_diagnostics_path.ex"
+             )
   end
 
   defp unique_record_path do

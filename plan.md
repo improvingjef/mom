@@ -245,6 +245,7 @@ Out of scope (for this phase):
 - Durable queue mode is implemented with disk-backed queue persistence and replay-on-restart (`durable_queue_path`), covered by ExUnit + Playwright acceptance tests.
 - Multi-tenant controls are implemented for per-repo queue quotas, tenant-scoped in-flight dedupe isolation, and fair round-robin tenant dispatch scheduling, covered by ExUnit + Playwright acceptance tests.
 - Separate private fragile Phoenix harness repo is now created/confirmed and recorded at `https://github.com/improvingjef/mom-fragile-phoenix-harness` (`acceptance/harness_repo.json`), covered by ExUnit + Playwright acceptance tests.
+- Harness baseline scenario set is now enforced and recorded (deterministic error path + diagnostics anomaly path) via `mix mom.harness`, covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -425,7 +426,7 @@ Out of scope (for this phase):
 
 ### Incremental Harness Delivery (Required)
 - [x] Create/confirm separate private fragile Phoenix harness repo and record location.
-- [ ] Establish harness baseline scenario set (at least one deterministic error and one diagnostics anomaly).
+- [x] Establish harness baseline scenario set (at least one deterministic error and one diagnostics anomaly).
 - [ ] For each completed major `mom` capability, add/update at least one corresponding harness defect scenario.
 - [ ] For each completed major `mom` capability, add/update corresponding Playwright coverage in baseline or burst mode.
 - [ ] Maintain a capability-to-harness traceability table and fail task completion if mapping is missing.
@@ -489,3 +490,4 @@ Out of scope (for this phase):
 - [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
 - [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
+- [ ] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention under parallel Playwright execution.

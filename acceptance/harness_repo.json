@@ -3,5 +3,7 @@
   "name_with_owner": "improvingjef/mom-fragile-phoenix-harness",
   "is_private": true,
   "visibility": "PRIVATE",
+  "baseline_error_path": "priv/replay/error_path.ex",
+  "baseline_diagnostics_path": "priv/replay/diagnostics_path.ex",
   "recorded_at": "2026-02-19T22:01:42.959142Z"
 }

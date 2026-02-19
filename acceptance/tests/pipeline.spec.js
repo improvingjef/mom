@@ -218,7 +218,7 @@ test("pipeline drops duplicate in-flight incidents and allows retry after comple
   expect(result.final_failed).toBe(0);
 });
 
-test("mom harness task confirms and records private harness repo location", async () => {
+test("mom harness task confirms baseline harness scenarios and records private repo location", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(
     "mix",
@@ -239,6 +239,10 @@ test("mom harness task confirms and records private harness repo location", asyn
   expect(result.name_with_owner).toBe("acme/harness");
   expect(result.is_private).toBeTruthy();
   expect(result.visibility).toBe("PRIVATE");
+  expect(result.baseline_error_path).toBe("priv/replay/error_path.ex");
+  expect(result.baseline_diagnostics_path).toBe(
+    "priv/replay/diagnostics_path.ex"
+  );
   expect(result.loaded_matches).toBeTruthy();
 });
 
