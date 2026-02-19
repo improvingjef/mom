@@ -129,15 +129,26 @@ defmodule Mom.Config do
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
              {:ok, readiness_gate_approved} <- parse_readiness_gate_approved(opts, runtime),
+             {:ok, merge_pr} <- parse_merge_pr(opts, runtime),
              {:ok, workdir} <- parse_workdir(opts, runtime),
              {:ok, execution_profile} <- parse_execution_profile(opts, runtime),
+             {:ok, open_pr} <- parse_open_pr(opts, runtime, execution_profile: execution_profile),
              llm_cmd <- default_llm_cmd(llm_provider, llm_cmd_override, execution_profile),
              policy <- execution_policy(execution_profile, workdir),
-             :ok <- validate_execution_policy(execution_profile, llm_provider, llm_cmd, workdir),
+             :ok <-
+               validate_execution_policy(
+                 execution_profile,
+                 llm_provider,
+                 llm_cmd,
+                 workdir,
+                 open_pr,
+                 merge_pr,
+                 readiness_gate_approved
+               ),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
              :ok <-
                validate_automated_pr_readiness(
-                 Keyword.get(opts, :open_pr, true),
+                 open_pr,
                  github_token,
                  Keyword.get(opts, :github_repo) || runtime[:github_repo],
                  readiness_gate_approved,
@@ -185,8 +196,8 @@ defmodule Mom.Config do
                  3_600_000,
              redact_keys: redact_keys,
              git_ssh_command: Keyword.get(opts, :git_ssh_command) || runtime[:git_ssh_command],
-             open_pr: Keyword.get(opts, :open_pr, true),
-             merge_pr: Keyword.get(opts, :merge_pr, false),
+             open_pr: open_pr,
+             merge_pr: merge_pr,
              readiness_gate_approved: readiness_gate_approved,
              poll_interval_ms: Keyword.get(opts, :poll_interval_ms, 5_000),
              max_concurrency: max_concurrency,
@@ -212,6 +223,9 @@ defmodule Mom.Config do
 
   defp default_llm_cmd(:codex, nil, :staging_restricted),
     do: "codex exec --sandbox workspace-write"
+
+  defp default_llm_cmd(:codex, nil, :production_hardened),
+    do: "codex exec --sandbox read-only"
 
   defp default_llm_cmd(:codex, nil, _profile), do: "codex --yolo exec"
   defp default_llm_cmd(_provider, cmd, _profile), do: cmd
@@ -397,10 +411,26 @@ defmodule Mom.Config do
     }
   end
 
-  defp validate_execution_policy(:test_relaxed, _llm_provider, _llm_cmd, _workdir), do: :ok
-  defp validate_execution_policy(:production_hardened, _llm_provider, _llm_cmd, _workdir), do: :ok
+  defp validate_execution_policy(
+         :test_relaxed,
+         _llm_provider,
+         _llm_cmd,
+         _workdir,
+         _open_pr,
+         _merge_pr,
+         _readiness_gate_approved
+       ),
+       do: :ok
 
-  defp validate_execution_policy(:staging_restricted, llm_provider, llm_cmd, workdir) do
+  defp validate_execution_policy(
+         :staging_restricted,
+         llm_provider,
+         llm_cmd,
+         workdir,
+         _open_pr,
+         _merge_pr,
+         _readiness_gate_approved
+       ) do
     cond do
       not is_binary(workdir) ->
         {:error, "staging_restricted requires an isolated --workdir write boundary"}
@@ -422,6 +452,39 @@ defmodule Mom.Config do
     end
   end
 
+  defp validate_execution_policy(
+         :production_hardened,
+         llm_provider,
+         llm_cmd,
+         workdir,
+         open_pr,
+         merge_pr,
+         readiness_gate_approved
+       ) do
+    cond do
+      not is_binary(workdir) ->
+        {:error, "production_hardened requires an isolated --workdir write boundary"}
+
+      llm_provider != :codex ->
+        {:error, "production_hardened currently supports llm_provider=codex only"}
+
+      not llm_cmd_binary_allowed?(llm_cmd, ["codex"]) ->
+        {:error, "production_hardened requires codex command allowlist compliance"}
+
+      String.contains?(llm_cmd || "", "--yolo") ->
+        {:error, "production_hardened forbids --yolo execution"}
+
+      not codex_read_only_sandbox?(llm_cmd) ->
+        {:error, "production_hardened requires codex sandbox mode read-only"}
+
+      (open_pr or merge_pr) and not readiness_gate_approved ->
+        {:error, "production_hardened requires readiness gate approval for sensitive operations"}
+
+      true ->
+        :ok
+    end
+  end
+
   defp llm_cmd_binary_allowed?(llm_cmd, allowlist)
        when is_binary(llm_cmd) and is_list(allowlist) do
     case String.split(llm_cmd, ~r/\s+/, trim: true) do
@@ -437,6 +500,12 @@ defmodule Mom.Config do
   end
 
   defp codex_workspace_write_sandbox?(_llm_cmd), do: false
+
+  defp codex_read_only_sandbox?(llm_cmd) when is_binary(llm_cmd) do
+    Regex.match?(~r/(^|\s)--sandbox(=|\s+)read-only(\s|$)/, llm_cmd)
+  end
+
+  defp codex_read_only_sandbox?(_llm_cmd), do: false
 
   defp parse_overflow_policy(opts, runtime) do
     case Keyword.get(opts, :overflow_policy, runtime[:overflow_policy]) do
@@ -519,6 +588,31 @@ defmodule Mom.Config do
       "true" -> {:ok, true}
       "false" -> {:ok, false}
       _other -> {:error, "readiness_gate_approved must be a boolean"}
+    end
+  end
+
+  defp parse_open_pr(opts, runtime, opts_for_profile) do
+    default =
+      case Keyword.get(opts_for_profile, :execution_profile) do
+        :production_hardened -> false
+        _ -> true
+      end
+
+    parse_boolean_opt(opts, runtime, :open_pr, default, "open_pr must be a boolean")
+  end
+
+  defp parse_merge_pr(opts, runtime) do
+    parse_boolean_opt(opts, runtime, :merge_pr, false, "merge_pr must be a boolean")
+  end
+
+  defp parse_boolean_opt(opts, runtime, key, default, error_message) do
+    case Keyword.get(opts, key, runtime[key]) do
+      nil -> {:ok, default}
+      true -> {:ok, true}
+      false -> {:ok, false}
+      "true" -> {:ok, true}
+      "false" -> {:ok, false}
+      _other -> {:error, error_message}
     end
   end
 

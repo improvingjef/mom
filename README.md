@@ -44,7 +44,7 @@ mix mom.stress --events 200 --max-concurrency 4 --queue-max-size 300 --work-ms 5
 - `--mode` `remote` or `inproc`. Default `remote`.
 - `--llm` `claude_code`, `codex`, `api_anthropic`, `api_openai`. Default `claude_code`.
 - `--llm-cmd` Override CLI command used for the LLM. For `--llm codex`, default is `codex --yolo exec`.
-- `--execution-profile` `test_relaxed`, `staging_restricted`, or `production_hardened`. Default `test_relaxed`. `staging_restricted` enforces Codex sandboxing, command allowlisting, and an isolated `--workdir`.
+- `--execution-profile` `test_relaxed`, `staging_restricted`, or `production_hardened`. Default `test_relaxed`. `staging_restricted` enforces Codex workspace-write sandboxing, command allowlisting, and an isolated `--workdir`; `production_hardened` enforces Codex read-only sandboxing, isolated `--workdir`, and readiness-gated sensitive operations.
 - `--llm-api-key` API key for `api_anthropic` or `api_openai`.
 - `--llm-api-url` Override API endpoint for `api_anthropic` or `api_openai`.
 - `--llm-model` Override model name for API providers.
@@ -58,7 +58,7 @@ mix mom.stress --events 200 --max-concurrency 4 --queue-max-size 300 --work-ms 5
 - `--llm-rate-limit-per-hour` Max LLM calls per hour. Default `60`.
 - `--issue-dedupe-window-ms` Window for deduping identical issues. Default `3600000`.
 - `--redact-keys` Comma-separated list of keys to redact before logging/LLM/issue. Default `password,passwd,secret,token,api_key,apikey,authorization,cookie`.
-- `--open-pr` `true` or `false`. Default `true`.
+- `--open-pr` `true` or `false`. Default `true` (`false` when `--execution-profile production_hardened`).
 - `--merge-pr` `true` or `false`. Default `false`.
 - `--readiness-gate-approved` Explicit approval required before enabling automated PR creation when GitHub credentials + target repo are configured.
 - `--poll-interval-ms` Diagnostics polling interval. Default `5000`.

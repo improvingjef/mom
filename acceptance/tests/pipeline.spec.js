@@ -292,6 +292,45 @@ test("mom CLI defines staging_restricted profile guardrails", async () => {
   ]);
 });
 
+test("mom CLI defines production_hardened profile guardrails", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_production_profile_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.execution_profile).toBe("production_hardened");
+  expect(result.llm_cmd).toBe("codex exec --sandbox read-only");
+  expect(result.sandbox_mode).toBe("read_only");
+  expect(result.command_allowlist).toEqual(["codex"]);
+  expect(result.write_boundaries.length).toBe(1);
+  expect(result.open_pr_default).toBeFalsy();
+  expect(result.missing_sandbox).toEqual([
+    "error",
+    "production_hardened requires codex sandbox mode read-only"
+  ]);
+  expect(result.yolo_disallowed).toEqual([
+    "error",
+    "production_hardened forbids --yolo execution"
+  ]);
+  expect(result.blocked_sensitive_op).toEqual([
+    "error",
+    "production_hardened requires readiness gate approval for sensitive operations"
+  ]);
+  expect(result.approved_sensitive_op_open_pr).toBeTruthy();
+});
+
 test("mom stress mix task generates rapid event summary", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

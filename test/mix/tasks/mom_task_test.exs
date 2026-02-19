@@ -64,6 +64,39 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.llm_cmd == "codex exec --sandbox workspace-write"
   end
 
+  test "parse_args accepts production_hardened execution profile" do
+    workdir = isolated_workdir_fixture()
+
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--llm",
+        "codex",
+        "--execution-profile",
+        "production_hardened",
+        "--workdir",
+        workdir
+      ])
+
+    assert config.execution_profile == :production_hardened
+    assert config.llm_cmd == "codex exec --sandbox read-only"
+    assert config.sandbox_mode == :read_only
+    assert config.open_pr == false
+
+    assert {:error,
+            "production_hardened requires readiness gate approval for sensitive operations"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--llm",
+               "codex",
+               "--execution-profile",
+               "production_hardened",
+               "--workdir",
+               workdir,
+               "--open-pr"
+             ])
+  end
+
   test "parse_args accepts github repo allowlist flag" do
     {:ok, config} =
       Mix.Tasks.Mom.parse_args([

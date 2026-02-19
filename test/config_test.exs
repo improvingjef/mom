@@ -93,6 +93,86 @@ defmodule Mom.ConfigTest do
     assert config.write_boundaries == [workdir]
   end
 
+  test "defines production_hardened execution profile policy" do
+    assert {:error, "production_hardened requires an isolated --workdir write boundary"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened
+             )
+
+    workdir = isolated_workdir_fixture()
+
+    assert {:error, "production_hardened requires codex command allowlist compliance"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               llm_cmd: "claude exec --sandbox read-only"
+             )
+
+    assert {:error, "production_hardened requires codex sandbox mode read-only"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               llm_cmd: "codex exec"
+             )
+
+    assert {:error, "production_hardened forbids --yolo execution"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               llm_cmd: "codex --yolo exec --sandbox read-only"
+             )
+
+    assert {:error,
+            "production_hardened requires readiness gate approval for sensitive operations"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               open_pr: true,
+               readiness_gate_approved: false
+             )
+  end
+
+  test "accepts valid production_hardened execution policy" do
+    workdir = isolated_workdir_fixture()
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir
+             )
+
+    assert config.execution_profile == :production_hardened
+    assert config.llm_cmd == "codex exec --sandbox read-only"
+    assert config.sandbox_mode == :read_only
+    assert config.command_allowlist == ["codex"]
+    assert config.write_boundaries == [workdir]
+    assert config.open_pr == false
+
+    assert {:ok, approved} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               open_pr: true,
+               readiness_gate_approved: true
+             )
+
+    assert approved.open_pr
+  end
+
   test "uses runtime env defaults" do
     Application.put_env(:mom, :llm_cmd, "cat")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
