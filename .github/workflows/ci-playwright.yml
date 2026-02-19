@@ -1,0 +1,53 @@
+name: ci/playwright
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  playwright:
+    name: ci/playwright
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.19.4"
+          otp-version: "28.0"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: acceptance/package-lock.json
+
+      - name: Install Elixir Dependencies
+        run: mix deps.get
+
+      - name: Install Playwright Dependencies
+        run: npm ci --prefix acceptance
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+        working-directory: acceptance
+
+      - name: Run Acceptance Suite
+        run: npm run test:ci --prefix acceptance
+        env:
+          MOM_ACCEPTANCE_FAIL_ON_FLAKY: "true"
+          MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH: acceptance/.artifacts/concurrency-report.json
+
+      - name: Upload Concurrency Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-concurrency-report
+          path: acceptance/.artifacts/concurrency-report.json
+          if-no-files-found: error

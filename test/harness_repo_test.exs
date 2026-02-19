@@ -135,6 +135,13 @@ defmodule Mom.HarnessRepoTest do
     assert evidence["observed_checks"] == ["ci/exunit", "ci/playwright"]
     assert evidence["required_min_approvals"] == 1
     assert evidence["observed_min_approvals"] == 1
+
+    assert evidence["ci_workflow_verification"]["matched_checks"] == [
+             "ci/exunit",
+             "ci/playwright"
+           ]
+
+    assert evidence["ci_workflow_verification"]["playwright_fail_on_flaky"] == true
   end
 
   test "confirm_and_record rejects non-private harness repo" do
@@ -298,6 +305,59 @@ defmodule Mom.HarnessRepoTest do
            )
   end
 
+  test "confirm_and_record rejects invalid ci workflow reliability wiring" do
+    record_path = unique_record_path()
+    traceability_path = unique_traceability_path()
+    workflows_path = unique_workflows_path()
+    File.mkdir_p!(workflows_path)
+    write_traceability!(traceability_path, full_traceability_entries())
+
+    File.write!(
+      Path.join(workflows_path, "ci-exunit.yml"),
+      """
+      name: ci/exunit
+      jobs:
+        exunit:
+          name: ci/exunit
+      """
+    )
+
+    File.write!(
+      Path.join(workflows_path, "ci-playwright.yml"),
+      """
+      name: ci/playwright
+      jobs:
+        playwright:
+          name: ci/playwright
+      """
+    )
+
+    fake_runner = fn
+      "gh",
+      ["repo", "view", "acme/harness", "--json", "nameWithOwner,isPrivate,url,visibility"] ->
+        {:ok,
+         ~s({"nameWithOwner":"acme/harness","isPrivate":true,"url":"https://github.com/acme/harness","visibility":"PRIVATE"})}
+
+      "gh", ["api", "repos/acme/harness/contents/" <> _path] ->
+        {:ok, ~s({"path":"ok"})}
+
+      "gh", ["api", "repos/acme/harness/branches/main/protection"] ->
+        {:ok,
+         ~s({"required_status_checks":{"contexts":["ci/exunit","ci/playwright"]},"required_pull_request_reviews":{"required_approving_review_count":1}})}
+    end
+
+    assert {:error, reason} =
+             HarnessRepo.confirm_and_record("acme/harness", record_path,
+               cmd_runner: fake_runner,
+               baseline_error_path: "priv/replay/error_path.ex",
+               baseline_diagnostics_path: "priv/replay/diagnostics_path.ex",
+               traceability_path: traceability_path,
+               ci_workflows_path: workflows_path
+             )
+
+    assert String.contains?(reason, "MOM_ACCEPTANCE_FAIL_ON_FLAKY")
+  end
+
   defp unique_record_path do
     Path.join(System.tmp_dir!(), "mom-harness-record-#{System.unique_integer([:positive])}.json")
   end
@@ -313,6 +373,13 @@ defmodule Mom.HarnessRepoTest do
     Path.join(
       System.tmp_dir!(),
       "mom-harness-branch-protection-evidence-#{System.unique_integer([:positive])}.json"
+    )
+  end
+
+  defp unique_workflows_path do
+    Path.join(
+      System.tmp_dir!(),
+      "mom-ci-workflows-#{System.unique_integer([:positive])}"
     )
   end
 

@@ -1,9 +1,9 @@
 # Mom Remaining Plan (Failure Server First)
 
 ## Next 3 Tasks
-1. [ ] Check in CI workflow manifests and required-check wiring for ExUnit + Playwright gates (including concurrency-report artifacts and fail-on-flaky enforcement) so branch protection can enforce reliability controls.
-2. [ ] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
-3. [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
+1. [ ] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
+2. [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
+3. [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
 
 ## Priority 0: Failure Server and Acceptance Reliability
 - [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
@@ -11,7 +11,8 @@
 - [x] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
 - [x] Add acceptance runner build-artifact isolation controls (precompiled per-worker build dirs or serialized execution mode) to prevent Mix build-lock contention under parallel Playwright execution.
 - [x] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
-- [ ] Check in CI workflow manifests and required-check wiring for ExUnit + Playwright gates (including concurrency-report artifacts and fail-on-flaky enforcement) so branch protection can enforce reliability controls.
+- [x] Check in CI workflow manifests and required-check wiring for ExUnit + Playwright gates (including concurrency-report artifacts and fail-on-flaky enforcement) so branch protection can enforce reliability controls.
+ - Status: complete (February 19, 2026) via checked-in GitHub Actions workflows (`.github/workflows/ci-exunit.yml`, `.github/workflows/ci-playwright.yml`), harness-integrated CI workflow verification (`Mom.CIWorkflow`), and ExUnit + Playwright acceptance coverage for required-check mapping and flaky/concurrency-report controls.
 - [ ] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
 - [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
 - [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
@@ -39,6 +40,7 @@
 - [ ] Add third-party dependency governance controls (SBOM generation, vulnerability SLA policy, and automated dependency risk gates).
 - [ ] Add customer trust and assurance package (security whitepaper, penetration test cadence, vulnerability disclosure/bug bounty process).
 - [ ] Add enterprise procurement security review workflow (security questionnaire automation, evidence bundle generation, and renewal tracking).
+- [ ] Add software supply-chain trust controls (release artifact signing, provenance attestations/SLSA, and verification gates for customer deployments).
 
 ## Priority 3: Multi-Tenant Production Controls and Observability
 - [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.

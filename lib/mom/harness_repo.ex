@@ -18,6 +18,7 @@ defmodule Mom.HarnessRepo do
   @default_required_checks ["ci/exunit", "ci/playwright"]
   @default_min_approvals 1
   @default_branch_protection_evidence_path "acceptance/harness_branch_protection_evidence.json"
+  @default_ci_workflows_path ".github/workflows"
 
   @type record :: %{
           name_with_owner: String.t(),
@@ -43,12 +44,16 @@ defmodule Mom.HarnessRepo do
     recorded_at = Keyword.get(opts, :recorded_at, DateTime.utc_now() |> DateTime.to_iso8601())
     baseline_error_path = Keyword.get(opts, :baseline_error_path)
     baseline_diagnostics_path = Keyword.get(opts, :baseline_diagnostics_path)
-    traceability_path = Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
+
+    traceability_path =
+      Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
+
     branch_protection_branch =
       Keyword.get(opts, :branch_protection_branch, @default_branch_protection_branch)
 
     required_checks = Keyword.get(opts, :required_checks, @default_required_checks)
     min_approvals = Keyword.get(opts, :min_approvals, @default_min_approvals)
+    ci_workflows_path = Keyword.get(opts, :ci_workflows_path, @default_ci_workflows_path)
 
     branch_protection_evidence_path =
       Keyword.get(
@@ -66,6 +71,11 @@ defmodule Mom.HarnessRepo do
          :ok <- validate_required_checks(required_checks),
          :ok <- validate_min_approvals(min_approvals),
          :ok <- validate_branch_protection_evidence_path(branch_protection_evidence_path),
+         :ok <- validate_ci_workflows_path(ci_workflows_path),
+         {:ok, ci_workflow_evidence} <-
+           Mom.CIWorkflow.verify_required_checks(required_checks,
+             workflows_path: ci_workflows_path
+           ),
          {:ok, traceability_entries} <- load_traceability(traceability_path),
          :ok <- validate_traceability_entries(traceability_entries),
          :ok <- verify_traceability_paths(repo, traceability_entries, runner),
@@ -79,7 +89,13 @@ defmodule Mom.HarnessRepo do
              min_approvals,
              runner
            ),
-         :ok <- write_branch_protection_evidence(branch_protection_evidence_path, branch_protection_evidence),
+         branch_protection_evidence <-
+           Map.put(branch_protection_evidence, :ci_workflow_verification, ci_workflow_evidence),
+         :ok <-
+           write_branch_protection_evidence(
+             branch_protection_evidence_path,
+             branch_protection_evidence
+           ),
          record <- Map.put(record, :baseline_error_path, baseline_error_path),
          record <- Map.put(record, :baseline_diagnostics_path, baseline_diagnostics_path),
          record <- Map.put(record, :traceability_path, traceability_path),
@@ -196,7 +212,8 @@ defmodule Mom.HarnessRepo do
              :traceability_mapped_capability_count,
              baseline_required?
            ),
-         :ok <- maybe_require_baseline_field(record, :branch_protection_branch, baseline_required?),
+         :ok <-
+           maybe_require_baseline_field(record, :branch_protection_branch, baseline_required?),
          :ok <-
            maybe_require_baseline_field(
              record,
@@ -226,7 +243,11 @@ defmodule Mom.HarnessRepo do
          :ok <- maybe_validate_min_approvals(record, baseline_required?),
          :ok <- maybe_validate_path(record, :branch_protection_evidence_path, baseline_required?),
          :ok <-
-           maybe_validate_mapped_count(record, :traceability_mapped_capability_count, baseline_required?),
+           maybe_validate_mapped_count(
+             record,
+             :traceability_mapped_capability_count,
+             baseline_required?
+           ),
          :ok <- validate_timestamp(record.recorded_at) do
       :ok
     end
@@ -281,7 +302,8 @@ defmodule Mom.HarnessRepo do
     end
   end
 
-  defp validate_branch_protection_branch(value), do: validate_path(value, "branch_protection_branch")
+  defp validate_branch_protection_branch(value),
+    do: validate_path(value, "branch_protection_branch")
 
   defp validate_required_checks(value) when is_list(value) do
     if Enum.all?(value, &(is_binary(&1) and &1 != "")) and value != [] do
@@ -303,6 +325,8 @@ defmodule Mom.HarnessRepo do
 
   defp validate_branch_protection_evidence_path(value),
     do: validate_path(value, "branch_protection_evidence_path")
+
+  defp validate_ci_workflows_path(value), do: validate_path(value, "ci_workflows_path")
 
   defp verify_harness_path(repo, path, runner) do
     args = ["api", "repos/#{repo}/contents/#{path}"]
@@ -487,8 +511,11 @@ defmodule Mom.HarnessRepo do
     body = Jason.encode_to_iodata!(evidence, pretty: true)
 
     case File.write(path, body ++ "\n") do
-      :ok -> :ok
-      {:error, reason} -> {:error, "failed to write branch protection evidence: #{inspect(reason)}"}
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        {:error, "failed to write branch protection evidence: #{inspect(reason)}"}
     end
   end
 
