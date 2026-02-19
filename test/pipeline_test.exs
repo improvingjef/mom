@@ -197,8 +197,7 @@ defmodule Mom.PipelineTest do
     assert :ok == Pipeline.enqueue(fail_pid, {:error_event, %{id: 4, test_pid: self()}})
     assert_receive {:started, 4, _worker}
 
-    assert_receive {:telemetry_event, [:mom, :pipeline, :failed], failed_measurements,
-                    %{job_type: :error_event, reason: reason}}
+    {failed_measurements, reason} = await_failed_event()
 
     assert is_integer(failed_measurements.duration)
     assert failed_measurements.duration >= 0
@@ -241,5 +240,30 @@ defmodule Mom.PipelineTest do
     ExUnit.AssertionError ->
       Process.sleep(10)
       eventually(fun, retries - 1)
+  end
+
+  defp await_failed_event(timeout_ms \\ 1_000) do
+    deadline_ms = System.monotonic_time(:millisecond) + timeout_ms
+    do_await_failed_event(deadline_ms)
+  end
+
+  defp do_await_failed_event(deadline_ms) do
+    remaining_ms = deadline_ms - System.monotonic_time(:millisecond)
+
+    if remaining_ms <= 0 do
+      raise ExUnit.AssertionError, message: "missing telemetry failed pipeline event"
+    end
+
+    receive do
+      {:telemetry_event, [:mom, :pipeline, :failed], measurements,
+       %{job_type: :error_event, reason: reason}} ->
+        {measurements, reason}
+
+      _other ->
+        do_await_failed_event(deadline_ms)
+    after
+      remaining_ms ->
+        raise ExUnit.AssertionError, message: "missing telemetry failed pipeline event"
+    end
   end
 end

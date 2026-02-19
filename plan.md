@@ -219,6 +219,7 @@ Out of scope (for this phase):
 - Network egress policy enforcement is implemented: outbound GitHub/LLM hosts are restricted to an allowlist with fail-closed validation/runtime checks, covered by ExUnit + Playwright acceptance tests.
 - Unusual-activity alerting is implemented for PR spikes, auth failure spikes, and disallowed repo target attempts, covered by ExUnit + Playwright acceptance tests.
 - Load simulation is implemented via `mix mom.stress` for rapid synthetic incident generation, covered by ExUnit TDD and Playwright acceptance tests.
+- Readiness gate validation is implemented for automated PR creation (`readiness_gate_approved`), with fail-closed audit logging and ExUnit + Playwright acceptance coverage.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -368,9 +369,9 @@ Out of scope (for this phase):
 - [x] Add unit tests for queue bounds, overflow policy, dispatch bounds, timeout, dedupe.
 - [x] Add integration burst tests for mixed diagnostics/error events.
 - [x] Add stress script/mix task for rapid local event generation.
-- [ ] Validate readiness gate before enabling automated PR creation.
-- [ ] Add/maintain ExUnit TDD coverage for every completed checklist task.
-- [ ] Add/maintain Playwright coverage for every applicable end-to-end task (or record N/A rationale).
+- [x] Validate readiness gate before enabling automated PR creation.
+- [x] Add/maintain ExUnit TDD coverage for every completed checklist task.
+- [x] Add/maintain Playwright coverage for every applicable end-to-end task (or record N/A rationale).
 
 ### Post-Validation Hardening
 - [ ] Define `staging_restricted` policy (sandbox + command allowlist + write boundaries).
@@ -419,3 +420,5 @@ Out of scope (for this phase):
 - [ ] Add customer-facing SLA contract automation (policy templates, entitlement mapping, and auto-enforced remedy terms).
 - [ ] Add enterprise procurement security review workflow (security questionnaire automation, evidence bundle generation, and renewal tracking).
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
+- [ ] Replace static readiness-gate flag with signed/expiring readiness attestations (branch-protection check, credential-scope proof, and approval provenance).
+- [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.

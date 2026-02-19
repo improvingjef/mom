@@ -27,6 +27,7 @@ defmodule Mom.Config do
     :git_ssh_command,
     :open_pr,
     :merge_pr,
+    :readiness_gate_approved,
     :poll_interval_ms,
     :max_concurrency,
     :queue_max_size,
@@ -68,6 +69,7 @@ defmodule Mom.Config do
           git_ssh_command: String.t() | nil,
           open_pr: boolean(),
           merge_pr: boolean(),
+          readiness_gate_approved: boolean(),
           poll_interval_ms: non_neg_integer(),
           max_concurrency: non_neg_integer(),
           queue_max_size: pos_integer(),
@@ -118,8 +120,19 @@ defmodule Mom.Config do
              {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
+             {:ok, readiness_gate_approved} <- parse_readiness_gate_approved(opts, runtime),
              {:ok, workdir} <- parse_workdir(opts, runtime),
              :ok <- validate_actor_identity(actor_id, github_token, allowed_actor_ids),
+             :ok <-
+               validate_automated_pr_readiness(
+                 Keyword.get(opts, :open_pr, true),
+                 github_token,
+                 Keyword.get(opts, :github_repo) || runtime[:github_repo],
+                 readiness_gate_approved,
+                 actor_id,
+                 github_base_branch,
+                 protected_branches
+               ),
              {:ok, github_repo} <-
                parse_and_validate_github_repo(opts, runtime, allowed_github_repos, actor_id) do
           {:ok,
@@ -158,6 +171,7 @@ defmodule Mom.Config do
              git_ssh_command: Keyword.get(opts, :git_ssh_command) || runtime[:git_ssh_command],
              open_pr: Keyword.get(opts, :open_pr, true),
              merge_pr: Keyword.get(opts, :merge_pr, false),
+             readiness_gate_approved: readiness_gate_approved,
              poll_interval_ms: Keyword.get(opts, :poll_interval_ms, 5_000),
              max_concurrency: max_concurrency,
              queue_max_size: queue_max_size,
@@ -385,6 +399,16 @@ defmodule Mom.Config do
     end
   end
 
+  defp parse_readiness_gate_approved(opts, runtime) do
+    case Keyword.get(opts, :readiness_gate_approved, runtime[:readiness_gate_approved] || false) do
+      true -> {:ok, true}
+      false -> {:ok, false}
+      "true" -> {:ok, true}
+      "false" -> {:ok, false}
+      _other -> {:error, "readiness_gate_approved must be a boolean"}
+    end
+  end
+
   defp valid_branch_prefix?(prefix) when is_binary(prefix) do
     trimmed = String.trim(prefix)
 
@@ -445,6 +469,60 @@ defmodule Mom.Config do
   end
 
   defp machine_actor_identity?(_), do: false
+
+  defp validate_automated_pr_readiness(
+         open_pr,
+         github_token,
+         github_repo,
+         readiness_gate_approved,
+         actor_id,
+         github_base_branch,
+         protected_branches
+       ) do
+    if automated_pr_flow?(open_pr, github_token, github_repo) do
+      cond do
+        not readiness_gate_approved ->
+          emit_readiness_blocked(github_repo, actor_id, github_base_branch, protected_branches,
+            reason: :readiness_gate_not_approved
+          )
+
+          {:error, "readiness_gate_approved must be true before enabling automated PR creation"}
+
+        github_base_branch not in protected_branches ->
+          emit_readiness_blocked(github_repo, actor_id, github_base_branch, protected_branches,
+            reason: :base_branch_not_protected
+          )
+
+          {:error, "github_base_branch must be included in protected_branches"}
+
+        true ->
+          :ok
+      end
+    else
+      :ok
+    end
+  end
+
+  defp automated_pr_flow?(open_pr, github_token, github_repo) do
+    open_pr and token_present?(github_token) and value_present?(github_repo)
+  end
+
+  defp token_present?(token) when is_binary(token), do: String.trim(token) != ""
+  defp token_present?(_token), do: false
+
+  defp value_present?(value) when is_binary(value), do: String.trim(value) != ""
+  defp value_present?(_value), do: false
+
+  defp emit_readiness_blocked(repo, actor_id, github_base_branch, protected_branches, opts) do
+    :ok =
+      Audit.emit(:automated_pr_readiness_blocked, %{
+        repo: repo,
+        actor_id: actor_id,
+        base_branch: github_base_branch,
+        protected_branches: protected_branches,
+        reason: Keyword.fetch!(opts, :reason)
+      })
+  end
 
   defp validate_required_egress_hosts(llm_provider, llm_api_url, allowed_egress_hosts) do
     with {:ok, required_llm_host} <- required_llm_host(llm_provider, llm_api_url),

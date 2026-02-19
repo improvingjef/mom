@@ -389,6 +389,32 @@ test("mom CLI rejects non-machine actor ids for GitHub credentials", async () =>
   ]);
 });
 
+test("mom CLI requires readiness gate approval before enabling automated PR creation", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.blocked_result).toEqual([
+    "error",
+    "readiness_gate_approved must be true before enabling automated PR creation"
+  ]);
+  expect(result.approved_gate).toBeTruthy();
+  expect(result.approved_repo).toBe("acme/mom");
+});
+
 test("mom enforces PR-only workflow for protected branches", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

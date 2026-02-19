@@ -28,6 +28,7 @@ defmodule Mom.Acceptance.GitHubAuditScript do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"]
       )

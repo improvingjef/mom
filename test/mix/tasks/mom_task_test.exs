@@ -164,4 +164,35 @@ defmodule Mix.Tasks.MomTaskTest do
 
     assert config.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
   end
+
+  test "parse_args requires readiness gate approval for automated PR flows" do
+    System.put_env("MOM_GITHUB_TOKEN", "token")
+
+    assert {:error, "readiness_gate_approved must be true before enabling automated PR creation"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--github-repo",
+               "acme/mom",
+               "--actor-id",
+               "mom-app[bot]",
+               "--allowed-actor-ids",
+               "mom-app[bot]"
+             ])
+
+    assert {:ok, config} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--github-repo",
+               "acme/mom",
+               "--actor-id",
+               "mom-app[bot]",
+               "--allowed-actor-ids",
+               "mom-app[bot]",
+               "--readiness-gate-approved"
+             ])
+
+    assert config.readiness_gate_approved
+  after
+    System.delete_env("MOM_GITHUB_TOKEN")
+  end
 end

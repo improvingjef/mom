@@ -259,6 +259,59 @@ defmodule Mom.ConfigTest do
     assert config.actor_id == "mom-app[bot]"
   end
 
+  test "requires explicit readiness gate approval before automated PR creation" do
+    assert {:error, "readiness_gate_approved must be true before enabling automated PR creation"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"]
+             )
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               readiness_gate_approved: true
+             )
+
+    assert config.readiness_gate_approved
+  end
+
+  test "emits audit event when automated PR readiness gate blocks startup" do
+    handler_id = "mom-config-readiness-blocked-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:mom, :audit, :automated_pr_readiness_blocked],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error, "readiness_gate_approved must be true before enabling automated PR creation"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"]
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :automated_pr_readiness_blocked], metadata}
+    assert metadata.repo == "acme/mom"
+    assert metadata.actor_id == "mom-app[bot]"
+    assert metadata.reason == :readiness_gate_not_approved
+  end
+
   test "defaults to protected main branch with PR-only enforcement target" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert config.github_base_branch == "main"

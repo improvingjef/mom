@@ -141,6 +141,7 @@ defmodule Mix.Tasks.Mom do
       redact_keys: :string,
       open_pr: :boolean,
       merge_pr: :boolean,
+      readiness_gate_approved: :boolean,
       poll_interval_ms: :integer,
       max_concurrency: :integer,
       queue_max_size: :integer,

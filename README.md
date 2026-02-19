@@ -59,6 +59,7 @@ mix mom.stress --events 200 --max-concurrency 4 --queue-max-size 300 --work-ms 5
 - `--redact-keys` Comma-separated list of keys to redact before logging/LLM/issue. Default `password,passwd,secret,token,api_key,apikey,authorization,cookie`.
 - `--open-pr` `true` or `false`. Default `true`.
 - `--merge-pr` `true` or `false`. Default `false`.
+- `--readiness-gate-approved` Explicit approval required before enabling automated PR creation when GitHub credentials + target repo are configured.
 - `--poll-interval-ms` Diagnostics polling interval. Default `5000`.
 - `--max-concurrency` Max concurrent pipeline jobs. Default `4`.
 - `--queue-max-size` Max queued jobs before overflow policy applies. Default `200`.

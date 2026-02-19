@@ -47,7 +47,14 @@ defmodule Mom.Workers.EngineTriageTest do
   end
 
   defp config_fixture do
-    {:ok, config} = Config.from_opts(repo: "/tmp/repo", mode: :inproc)
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        mode: :inproc,
+        actor_id: "mom-app[bot]",
+        allowed_actor_ids: ["mom-app[bot]"]
+      )
+
     config
   end
 end

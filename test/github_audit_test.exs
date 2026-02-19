@@ -44,6 +44,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"]
       )
@@ -84,6 +85,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"],
         github_base_branch: "release",
@@ -131,6 +133,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"],
         github_base_branch: "main",
@@ -189,6 +192,7 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
+        open_pr: false,
         actor_id: "machine-bot",
         allowed_actor_ids: ["machine-bot"]
       )

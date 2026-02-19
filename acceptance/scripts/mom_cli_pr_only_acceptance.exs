@@ -43,7 +43,8 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "--actor-id",
           "machine-bot",
           "--allowed-actor-ids",
-          "machine-bot"
+          "machine-bot",
+          "--readiness-gate-approved"
         ])
 
       {:ok, unprotected_config} =
@@ -58,7 +59,8 @@ defmodule Mom.Acceptance.MomCliPrOnlyScript do
           "--actor-id",
           "machine-bot",
           "--allowed-actor-ids",
-          "machine-bot"
+          "machine-bot",
+          "--no-open-pr"
         ])
 
       protected_merge_result = Mom.GitHub.merge_pr(protected_config, %{number: 10})
