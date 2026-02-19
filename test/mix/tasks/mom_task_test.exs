@@ -105,6 +105,19 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
   end
 
+  test "parse_args rejects non-machine actor identities for github credentials" do
+    assert {:error, "actor_id must be a dedicated machine identity"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--github-token",
+               "token",
+               "--actor-id",
+               "jef",
+               "--allowed-actor-ids",
+               "jef"
+             ])
+  end
+
   test "parse_args accepts protected branch controls" do
     {:ok, config} =
       Mix.Tasks.Mom.parse_args([

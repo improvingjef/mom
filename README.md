@@ -37,7 +37,7 @@ mix mom /path/to/repo --mode inproc
 - `--cookie` Cookie for distributed Erlang auth.
 - `--mode` `remote` or `inproc`. Default `remote`.
 - `--llm` `claude_code`, `codex`, `api_anthropic`, `api_openai`. Default `claude_code`.
-- `--llm-cmd` Override CLI command used for the LLM.
+- `--llm-cmd` Override CLI command used for the LLM. For `--llm codex`, default is `codex --yolo exec`.
 - `--llm-api-key` API key for `api_anthropic` or `api_openai`.
 - `--llm-api-url` Override API endpoint for `api_anthropic` or `api_openai`.
 - `--llm-model` Override model name for API providers.
@@ -59,6 +59,8 @@ mix mom /path/to/repo --mode inproc
 - `--job-timeout-ms` Per-job timeout budget in milliseconds. Default `120000`.
 - `--overflow-policy` `drop_newest` or `drop_oldest`. Default `drop_newest`.
 - `--allowed-github-repos` Comma-separated allowlist of permitted `owner/name` repositories for `--github-repo` / `MOM_GITHUB_REPO`.
+- `--allowed-actor-ids` Comma-separated allowlist of permitted machine identities for GitHub mutations. Required when `--github-token` is set.
+- `--actor-id` Must identify a dedicated machine identity for GitHub-token flows (`[bot]`, `-bot`, `_bot`, or `app/` prefix).
 - `--min-level` Minimum logger level to capture. Default `error`.
 - `--github-repo` GitHub repo in `owner/name` format.
 - `--github-token` Fine-grained PAT or GitHub App token.
@@ -83,6 +85,7 @@ You can set defaults via environment variables:
 - `MOM_JOB_TIMEOUT_MS`
 - `MOM_OVERFLOW_POLICY`
 - `MOM_ALLOWED_GITHUB_REPOS`
+- `MOM_ALLOWED_ACTOR_IDS`
 - `MOM_REDACT_KEYS`
 
 ## How It Works

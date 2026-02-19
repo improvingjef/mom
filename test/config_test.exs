@@ -168,6 +168,26 @@ defmodule Mom.ConfigTest do
              )
   end
 
+  test "requires dedicated machine actor identity for github credentials" do
+    assert {:error, "actor_id must be a dedicated machine identity"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "jef",
+               allowed_actor_ids: ["jef"]
+             )
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"]
+             )
+
+    assert config.actor_id == "mom-app[bot]"
+  end
+
   test "defaults to protected main branch with PR-only enforcement target" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert config.github_base_branch == "main"

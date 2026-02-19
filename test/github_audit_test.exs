@@ -44,8 +44,8 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user",
-        allowed_actor_ids: ["machine-user"]
+        actor_id: "machine-bot",
+        allowed_actor_ids: ["machine-bot"]
       )
 
     telemetry_handler = "github-audit-issue-#{System.unique_integer([:positive])}"
@@ -68,10 +68,10 @@ defmodule Mom.GitHubAuditTest do
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_issue_created], metadata}
     assert metadata.repo == "acme/mom"
-    assert metadata.actor_id == "machine-user"
+    assert metadata.actor_id == "machine-bot"
     assert metadata.issue_number == 77
     assert log =~ "\"event\":\"github_issue_created\""
-    assert log =~ "\"actor_id\":\"machine-user\""
+    assert log =~ "\"actor_id\":\"machine-bot\""
   end
 
   test "merge_pr emits merge attempt and failure audit events" do
@@ -84,8 +84,8 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user",
-        allowed_actor_ids: ["machine-user"],
+        actor_id: "machine-bot",
+        allowed_actor_ids: ["machine-bot"],
         github_base_branch: "release",
         protected_branches: ["main"]
       )
@@ -111,12 +111,12 @@ defmodule Mom.GitHubAuditTest do
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_merge_attempt], attempt_metadata}
     assert attempt_metadata.repo == "acme/mom"
-    assert attempt_metadata.actor_id == "machine-user"
+    assert attempt_metadata.actor_id == "machine-bot"
     assert attempt_metadata.pr_number == 33
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_merge_failed], failure_metadata}
     assert failure_metadata.repo == "acme/mom"
-    assert failure_metadata.actor_id == "machine-user"
+    assert failure_metadata.actor_id == "machine-bot"
     assert failure_metadata.pr_number == 33
 
     assert log =~ "\"event\":\"github_merge_attempt\""
@@ -131,8 +131,8 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user",
-        allowed_actor_ids: ["machine-user"],
+        actor_id: "machine-bot",
+        allowed_actor_ids: ["machine-bot"],
         github_base_branch: "main",
         protected_branches: ["main", "release"]
       )
@@ -157,7 +157,7 @@ defmodule Mom.GitHubAuditTest do
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_merge_blocked], metadata}
     assert metadata.repo == "acme/mom"
-    assert metadata.actor_id == "machine-user"
+    assert metadata.actor_id == "machine-bot"
     assert metadata.pr_number == 33
     assert metadata.base_branch == "main"
     assert log =~ "\"event\":\"github_merge_blocked\""

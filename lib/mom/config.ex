@@ -366,8 +366,23 @@ defmodule Mom.Config do
       allowed_actor_ids != [] and actor_id not in allowed_actor_ids ->
         {:error, "actor_id is not allowed"}
 
+      is_binary(github_token) and String.trim(github_token) != "" and
+          not machine_actor_identity?(actor_id) ->
+        {:error, "actor_id must be a dedicated machine identity"}
+
       true ->
         :ok
     end
   end
+
+  defp machine_actor_identity?(actor_id) when is_binary(actor_id) do
+    normalized = String.downcase(actor_id)
+
+    String.ends_with?(normalized, "[bot]") or
+      String.contains?(normalized, "-bot") or
+      String.contains?(normalized, "_bot") or
+      String.starts_with?(normalized, "app/")
+  end
+
+  defp machine_actor_identity?(_), do: false
 end

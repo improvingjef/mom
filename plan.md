@@ -214,6 +214,7 @@ Out of scope (for this phase):
 - Codex execution profile defaults to `codex --yolo exec` (with override support), covered by ExUnit + Playwright acceptance tests.
 - PR-only workflow enforcement for protected base branches is implemented (merge attempts are blocked for protected branches), covered by ExUnit + Playwright acceptance tests.
 - Least-privilege credential identity enforcement is implemented via actor allowlist controls for GitHub-token flows, covered by ExUnit + Playwright acceptance tests.
+- Dedicated machine identity enforcement for GitHub-token flows is implemented (bot/app actor pattern required), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -353,7 +354,7 @@ Out of scope (for this phase):
 - [x] Validate burst scenario remains stable under bounded concurrency.
 
 ### Security Baseline
-- [ ] Confirm dedicated machine identity (or GitHub App) is used.
+- [x] Confirm dedicated machine identity (or GitHub App) is used.
 - [ ] Confirm secrets are injected securely and redacted in logs.
 - [ ] Confirm isolated worktrees are used for all mutations.
 - [ ] Confirm network egress is restricted to required endpoints.
@@ -404,3 +405,5 @@ Out of scope (for this phase):
 - [ ] Add model-provider governance controls (prompt/response retention policy enforcement, provider-level data use guarantees, and tenant-selectable model routing constraints).
 - [ ] Add automated SLA credit workflows (policy mapping, breach detection, and credit issuance ledger integration).
 - [ ] Add customer offboarding/deprovisioning workflows (tenant export verification, credential revocation, and timed hard-delete confirmation).
+- [ ] Add automated fix-quality and safety gates (regression benchmark suite, semantic diff risk scoring, and mandatory human approval path for high-risk patches).
+- [ ] Add abuse/fraud controls for commercial usage (tenant anomaly detection, spend-spike auto-throttles, and chargeback dispute evidence workflows).
