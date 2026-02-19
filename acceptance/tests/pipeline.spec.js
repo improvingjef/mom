@@ -35,6 +35,23 @@ test("mom CLI parses pipeline concurrency flags", async () => {
   expect(result.durable_queue_path).toBe("/tmp/mom/queue.bin");
 });
 
+
+test("mom CLI fails fast when runtime toolchain prerequisites are not met", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs"
+  );
+
+  expect(result.node_blocked).toEqual([
+    "error",
+    "node --version must be >= 18.x; found v16.20.2"
+  ]);
+  expect(result.otp_blocked).toEqual([
+    "error",
+    "erlang/otp version must be 28.0.2; found 28.0.1"
+  ]);
+  expect(result.valid_mode).toBe("remote");
+});
+
 test("runner routes logs and diagnostics through pipeline workers", async () => {
   const { result } = runAcceptanceScript("acceptance/scripts/runner_pipeline_acceptance.exs");
 

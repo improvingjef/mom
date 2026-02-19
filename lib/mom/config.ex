@@ -3,6 +3,9 @@ defmodule Mom.Config do
 
   alias Mom.Audit
 
+  @minimum_node_major 18
+  @required_otp_version "28.0.2"
+
   @test_command_profiles %{
     mix_test: %{
       command: "mix",
@@ -178,7 +181,8 @@ defmodule Mom.Config do
         llm_api_key = secret_from_opts_or_env(opts, runtime, :llm_api_key, "MOM_LLM_API_KEY")
         actor_id = parse_actor_id(opts, runtime)
 
-        with {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
+        with :ok <- validate_toolchain_prerequisites(opts, runtime),
+             {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, tenant_queue_max_size} <-
                parse_optional_pos_int(opts, runtime, :tenant_queue_max_size),
@@ -353,6 +357,122 @@ defmodule Mom.Config do
            }}
         end
     end
+  end
+
+  defp validate_toolchain_prerequisites(opts, runtime) do
+    with {:ok, node_version} <- detect_node_version(opts, runtime),
+         :ok <- validate_node_version(node_version, required_node_major(runtime)),
+         {:ok, otp_version} <- detect_otp_version(opts, runtime),
+         :ok <- validate_otp_version(otp_version, required_otp_version(runtime)) do
+      :ok
+    end
+  end
+
+  defp required_node_major(runtime) do
+    case parse_int(runtime[:required_node_major]) do
+      value when is_integer(value) and value > 0 -> value
+      _ -> @minimum_node_major
+    end
+  end
+
+  defp required_otp_version(runtime) do
+    case runtime[:required_otp_version] do
+      value when is_binary(value) and value != "" -> String.trim(value)
+      _ -> @required_otp_version
+    end
+  end
+
+  defp detect_node_version(opts, runtime) do
+    case Keyword.get(opts, :toolchain_node_version_override) ||
+           runtime[:toolchain_node_version_override] ||
+           System.get_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE") do
+      nil -> run_node_version_command()
+      value -> {:ok, normalize_version_string(value)}
+    end
+  end
+
+  defp run_node_version_command do
+    case System.cmd("node", ["--version"], stderr_to_stdout: true) do
+      {output, 0} ->
+        {:ok, normalize_version_string(output)}
+
+      {output, status} ->
+        {:error,
+         "node --version failed with exit status #{status}: #{normalize_version_string(output)}"}
+    end
+  rescue
+    _error ->
+      {:error, "node executable is required and must be available in PATH"}
+  end
+
+  defp validate_node_version(version, minimum_major) do
+    with {:ok, %{major: parsed_major, display_version: display_version}} <-
+           parse_major_version(version, "node --version") do
+      if parsed_major >= minimum_major do
+        :ok
+      else
+        {:error, "node --version must be >= #{minimum_major}.x; found #{display_version}"}
+      end
+    end
+  end
+
+  defp detect_otp_version(opts, runtime) do
+    case Keyword.get(opts, :toolchain_otp_version_override) ||
+           runtime[:toolchain_otp_version_override] ||
+           System.get_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE") do
+      nil -> read_otp_version_file()
+      value -> {:ok, normalize_version_string(value)}
+    end
+  end
+
+  defp read_otp_version_file do
+    root = :code.root_dir() |> to_string()
+    otp_release = :erlang.system_info(:otp_release) |> to_string()
+    otp_version_path = Path.join([root, "releases", otp_release, "OTP_VERSION"])
+
+    case File.read(otp_version_path) do
+      {:ok, value} ->
+        {:ok, normalize_version_string(value)}
+
+      {:error, reason} ->
+        {:error,
+         "erlang/otp patch version could not be determined from #{otp_version_path}: #{inspect(reason)}"}
+    end
+  end
+
+  defp validate_otp_version(actual_version, required_version) do
+    if actual_version == required_version do
+      :ok
+    else
+      {:error, "erlang/otp version must be #{required_version}; found #{actual_version}"}
+    end
+  end
+
+  defp parse_major_version(version, label) do
+    version_candidate =
+      version
+      |> String.split("\n")
+      |> Enum.map(&String.trim/1)
+      |> Enum.find(&Regex.match?(~r/^v?\d+(?:\.\d+){1,2}$/, &1))
+      |> case do
+        nil -> String.trim(version)
+        line -> line
+      end
+
+    case Regex.run(~r/^(v?(\d+)(?:\.\d+){1,2})$/, version_candidate) do
+      [_full_match, matched_version, major] ->
+        {parsed, _rest} = Integer.parse(major)
+        {:ok, %{major: parsed, display_version: matched_version}}
+
+      _ ->
+        {:error, "#{label} returned an unparseable version: #{version}"}
+    end
+  end
+
+  defp normalize_version_string(value) do
+    value
+    |> to_string()
+    |> String.trim()
   end
 
   @spec validate_runtime_policy(t()) :: :ok | {:error, String.t()}

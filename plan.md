@@ -1,7 +1,8 @@
 # Mom Remaining Plan (Failure Server First)
 
 ## Next 3 Tasks
-1. [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
+1. [x] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
+ - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 2. [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
 3. [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
 
@@ -17,7 +18,8 @@
  - Status: complete (February 19, 2026) via deterministic observability export synchronization (`Mom.Observability.sync_export/1`), bounded full-metrics post-export assertions in acceptance (`acceptance/scripts/observability_prometheus_acceptance.exs`), and ExUnit + Playwright regression coverage.
 - [x] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
  - Status: complete (February 19, 2026) via `test_command_profile` policy validation (`mix_test` / `mix_test_no_start` with execution-profile enforcement), runtime `mix test` command execution with structured audit evidence (`git_tests_run`), and ExUnit + Playwright acceptance coverage.
-- [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
+- [x] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
+ - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
 - [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
 - [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
 
@@ -27,6 +29,7 @@
 - [ ] Add automated startup credential scope verification against GitHub App/PAT minimum permissions (contents, pull_requests, issues) with fail-closed behavior.
 - [ ] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+- [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
 - [ ] Replace static readiness-gate flag with signed/expiring readiness attestations (branch-protection check, credential-scope proof, and approval provenance).

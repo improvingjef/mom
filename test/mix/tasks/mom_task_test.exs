@@ -292,6 +292,32 @@ defmodule Mix.Tasks.MomTaskTest do
     System.delete_env("MOM_GITHUB_TOKEN")
   end
 
+  test "parse_args fails fast when toolchain prerequisites are not met" do
+    original_node = System.get_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE")
+    original_otp = System.get_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE")
+
+    try do
+      System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", "v17.9.1")
+
+      assert {:error, "node --version must be >= 18.x; found v17.9.1"} =
+               Mix.Tasks.Mom.parse_args(["/tmp/repo"])
+
+      System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", "v24.6.0")
+      System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", "28.0.1")
+
+      assert {:error, "erlang/otp version must be 28.0.2; found 28.0.1"} =
+               Mix.Tasks.Mom.parse_args(["/tmp/repo"])
+    after
+      if is_nil(original_node),
+        do: System.delete_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE", original_node)
+
+      if is_nil(original_otp),
+        do: System.delete_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE"),
+        else: System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", original_otp)
+    end
+  end
+
   defp isolated_workdir_fixture do
     workdir =
       Path.join(
