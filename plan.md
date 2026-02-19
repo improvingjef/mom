@@ -267,7 +267,7 @@ Out of scope (for this phase):
 
 ### Concurrency Foundation
 - [x] Add `Mom.Pipeline` ingestion/queue coordinator.
-- [ ] Add `Mom.WorkerSupervisor` and bounded dispatch by `max_concurrency`.
+- [x] Add `Mom.WorkerSupervisor` and bounded dispatch by `max_concurrency`.
 - [ ] Route `Mom.Runner` events through pipeline enqueue path.
 - [ ] Add per-job timeout/cancellation handling.
 - [ ] Add in-flight signature guard for concurrent dedupe safety.
@@ -319,3 +319,6 @@ Out of scope (for this phase):
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
 - [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
 - [ ] Add operational onboarding docs (installation hardening, key rotation, upgrade playbook).
+- [ ] Add customer billing and entitlement enforcement (seat/repo plans, overage policy, grace behavior).
+- [ ] Add 24x7 operational support model (on-call rotation, incident response SLAs, escalation paths).
+- [ ] Add legal/governance package (ToS, DPA, subprocessors list, data residency options).
