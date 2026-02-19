@@ -137,6 +137,8 @@ defmodule Mix.Tasks.Mom do
       dry_run: :boolean,
       github_token: :string,
       github_repo: :string,
+      github_base_branch: :string,
+      protected_branches: :string,
       actor_id: :string,
       workdir: :string
     ]

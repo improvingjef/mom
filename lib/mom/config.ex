@@ -36,6 +36,8 @@ defmodule Mom.Config do
     :dry_run,
     :github_token,
     :github_repo,
+    :github_base_branch,
+    :protected_branches,
     :actor_id,
     :workdir
   ]
@@ -73,6 +75,8 @@ defmodule Mom.Config do
           dry_run: boolean(),
           github_token: String.t() | nil,
           github_repo: String.t() | nil,
+          github_base_branch: String.t(),
+          protected_branches: [String.t()],
           actor_id: String.t(),
           workdir: String.t() | nil
         }
@@ -82,6 +86,8 @@ defmodule Mom.Config do
     repo = Keyword.get(opts, :repo)
     runtime = Application.get_all_env(:mom)
     redact_keys = normalize_redact_keys(Keyword.get(opts, :redact_keys) || runtime[:redact_keys])
+    llm_provider = Keyword.get(opts, :llm_provider, :claude_code)
+    llm_cmd = default_llm_cmd(llm_provider, Keyword.get(opts, :llm_cmd) || runtime[:llm_cmd])
 
     cond do
       is_nil(repo) ->
@@ -94,6 +100,9 @@ defmodule Mom.Config do
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, allowed_github_repos} <- parse_allowed_github_repos(opts, runtime),
              {:ok, branch_name_prefix} <- parse_branch_name_prefix(opts, runtime),
+             {:ok, github_base_branch} <- parse_github_base_branch(opts, runtime),
+             {:ok, protected_branches} <-
+               parse_protected_branches(opts, runtime, github_base_branch),
              {:ok, github_repo} <-
                parse_and_validate_github_repo(opts, runtime, allowed_github_repos) do
           {:ok,
@@ -102,8 +111,8 @@ defmodule Mom.Config do
              node: Keyword.get(opts, :node),
              cookie: Keyword.get(opts, :cookie),
              mode: Keyword.get(opts, :mode, :remote),
-             llm_provider: Keyword.get(opts, :llm_provider, :claude_code),
-             llm_cmd: Keyword.get(opts, :llm_cmd) || runtime[:llm_cmd],
+             llm_provider: llm_provider,
+             llm_cmd: llm_cmd,
              llm_api_key: Keyword.get(opts, :llm_api_key) || runtime[:llm_api_key],
              llm_api_url: Keyword.get(opts, :llm_api_url) || runtime[:llm_api_url],
              llm_model: Keyword.get(opts, :llm_model) || runtime[:llm_model],
@@ -143,12 +152,17 @@ defmodule Mom.Config do
              dry_run: Keyword.get(opts, :dry_run, false),
              github_token: Keyword.get(opts, :github_token) || runtime[:github_token],
              github_repo: github_repo,
+             github_base_branch: github_base_branch,
+             protected_branches: protected_branches,
              actor_id: parse_actor_id(opts, runtime),
              workdir: Keyword.get(opts, :workdir)
            }}
         end
     end
   end
+
+  defp default_llm_cmd(:codex, nil), do: "codex --yolo exec"
+  defp default_llm_cmd(_provider, cmd), do: cmd
 
   defp parse_int(nil), do: nil
   defp parse_int(value) when is_integer(value), do: value
@@ -267,6 +281,34 @@ defmodule Mom.Config do
       {:ok, prefix}
     else
       {:error, "branch_name_prefix is not a valid git branch prefix"}
+    end
+  end
+
+  defp parse_github_base_branch(opts, runtime) do
+    base_branch = Keyword.get(opts, :github_base_branch, runtime[:github_base_branch]) || "main"
+
+    if valid_branch_prefix?(base_branch) do
+      {:ok, base_branch}
+    else
+      {:error, "github_base_branch is not a valid git branch name"}
+    end
+  end
+
+  defp parse_protected_branches(opts, runtime, github_base_branch) do
+    parsed =
+      opts
+      |> Keyword.get(:protected_branches, runtime[:protected_branches])
+      |> normalize_allowed_repos()
+      |> case do
+        [] -> [github_base_branch]
+        list -> list
+      end
+      |> Enum.uniq()
+
+    if Enum.all?(parsed, &valid_branch_prefix?/1) do
+      {:ok, parsed}
+    else
+      {:error, "protected_branches must contain valid git branch names"}
     end
   end
 

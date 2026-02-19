@@ -24,6 +24,18 @@ defmodule Mom.ConfigTest do
     assert config.redact_keys == ["foo", "Bar", "baz"]
   end
 
+  test "defaults codex provider to yolo exec command profile" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo", llm_provider: :codex)
+    assert config.llm_cmd == "codex --yolo exec"
+  end
+
+  test "preserves explicit codex command override" do
+    {:ok, config} =
+      Config.from_opts(repo: "/tmp/repo", llm_provider: :codex, llm_cmd: "codex exec")
+
+    assert config.llm_cmd == "codex exec"
+  end
+
   test "uses runtime env defaults" do
     Application.put_env(:mom, :llm_cmd, "cat")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
@@ -124,5 +136,23 @@ defmodule Mom.ConfigTest do
   test "accepts custom actor id" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", actor_id: "machine-user")
     assert config.actor_id == "machine-user"
+  end
+
+  test "defaults to protected main branch with PR-only enforcement target" do
+    {:ok, config} = Config.from_opts(repo: "/tmp/repo")
+    assert config.github_base_branch == "main"
+    assert config.protected_branches == ["main"]
+  end
+
+  test "parses protected branch and base branch options" do
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        github_base_branch: "release",
+        protected_branches: "main,release"
+      )
+
+    assert config.github_base_branch == "release"
+    assert config.protected_branches == ["main", "release"]
   end
 end

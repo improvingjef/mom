@@ -33,6 +33,18 @@ defmodule Mix.Tasks.MomTaskTest do
              ])
   end
 
+  test "parse_args defaults codex profile to yolo exec command" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--llm",
+        "codex"
+      ])
+
+    assert config.llm_provider == :codex
+    assert config.llm_cmd == "codex --yolo exec"
+  end
+
   test "parse_args accepts github repo allowlist flag" do
     {:ok, config} =
       Mix.Tasks.Mom.parse_args([
@@ -67,5 +79,19 @@ defmodule Mix.Tasks.MomTaskTest do
       ])
 
     assert config.actor_id == "machine-user"
+  end
+
+  test "parse_args accepts protected branch controls" do
+    {:ok, config} =
+      Mix.Tasks.Mom.parse_args([
+        "/tmp/repo",
+        "--github-base-branch",
+        "release",
+        "--protected-branches",
+        "main,release"
+      ])
+
+    assert config.github_base_branch == "release"
+    assert config.protected_branches == ["main", "release"]
   end
 end

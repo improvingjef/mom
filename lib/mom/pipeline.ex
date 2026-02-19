@@ -11,7 +11,7 @@ defmodule Mom.Pipeline do
           {:error_event, map()}
           | {:diagnostics_event, map(), list()}
 
-  @type enqueue_result :: :ok | {:dropped, :newest | :oldest} | {:error, :invalid_job}
+  @type enqueue_result :: :ok | {:dropped, :newest | :oldest | :inflight} | {:error, :invalid_job}
 
   @default_queue_max_size 200
   @default_overflow_policy :drop_newest
@@ -81,6 +81,7 @@ defmodule Mom.Pipeline do
        worker_supervisor: worker_supervisor,
        max_concurrency: max_concurrency,
        active_workers: %{},
+       inflight_signatures: MapSet.new(),
        completed_count: 0,
        failed_count: 0
      }, {:continue, :dispatch}}
@@ -89,8 +90,7 @@ defmodule Mom.Pipeline do
   @impl true
   def handle_call({:enqueue, job}, _from, state) do
     if valid_job?(job) do
-      result = enqueue_job(job, state)
-      next_state = maybe_state(job, state)
+      {result, next_state} = maybe_enqueue(job, state)
       {:reply, result, dispatch_jobs(next_state)}
     else
       {:reply, {:error, :invalid_job}, state}
@@ -102,8 +102,15 @@ defmodule Mom.Pipeline do
   end
 
   def handle_call(:dequeue, _from, state) do
-    {{:value, job}, queue} = :queue.out(state.queue)
-    next_state = %{state | queue: queue, queue_depth: state.queue_depth - 1}
+    {{:value, {job, signature}}, queue} = :queue.out(state.queue)
+
+    next_state = %{
+      state
+      | queue: queue,
+        queue_depth: state.queue_depth - 1,
+        inflight_signatures: MapSet.delete(state.inflight_signatures, signature)
+    }
+
     {:reply, {:ok, job}, next_state}
   end
 
@@ -132,13 +139,13 @@ defmodule Mom.Pipeline do
       {nil, _active_workers} ->
         {:noreply, state}
 
-      {active_job, active_workers} ->
+      {%{job: job, started_at: started_at, signature: signature}, active_workers} ->
         now = System.monotonic_time()
-        measurements = %{duration: now - active_job.started_at}
+        measurements = %{duration: now - started_at}
 
         metadata =
           common_metadata(
-            active_job.job,
+            job,
             state.queue_depth,
             map_size(active_workers)
           )
@@ -158,41 +165,73 @@ defmodule Mom.Pipeline do
         next_state =
           next_state
           |> Map.put(:active_workers, active_workers)
+          |> Map.update!(:inflight_signatures, &MapSet.delete(&1, signature))
           |> dispatch_jobs()
 
         {:noreply, next_state}
     end
   end
 
-  defp enqueue_job(_job, %{queue_depth: depth, queue_max_size: max} = _state) when depth < max,
-    do: :ok
+  defp maybe_enqueue(job, state) do
+    signature = job_signature(job)
 
-  defp enqueue_job(_job, %{overflow_policy: :drop_newest}), do: {:dropped, :newest}
-  defp enqueue_job(_job, %{overflow_policy: :drop_oldest}), do: {:dropped, :oldest}
+    if MapSet.member?(state.inflight_signatures, signature) do
+      next_state = increment_drop(state)
 
-  defp maybe_state(job, %{queue_depth: depth, queue_max_size: max} = state) when depth < max do
-    next_state = %{state | queue: :queue.in(job, state.queue), queue_depth: depth + 1}
+      metadata = %{
+        drop_reason: :inflight,
+        queue_depth: state.queue_depth,
+        active_workers: map_size(state.active_workers)
+      }
+
+      telemetry(:dropped, %{count: 1}, metadata)
+      log_pipeline(:warning, "dropped", metadata)
+      {{:dropped, :inflight}, next_state}
+    else
+      enqueue_unique(job, signature, state)
+    end
+  end
+
+  defp enqueue_unique(job, signature, %{queue_depth: depth, queue_max_size: max} = state)
+       when depth < max do
+    next_state = %{
+      state
+      | queue: :queue.in({job, signature}, state.queue),
+        queue_depth: depth + 1,
+        inflight_signatures: MapSet.put(state.inflight_signatures, signature)
+    }
+
     metadata = common_metadata(job, next_state.queue_depth, map_size(next_state.active_workers))
     telemetry(:enqueued, %{count: 1}, metadata)
     log_pipeline(:debug, "enqueued", metadata)
-    next_state
+    {:ok, next_state}
   end
 
-  defp maybe_state(_job, %{overflow_policy: :drop_newest} = state) do
-    next_state = %{state | dropped_count: state.dropped_count + 1}
-    metadata = %{drop_reason: :newest, queue_depth: state.queue_depth, active_workers: map_size(state.active_workers)}
+  defp enqueue_unique(_job, _signature, %{overflow_policy: :drop_newest} = state) do
+    next_state = increment_drop(state)
+
+    metadata = %{
+      drop_reason: :newest,
+      queue_depth: state.queue_depth,
+      active_workers: map_size(state.active_workers)
+    }
+
     telemetry(:dropped, %{count: 1}, metadata)
     log_pipeline(:warning, "dropped", metadata)
-    next_state
+    {{:dropped, :newest}, next_state}
   end
 
-  defp maybe_state(job, %{overflow_policy: :drop_oldest} = state) do
-    {{:value, dropped_job}, queue} = :queue.out(state.queue)
+  defp enqueue_unique(job, signature, %{overflow_policy: :drop_oldest} = state) do
+    {{:value, {dropped_job, dropped_signature}}, queue} = :queue.out(state.queue)
 
     next_state = %{
       state
-      | queue: :queue.in(job, queue),
-        dropped_count: state.dropped_count + 1
+      | queue: :queue.in({job, signature}, queue),
+        dropped_count: state.dropped_count + 1,
+        inflight_signatures:
+          state.inflight_signatures
+          |> MapSet.delete(dropped_signature)
+          |> MapSet.put(signature)
     }
 
     metadata =
@@ -202,7 +241,7 @@ defmodule Mom.Pipeline do
 
     telemetry(:dropped, %{count: 1}, metadata)
     log_pipeline(:warning, "dropped", metadata)
-    next_state
+    {{:dropped, :oldest}, next_state}
   end
 
   defp valid_job?({:error_event, event}) when is_map(event), do: true
@@ -249,7 +288,7 @@ defmodule Mom.Pipeline do
       {:empty, _queue} ->
         state
 
-      {{:value, job}, queue} ->
+      {{:value, {job, signature}}, queue} ->
         task_fun = fn -> state.worker_module.perform(job, state.worker_opts) end
 
         case DynamicSupervisor.start_child(state.worker_supervisor, {Task, task_fun}) do
@@ -269,6 +308,7 @@ defmodule Mom.Pipeline do
                   Map.put(state.active_workers, ref, %{
                     job: job,
                     pid: pid,
+                    signature: signature,
                     started_at: System.monotonic_time()
                   })
             }
@@ -295,6 +335,16 @@ defmodule Mom.Pipeline do
   defp completed_reason?(:normal), do: true
   defp completed_reason?(:noproc), do: true
   defp completed_reason?(_reason), do: false
+
+  defp increment_drop(state), do: %{state | dropped_count: state.dropped_count + 1}
+
+  defp job_signature({:error_event, event}) do
+    Mom.Security.signature({:error_event, event})
+  end
+
+  defp job_signature({:diagnostics_event, report, issues}) do
+    Mom.Security.signature({:diagnostics_event, report, issues})
+  end
 
   defp log_pipeline(level, lifecycle, metadata, measurements \\ %{}) do
     measurements_text =

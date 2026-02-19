@@ -83,7 +83,9 @@ defmodule Mom.GitHubAuditTest do
         repo: "/tmp/repo",
         github_repo: "acme/mom",
         github_token: "token",
-        actor_id: "machine-user"
+        actor_id: "machine-user",
+        github_base_branch: "release",
+        protected_branches: ["main"]
       )
 
     telemetry_handler = "github-audit-merge-#{System.unique_integer([:positive])}"
@@ -117,5 +119,44 @@ defmodule Mom.GitHubAuditTest do
 
     assert log =~ "\"event\":\"github_merge_attempt\""
     assert log =~ "\"event\":\"github_merge_failed\""
+  end
+
+  test "merge_pr is blocked for protected base branches and emits audit event" do
+    Process.put(:github_http_responses, [])
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: "/tmp/repo",
+        github_repo: "acme/mom",
+        github_token: "token",
+        actor_id: "machine-user",
+        github_base_branch: "main",
+        protected_branches: ["main", "release"]
+      )
+
+    telemetry_handler = "github-audit-merge-blocked-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :github_merge_blocked]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert :ok = GitHub.merge_pr(config, %{number: 33})
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :github_merge_blocked], metadata}
+    assert metadata.repo == "acme/mom"
+    assert metadata.actor_id == "machine-user"
+    assert metadata.pr_number == 33
+    assert metadata.base_branch == "main"
+    assert log =~ "\"event\":\"github_merge_blocked\""
   end
 end

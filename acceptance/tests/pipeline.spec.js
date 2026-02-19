@@ -209,6 +209,29 @@ test("mom CLI enforces allowed github repo allowlist", async () => {
   expect(result.blocked_result).toEqual(["error", "github_repo is not allowed"]);
 });
 
+test("mom CLI defaults codex to yolo exec profile", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_codex_profile_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.default_provider).toBe("codex");
+  expect(result.default_llm_cmd).toBe("codex --yolo exec");
+  expect(result.override_llm_cmd).toBe("codex --profile staging exec");
+});
+
 test("mom CLI applies branch naming policy to generated branches", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(
@@ -234,6 +257,33 @@ test("mom CLI applies branch naming policy to generated branches", async () => {
     "error",
     "branch_name_prefix is not a valid git branch prefix"
   ]);
+});
+
+test("mom enforces PR-only workflow for protected branches", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_pr_only_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.protected_base_branch).toBe("main");
+  expect(result.protected_branches).toEqual(["main", "release"]);
+  expect(result.protected_merge_result).toBe("ok");
+  expect(result.blocked_event_base_branch).toBe("main");
+  expect(result.unprotected_base_branch).toBe("dev");
+  expect(result.unprotected_merge_result).toBe("ok");
+  expect(result.merged_pr_number).toBe(11);
 });
 
 test("mom logs codex invocation start and outcome", async () => {

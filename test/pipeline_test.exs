@@ -1,5 +1,5 @@
 defmodule Mom.PipelineTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import ExUnit.CaptureLog
 
@@ -89,6 +89,52 @@ defmodule Mom.PipelineTest do
     end)
   end
 
+  test "drops duplicate in-flight jobs and allows re-enqueue after completion" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []}
+      )
+
+    job = {:error_event, %{id: 11, test_pid: self()}}
+
+    assert :ok == Pipeline.enqueue(pid, job)
+    assert_receive {:started, 11, worker}
+
+    assert {:dropped, :inflight} == Pipeline.enqueue(pid, job)
+    assert %{queue_depth: 0, dropped_count: 1, active_workers: 1} = Pipeline.stats(pid)
+
+    send(worker, :release)
+
+    eventually(fn ->
+      assert %{completed_count: 1, active_workers: 0} = Pipeline.stats(pid)
+    end)
+
+    assert :ok == Pipeline.enqueue(pid, job)
+    assert_receive {:started, 11, worker2}
+    send(worker2, :release)
+  end
+
+  test "cleans up in-flight signature when worker fails" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: FailingWorker, worker_opts: []}
+      )
+
+    job = {:error_event, %{id: 12, test_pid: self()}}
+
+    assert :ok == Pipeline.enqueue(pid, job)
+    assert_receive {:started, 12, _worker}
+
+    eventually(fn ->
+      assert %{failed_count: 1, active_workers: 0} = Pipeline.stats(pid)
+    end)
+
+    assert :ok == Pipeline.enqueue(pid, job)
+    assert_receive {:started, 12, _worker2}
+  end
+
   test "emits telemetry for enqueue, dispatch, completion, drop, and failure" do
     handler_id = "pipeline-test-#{System.unique_integer([:positive])}"
     test_pid = self()
@@ -144,10 +190,7 @@ defmodule Mom.PipelineTest do
     fail_pid =
       start_supervised!(
         {Pipeline,
-         dispatch?: true,
-         max_concurrency: 1,
-         worker_module: FailingWorker,
-         worker_opts: []},
+         dispatch?: true, max_concurrency: 1, worker_module: FailingWorker, worker_opts: []},
         id: "pipeline-fail-#{System.unique_integer([:positive])}"
       )
 
@@ -155,10 +198,11 @@ defmodule Mom.PipelineTest do
     assert_receive {:started, 4, _worker}
 
     assert_receive {:telemetry_event, [:mom, :pipeline, :failed], failed_measurements,
-                    %{job_type: :error_event, reason: {_kind, _reason}}}
+                    %{job_type: :error_event, reason: reason}}
 
     assert is_integer(failed_measurements.duration)
     assert failed_measurements.duration >= 0
+    assert reason != nil
   end
 
   test "logs queue and worker lifecycle fields" do

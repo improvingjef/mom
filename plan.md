@@ -211,6 +211,8 @@ Out of scope (for this phase):
 - Codex invocation/outcome logging is implemented (`mom: codex invocation started/completed`) and covered by ExUnit + Playwright acceptance tests.
 - Structured git/GitHub audit events are implemented (repo, issue/branch/PR, merge attempt, actor id) and covered by ExUnit + Playwright acceptance tests.
 - Integration burst coverage for mixed diagnostics + error events is implemented with ExUnit + Playwright acceptance tests, including failure-isolation assertions under bounded concurrency.
+- Codex execution profile defaults to `codex --yolo exec` (with override support), covered by ExUnit + Playwright acceptance tests.
+- PR-only workflow enforcement for protected base branches is implemented (merge attempts are blocked for protected branches), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -344,8 +346,8 @@ Out of scope (for this phase):
 - [x] Emit structured git/GitHub audit events (repo, issue/branch/PR, merge attempt, actor id).
 
 ### Test Execution Profile (Current)
-- [ ] Run analysis/fix flow with `codex --yolo exec`.
-- [ ] Enforce PR-only workflow to protected branches.
+- [x] Run analysis/fix flow with `codex --yolo exec`.
+- [x] Enforce PR-only workflow to protected branches.
 - [ ] Use least-privilege credential identity only.
 - [x] Validate burst scenario remains stable under bounded concurrency.
 
@@ -387,6 +389,8 @@ Out of scope (for this phase):
 - [ ] Add data lifecycle controls (tenant-scoped export, retention windows, hard-delete workflow, legal hold support).
 - [ ] Add billing-grade usage metering and reconciliation (LLM, CI, and repo actions) with invoice/audit traceability.
 - [ ] Add tenant-scoped encryption and key management (at-rest encryption controls, key rotation, and optional BYOK support).
+- [ ] Add revenue operations controls for enterprise procurement (PO-based invoicing, payment terms enforcement, and collections escalation workflow).
+- [ ] Add customer-facing change management controls (maintenance windows, tenant-targeted release channels, and backward-compatibility policy/versioning guarantees).
 
 ## Commercial Availability Backlog (Additional)
 - [ ] Add tenant data residency controls (region pinning, cross-region failover policy, and residency-aware backups).
@@ -396,3 +400,5 @@ Out of scope (for this phase):
 - [ ] Add control-plane high-availability targets and validation (RPO/RTO objectives, automated failover, and recurring recovery drills).
 - [ ] Add customer trust portal capabilities (tenant-visible uptime/incidents, audit export self-service, and maintenance notification workflows).
 - [ ] Add model-provider governance controls (prompt/response retention policy enforcement, provider-level data use guarantees, and tenant-selectable model routing constraints).
+- [ ] Add automated SLA credit workflows (policy mapping, breach detection, and credit issuance ledger integration).
+- [ ] Add customer offboarding/deprovisioning workflows (tenant export verification, credential revocation, and timed hard-delete confirmation).

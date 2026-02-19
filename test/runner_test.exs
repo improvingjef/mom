@@ -1,5 +1,5 @@
 defmodule Mom.RunnerTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   alias Mom.{Config, Runner}
 
@@ -159,5 +159,4 @@ defmodule Mom.RunnerTest do
         await_burst_results(error_seen, diagnostics_seen, attempts - 1)
     end
   end
-
 end
