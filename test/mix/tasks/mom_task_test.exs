@@ -11,6 +11,8 @@ defmodule Mix.Tasks.MomTaskTest do
         "6",
         "--queue-max-size",
         "333",
+        "--tenant-queue-max-size",
+        "111",
         "--job-timeout-ms",
         "45000",
         "--overflow-policy",
@@ -22,6 +24,7 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.mode == :inproc
     assert config.max_concurrency == 6
     assert config.queue_max_size == 333
+    assert config.tenant_queue_max_size == 111
     assert config.job_timeout_ms == 45_000
     assert config.overflow_policy == :drop_oldest
     assert config.durable_queue_path == "/tmp/mom/queue.bin"

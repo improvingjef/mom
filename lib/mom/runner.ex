@@ -20,6 +20,8 @@ defmodule Mom.Runner do
       dispatch?: true,
       max_concurrency: Keyword.get(opts, :max_concurrency, config.max_concurrency),
       queue_max_size: Keyword.get(opts, :queue_max_size, config.queue_max_size),
+      tenant_queue_max_size:
+        Keyword.get(opts, :tenant_queue_max_size, config.tenant_queue_max_size),
       overflow_policy: Keyword.get(opts, :overflow_policy, config.overflow_policy),
       durable_queue_path: Keyword.get(opts, :durable_queue_path, config.durable_queue_path),
       worker_module: worker_module,

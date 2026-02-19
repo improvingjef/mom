@@ -226,6 +226,7 @@ Out of scope (for this phase):
 - Audit assertions for all agent-driven git mutations are implemented: worktree creation, patch apply, branch create/push, and GitHub mutation events now have ExUnit + Playwright acceptance coverage.
 - Production observability integration is implemented with Prometheus export and SLO-breach alert telemetry (`queue_depth`, `drop_rate`, `failure_rate`, `latency_p95_ms`), covered by ExUnit + Playwright acceptance tests.
 - Durable queue mode is implemented with disk-backed queue persistence and replay-on-restart (`durable_queue_path`), covered by ExUnit + Playwright acceptance tests.
+- Multi-tenant controls are implemented for per-repo queue quotas, tenant-scoped in-flight dedupe isolation, and fair round-robin tenant dispatch scheduling, covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -405,7 +406,8 @@ Out of scope (for this phase):
  - Status: complete (February 19, 2026) via explicit config targets/budgets, Prometheus export, and breach telemetry for budget burn.
 - [x] Add durable queue mode (disk-backed persistence and replay on restart) for production resilience.
  - Status: complete (February 19, 2026) via `durable_queue_path` persistence/replay in `Mom.Pipeline`, plus ExUnit + Playwright acceptance coverage.
-- [ ] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
+- [x] Add multi-tenant controls (per-repo quotas, isolation boundaries, and fairness scheduling).
+ - Status: complete (February 19, 2026) via `tenant_queue_max_size`, tenant-scoped dedupe keys, and fair tenant dispatch in `Mom.Pipeline` with ExUnit + Playwright acceptance coverage.
 - [ ] Add cost controls and spend caps for LLM/token/test execution per repository.
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
 - [ ] Add disaster recovery runbook (backup/restore, credential revocation drill, failover steps).
@@ -449,6 +451,7 @@ Out of scope (for this phase):
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
 - [ ] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
+- [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.
 - [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
 - [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
 - [ ] Add customer-managed encryption key lifecycle controls (KMS-backed key versioning, tenant-specific rekey workflows, and cryptographic deletion attestations).

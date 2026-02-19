@@ -146,6 +146,7 @@ defmodule Mix.Tasks.Mom do
       poll_interval_ms: :integer,
       max_concurrency: :integer,
       queue_max_size: :integer,
+      tenant_queue_max_size: :integer,
       job_timeout_ms: :integer,
       overflow_policy: :string,
       durable_queue_path: :string,

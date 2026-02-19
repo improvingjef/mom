@@ -59,6 +59,47 @@ defmodule Mom.PipelineTest do
     assert %{dropped_count: 1} = Pipeline.stats(pid)
   end
 
+  test "enforces per-tenant queue quotas" do
+    pid =
+      start_supervised!(
+        {Pipeline, queue_max_size: 10, tenant_queue_max_size: 1, overflow_policy: :drop_newest}
+      )
+
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 1, repo: "acme/repo-a"}})
+
+    assert {:dropped, :tenant_quota} ==
+             Pipeline.enqueue(pid, {:error_event, %{id: 2, repo: "acme/repo-a"}})
+
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 3, repo: "acme/repo-b"}})
+
+    assert {:ok, {:error_event, %{id: 1, repo: "acme/repo-a"}}} == Pipeline.dequeue(pid)
+    assert {:ok, {:error_event, %{id: 3, repo: "acme/repo-b"}}} == Pipeline.dequeue(pid)
+    assert :empty == Pipeline.dequeue(pid)
+    assert %{dropped_count: 1} = Pipeline.stats(pid)
+  end
+
+  test "enforces per-tenant queue quotas across active and queued jobs" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true,
+         max_concurrency: 1,
+         tenant_queue_max_size: 2,
+         queue_max_size: 10,
+         worker_module: TestWorker,
+         worker_opts: []}
+      )
+
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 21, repo: "acme/repo-a", test_pid: self()}})
+    assert_receive {:started, 21, worker}
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 22, repo: "acme/repo-a", test_pid: self()}})
+
+    assert {:dropped, :tenant_quota} ==
+             Pipeline.enqueue(pid, {:error_event, %{id: 23, repo: "acme/repo-a", test_pid: self()}})
+
+    send(worker, :release)
+  end
+
   test "rejects unsupported event payloads" do
     pid = start_supervised!({Pipeline, []})
     assert {:error, :invalid_job} == Pipeline.enqueue(pid, {:unknown, %{}})
@@ -90,6 +131,31 @@ defmodule Mom.PipelineTest do
     end)
   end
 
+  test "dispatches queued jobs fairly across tenants" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []}
+      )
+
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 1, repo: "acme/repo-a", test_pid: self()}})
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 2, repo: "acme/repo-a", test_pid: self()}})
+    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 3, repo: "acme/repo-b", test_pid: self()}})
+
+    assert_receive {:started, 1, worker1}
+    send(worker1, :release)
+
+    assert_receive {:started, 3, worker2}
+    send(worker2, :release)
+
+    assert_receive {:started, 2, worker3}
+    send(worker3, :release)
+
+    eventually(fn ->
+      assert %{queue_depth: 0, active_workers: 0, completed_count: 3} = Pipeline.stats(pid)
+    end)
+  end
+
   test "drops duplicate in-flight jobs and allows re-enqueue after completion" do
     pid =
       start_supervised!(
@@ -114,6 +180,27 @@ defmodule Mom.PipelineTest do
     assert :ok == Pipeline.enqueue(pid, job)
     assert_receive {:started, 11, worker2}
     send(worker2, :release)
+  end
+
+  test "isolates in-flight dedupe signatures per tenant" do
+    pid =
+      start_supervised!(
+        {Pipeline,
+         dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []}
+      )
+
+    job_a = {:error_event, %{id: 44, repo: "acme/repo-a", test_pid: self()}}
+    job_b = {:error_event, %{id: 44, repo: "acme/repo-b", test_pid: self()}}
+
+    assert :ok == Pipeline.enqueue(pid, job_a)
+    assert_receive {:started, 44, worker_a}
+
+    assert :ok == Pipeline.enqueue(pid, job_b)
+    assert %{queue_depth: 1, dropped_count: 0} = Pipeline.stats(pid)
+
+    send(worker_a, :release)
+    assert_receive {:started, 44, worker_b}
+    send(worker_b, :release)
   end
 
   test "cleans up in-flight signature when worker fails" do

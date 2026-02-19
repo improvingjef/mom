@@ -13,6 +13,7 @@ defmodule Mom.ConfigTest do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
     assert config.max_concurrency == 4
     assert config.queue_max_size == 200
+    assert config.tenant_queue_max_size == nil
     assert config.job_timeout_ms == 120_000
     assert config.overflow_policy == :drop_newest
     assert config.durable_queue_path == nil
@@ -266,6 +267,7 @@ defmodule Mom.ConfigTest do
         repo: "/tmp/repo",
         max_concurrency: 8,
         queue_max_size: 350,
+        tenant_queue_max_size: 120,
         job_timeout_ms: 9_000,
         overflow_policy: :drop_oldest,
         durable_queue_path: "/tmp/mom/queue.bin"
@@ -273,6 +275,7 @@ defmodule Mom.ConfigTest do
 
     assert config.max_concurrency == 8
     assert config.queue_max_size == 350
+    assert config.tenant_queue_max_size == 120
     assert config.job_timeout_ms == 9_000
     assert config.overflow_policy == :drop_oldest
     assert config.durable_queue_path == "/tmp/mom/queue.bin"
@@ -284,6 +287,9 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "queue_max_size must be a positive integer"} =
              Config.from_opts(repo: "/tmp/repo", queue_max_size: 0)
+
+    assert {:error, "tenant_queue_max_size must be nil or a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", tenant_queue_max_size: 0)
 
     assert {:error, "job_timeout_ms must be a positive integer"} =
              Config.from_opts(repo: "/tmp/repo", job_timeout_ms: 0)

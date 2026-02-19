@@ -11,11 +11,15 @@ defmodule Mom.Pipeline do
           {:error_event, map()}
           | {:diagnostics_event, map(), list()}
 
-  @type enqueue_result :: :ok | {:dropped, :newest | :oldest | :inflight} | {:error, :invalid_job}
+  @type enqueue_result ::
+          :ok
+          | {:dropped, :newest | :oldest | :inflight | :tenant_quota}
+          | {:error, :invalid_job}
 
   @default_queue_max_size 200
   @default_overflow_policy :drop_newest
   @default_max_concurrency 4
+  @default_tenant "__default__"
 
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts) do
@@ -39,6 +43,7 @@ defmodule Mom.Pipeline do
           failed_count: non_neg_integer(),
           dropped_count: non_neg_integer(),
           queue_max_size: pos_integer(),
+          tenant_queue_max_size: pos_integer() | nil,
           overflow_policy: overflow_policy(),
           max_concurrency: non_neg_integer()
         }
@@ -63,6 +68,11 @@ defmodule Mom.Pipeline do
       |> Keyword.get(:max_concurrency, @default_max_concurrency)
       |> normalize_max_concurrency()
 
+    tenant_queue_max_size =
+      opts
+      |> Keyword.get(:tenant_queue_max_size)
+      |> normalize_tenant_queue_max_size()
+
     durable_queue_path =
       opts
       |> Keyword.get(:durable_queue_path)
@@ -77,6 +87,9 @@ defmodule Mom.Pipeline do
       queue: :queue.new(),
       queue_depth: 0,
       queue_max_size: queue_max_size,
+      tenant_queue_max_size: tenant_queue_max_size,
+      tenant_queue_depths: %{},
+      last_dispatched_tenant: nil,
       overflow_policy: overflow_policy,
       durable_queue_path: durable_queue_path,
       dropped_count: 0,
@@ -109,16 +122,22 @@ defmodule Mom.Pipeline do
   end
 
   def handle_call(:dequeue, _from, state) do
-    {{:value, {job, signature}}, queue} = :queue.out(state.queue)
+    case pop_next_entry(state.queue, state.last_dispatched_tenant) do
+      :empty ->
+        {:reply, :empty, state}
 
-    next_state = %{
-      state
-      | queue: queue,
-        queue_depth: state.queue_depth - 1,
-        inflight_signatures: MapSet.delete(state.inflight_signatures, signature)
-    }
+      {:ok, {job, signature_key, tenant}, queue, last_dispatched_tenant} ->
+        next_state = %{
+          state
+          | queue: queue,
+            queue_depth: state.queue_depth - 1,
+            tenant_queue_depths: decrement_tenant_depth(state.tenant_queue_depths, tenant),
+            last_dispatched_tenant: last_dispatched_tenant,
+            inflight_signatures: MapSet.delete(state.inflight_signatures, signature_key)
+        }
 
-    {:reply, {:ok, job}, persist_queue_snapshot(next_state)}
+        {:reply, {:ok, job}, persist_queue_snapshot(next_state)}
+    end
   end
 
   def handle_call(:stats, _from, state) do
@@ -130,6 +149,7 @@ defmodule Mom.Pipeline do
        failed_count: state.failed_count,
        dropped_count: state.dropped_count,
        queue_max_size: state.queue_max_size,
+       tenant_queue_max_size: state.tenant_queue_max_size,
        overflow_policy: state.overflow_policy,
        max_concurrency: state.max_concurrency
      }, state}
@@ -146,13 +166,14 @@ defmodule Mom.Pipeline do
       {nil, _active_workers} ->
         {:noreply, state}
 
-      {%{job: job, started_at: started_at, signature: signature}, active_workers} ->
+      {%{job: job, started_at: started_at, signature_key: signature_key, tenant: tenant}, active_workers} ->
         now = System.monotonic_time()
         measurements = %{duration: now - started_at}
 
         metadata =
           common_metadata(
             job,
+            tenant,
             state.queue_depth,
             map_size(active_workers)
           )
@@ -172,7 +193,7 @@ defmodule Mom.Pipeline do
         next_state =
           next_state
           |> Map.put(:active_workers, active_workers)
-          |> Map.update!(:inflight_signatures, &MapSet.delete(&1, signature))
+          |> Map.update!(:inflight_signatures, &MapSet.delete(&1, signature_key))
           |> dispatch_jobs()
 
         {:noreply, next_state}
@@ -180,45 +201,72 @@ defmodule Mom.Pipeline do
   end
 
   defp maybe_enqueue(job, state) do
-    signature = job_signature(job)
+    tenant = tenant_for_job(job)
+    signature_key = dedupe_signature_key(job, tenant)
 
-    if MapSet.member?(state.inflight_signatures, signature) do
-      next_state = increment_drop(state)
+    cond do
+      MapSet.member?(state.inflight_signatures, signature_key) ->
+        next_state = increment_drop(state)
 
-      metadata = %{
-        drop_reason: :inflight,
-        queue_depth: state.queue_depth,
-        active_workers: map_size(state.active_workers)
-      }
+        metadata = %{
+          drop_reason: :inflight,
+          tenant: tenant,
+          queue_depth: state.queue_depth,
+          active_workers: map_size(state.active_workers)
+        }
 
-      telemetry(:dropped, %{count: 1}, metadata)
-      log_pipeline(:warning, "dropped", metadata)
-      {{:dropped, :inflight}, next_state}
-    else
-      enqueue_unique(job, signature, state)
+        telemetry(:dropped, %{count: 1}, metadata)
+        log_pipeline(:warning, "dropped", metadata)
+        {{:dropped, :inflight}, next_state}
+
+      tenant_quota_exceeded?(tenant, state) ->
+        next_state = increment_drop(state)
+
+        metadata = %{
+          drop_reason: :tenant_quota,
+          tenant: tenant,
+          queue_depth: state.queue_depth,
+          active_workers: map_size(state.active_workers)
+        }
+
+        telemetry(:dropped, %{count: 1}, metadata)
+        log_pipeline(:warning, "dropped", metadata)
+        {{:dropped, :tenant_quota}, next_state}
+
+      true ->
+        enqueue_unique(job, signature_key, tenant, state)
     end
   end
 
-  defp enqueue_unique(job, signature, %{queue_depth: depth, queue_max_size: max} = state)
+  defp enqueue_unique(
+         job,
+         signature_key,
+         tenant,
+         %{queue_depth: depth, queue_max_size: max, tenant_queue_depths: tenant_depths} = state
+       )
        when depth < max do
+    next_tenant_depths = Map.update(tenant_depths, tenant, 1, &(&1 + 1))
+
     next_state = %{
       state
-      | queue: :queue.in({job, signature}, state.queue),
+      | queue: :queue.in({job, signature_key, tenant}, state.queue),
         queue_depth: depth + 1,
-        inflight_signatures: MapSet.put(state.inflight_signatures, signature)
+        tenant_queue_depths: next_tenant_depths,
+        inflight_signatures: MapSet.put(state.inflight_signatures, signature_key)
     }
 
-    metadata = common_metadata(job, next_state.queue_depth, map_size(next_state.active_workers))
+    metadata = common_metadata(job, tenant, next_state.queue_depth, map_size(next_state.active_workers))
     telemetry(:enqueued, %{count: 1}, metadata)
     log_pipeline(:debug, "enqueued", metadata)
     {:ok, persist_queue_snapshot(next_state)}
   end
 
-  defp enqueue_unique(_job, _signature, %{overflow_policy: :drop_newest} = state) do
+  defp enqueue_unique(_job, _signature_key, tenant, %{overflow_policy: :drop_newest} = state) do
     next_state = increment_drop(state)
 
     metadata = %{
       drop_reason: :newest,
+      tenant: tenant,
       queue_depth: state.queue_depth,
       active_workers: map_size(state.active_workers)
     }
@@ -228,27 +276,48 @@ defmodule Mom.Pipeline do
     {{:dropped, :newest}, next_state}
   end
 
-  defp enqueue_unique(job, signature, %{overflow_policy: :drop_oldest} = state) do
-    {{:value, {dropped_job, dropped_signature}}, queue} = :queue.out(state.queue)
+  defp enqueue_unique(job, signature_key, tenant, %{overflow_policy: :drop_oldest} = state) do
+    {{:value, {dropped_job, dropped_signature_key, dropped_tenant}}, queue} = :queue.out(state.queue)
+
+    tenant_queue_depths =
+      state.tenant_queue_depths
+      |> decrement_tenant_depth(dropped_tenant)
+      |> Map.update(tenant, 1, &(&1 + 1))
 
     next_state = %{
       state
-      | queue: :queue.in({job, signature}, queue),
+      | queue: :queue.in({job, signature_key, tenant}, queue),
         dropped_count: state.dropped_count + 1,
+        tenant_queue_depths: tenant_queue_depths,
         inflight_signatures:
           state.inflight_signatures
-          |> MapSet.delete(dropped_signature)
-          |> MapSet.put(signature)
+          |> MapSet.delete(dropped_signature_key)
+          |> MapSet.put(signature_key)
     }
 
     metadata =
-      common_metadata(job, state.queue_depth, map_size(state.active_workers))
+      common_metadata(job, tenant, state.queue_depth, map_size(state.active_workers))
       |> Map.put(:drop_reason, :oldest)
       |> Map.put(:dropped_job_type, job_type(dropped_job))
+      |> Map.put(:dropped_tenant, dropped_tenant)
 
     telemetry(:dropped, %{count: 1}, metadata)
     log_pipeline(:warning, "dropped", metadata)
     {{:dropped, :oldest}, persist_queue_snapshot(next_state)}
+  end
+
+  defp tenant_quota_exceeded?(_tenant, %{tenant_queue_max_size: nil}), do: false
+
+  defp tenant_quota_exceeded?(tenant, state) do
+    queued = Map.get(state.tenant_queue_depths, tenant, 0)
+    active = tenant_active_count(state.active_workers, tenant)
+    queued + active >= state.tenant_queue_max_size
+  end
+
+  defp tenant_active_count(active_workers, tenant) do
+    active_workers
+    |> Map.values()
+    |> Enum.count(&(&1.tenant == tenant))
   end
 
   defp valid_job?({:error_event, event}) when is_map(event), do: true
@@ -267,6 +336,9 @@ defmodule Mom.Pipeline do
 
   defp normalize_max_concurrency(value) when is_integer(value) and value >= 0, do: value
   defp normalize_max_concurrency(_value), do: @default_max_concurrency
+
+  defp normalize_tenant_queue_max_size(value) when is_integer(value) and value > 0, do: value
+  defp normalize_tenant_queue_max_size(_value), do: nil
 
   defp normalize_durable_queue_path(path) when is_binary(path) do
     trimmed = String.trim(path)
@@ -289,33 +361,43 @@ defmodule Mom.Pipeline do
   end
 
   defp restore_enqueue(job, state) do
-    signature = job_signature(job)
+    tenant = tenant_for_job(job)
+    signature_key = dedupe_signature_key(job, tenant)
 
     cond do
-      MapSet.member?(state.inflight_signatures, signature) ->
+      MapSet.member?(state.inflight_signatures, signature_key) ->
+        state
+
+      tenant_quota_exceeded?(tenant, state) ->
         state
 
       state.queue_depth < state.queue_max_size ->
         %{
           state
-          | queue: :queue.in({job, signature}, state.queue),
+          | queue: :queue.in({job, signature_key, tenant}, state.queue),
             queue_depth: state.queue_depth + 1,
-            inflight_signatures: MapSet.put(state.inflight_signatures, signature)
+            tenant_queue_depths: Map.update(state.tenant_queue_depths, tenant, 1, &(&1 + 1)),
+            inflight_signatures: MapSet.put(state.inflight_signatures, signature_key)
         }
 
       state.overflow_policy == :drop_newest ->
         state
 
       true ->
-        {{:value, {_dropped_job, dropped_signature}}, queue} = :queue.out(state.queue)
+        {{:value, {_dropped_job, dropped_signature_key, dropped_tenant}}, queue} =
+          :queue.out(state.queue)
 
         %{
           state
-          | queue: :queue.in({job, signature}, queue),
+          | queue: :queue.in({job, signature_key, tenant}, queue),
+            tenant_queue_depths:
+              state.tenant_queue_depths
+              |> decrement_tenant_depth(dropped_tenant)
+              |> Map.update(tenant, 1, &(&1 + 1)),
             inflight_signatures:
               state.inflight_signatures
-              |> MapSet.delete(dropped_signature)
-              |> MapSet.put(signature)
+              |> MapSet.delete(dropped_signature_key)
+              |> MapSet.put(signature_key)
         }
     end
   end
@@ -361,7 +443,7 @@ defmodule Mom.Pipeline do
     jobs =
       state.queue
       |> :queue.to_list()
-      |> Enum.map(fn {job, _signature} -> job end)
+      |> Enum.map(fn {job, _signature_key, _tenant} -> job end)
 
     payload = :erlang.term_to_binary(jobs)
     path = state.durable_queue_path
@@ -408,11 +490,11 @@ defmodule Mom.Pipeline do
        do: state
 
   defp dispatch_jobs(state) do
-    case :queue.out(state.queue) do
-      {:empty, _queue} ->
+    case pop_next_entry(state.queue, state.last_dispatched_tenant) do
+      :empty ->
         state
 
-      {{:value, {job, signature}}, queue} ->
+      {:ok, {job, signature_key, tenant}, queue, last_dispatched_tenant} ->
         task_fun = fn -> state.worker_module.perform(job, state.worker_opts) end
 
         case DynamicSupervisor.start_child(state.worker_supervisor, {Task, task_fun}) do
@@ -420,7 +502,7 @@ defmodule Mom.Pipeline do
             ref = Process.monitor(pid)
             remaining_depth = state.queue_depth - 1
             active_count = map_size(state.active_workers) + 1
-            metadata = common_metadata(job, remaining_depth, active_count)
+            metadata = common_metadata(job, tenant, remaining_depth, active_count)
             telemetry(:started, %{count: 1}, metadata)
             log_pipeline(:info, "started", metadata)
 
@@ -429,11 +511,14 @@ defmodule Mom.Pipeline do
                 state
                 | queue: queue,
                   queue_depth: remaining_depth,
+                  tenant_queue_depths: decrement_tenant_depth(state.tenant_queue_depths, tenant),
+                  last_dispatched_tenant: last_dispatched_tenant,
                   active_workers:
                     Map.put(state.active_workers, ref, %{
                       job: job,
                       pid: pid,
-                      signature: signature,
+                      signature_key: signature_key,
+                      tenant: tenant,
                       started_at: System.monotonic_time()
                     })
               }
@@ -447,11 +532,65 @@ defmodule Mom.Pipeline do
     end
   end
 
+  defp remove_first_for_tenant(entries, tenant), do: do_remove_first_for_tenant(entries, tenant, [])
+
+  defp do_remove_first_for_tenant([], _tenant, _acc), do: :error
+
+  defp do_remove_first_for_tenant([{job, signature_key, tenant} | rest], tenant, acc) do
+    {:ok, {job, signature_key, tenant}, Enum.reverse(acc) ++ rest}
+  end
+
+  defp do_remove_first_for_tenant([entry | rest], tenant, acc) do
+    do_remove_first_for_tenant(rest, tenant, [entry | acc])
+  end
+
+  defp queued_tenants(queue) do
+    queue
+    |> :queue.to_list()
+    |> Enum.map(fn {_job, _signature_key, tenant} -> tenant end)
+    |> Enum.uniq()
+  end
+
+  defp select_next_tenant([], _last_tenant), do: nil
+  defp select_next_tenant(tenants, nil), do: hd(tenants)
+
+  defp select_next_tenant(tenants, last_tenant) do
+    case Enum.find_index(tenants, &(&1 == last_tenant)) do
+      nil -> hd(tenants)
+      idx -> Enum.at(tenants, rem(idx + 1, length(tenants)))
+    end
+  end
+
+  defp pop_next_entry(queue, last_tenant) do
+    tenants = queued_tenants(queue)
+
+    case select_next_tenant(tenants, last_tenant) do
+      nil ->
+        :empty
+
+      tenant ->
+        case remove_first_for_tenant(:queue.to_list(queue), tenant) do
+          {:ok, entry, remaining} ->
+            {:ok, entry, :queue.from_list(remaining), tenant}
+
+          :error ->
+            :empty
+        end
+    end
+  end
+
+  defp decrement_tenant_depth(depths, tenant) do
+    case Map.get(depths, tenant, 0) do
+      value when value <= 1 -> Map.delete(depths, tenant)
+      value -> Map.put(depths, tenant, value - 1)
+    end
+  end
+
   defp job_type({:error_event, _event}), do: :error_event
   defp job_type({:diagnostics_event, _report, _issues}), do: :diagnostics_event
 
-  defp common_metadata(job, queue_depth, active_workers) do
-    %{job_type: job_type(job), queue_depth: queue_depth, active_workers: active_workers}
+  defp common_metadata(job, tenant, queue_depth, active_workers) do
+    %{job_type: job_type(job), tenant: tenant, queue_depth: queue_depth, active_workers: active_workers}
   end
 
   defp telemetry(event, measurements, metadata) do
@@ -464,13 +603,27 @@ defmodule Mom.Pipeline do
 
   defp increment_drop(state), do: %{state | dropped_count: state.dropped_count + 1}
 
-  defp job_signature({:error_event, event}) do
-    Mom.Security.signature({:error_event, event})
+  defp tenant_for_job({:error_event, event}), do: tenant_from_map(event)
+  defp tenant_for_job({:diagnostics_event, report, _issues}), do: tenant_from_map(report)
+
+  defp dedupe_signature_key({:error_event, event}, tenant) do
+    {tenant, Mom.Security.signature({:error_event, event})}
   end
 
-  defp job_signature({:diagnostics_event, report, issues}) do
-    Mom.Security.signature({:diagnostics_event, report, issues})
+  defp dedupe_signature_key({:diagnostics_event, report, issues}, tenant) do
+    {tenant, Mom.Security.signature({:diagnostics_event, report, issues})}
   end
+
+  defp tenant_from_map(map) when is_map(map) do
+    repo = Map.get(map, :repo) || Map.get(map, "repo")
+
+    case repo do
+      value when is_binary(value) and value != "" -> value
+      _other -> @default_tenant
+    end
+  end
+
+  defp tenant_from_map(_), do: @default_tenant
 
   defp log_pipeline(level, lifecycle, metadata, measurements \\ %{}) do
     measurements_text =

@@ -35,6 +35,7 @@ defmodule Mom.Config do
     :poll_interval_ms,
     :max_concurrency,
     :queue_max_size,
+    :tenant_queue_max_size,
     :job_timeout_ms,
     :overflow_policy,
     :durable_queue_path,
@@ -95,6 +96,7 @@ defmodule Mom.Config do
           poll_interval_ms: non_neg_integer(),
           max_concurrency: non_neg_integer(),
           queue_max_size: pos_integer(),
+          tenant_queue_max_size: pos_integer() | nil,
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           durable_queue_path: String.t() | nil,
@@ -145,6 +147,8 @@ defmodule Mom.Config do
 
         with {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
+             {:ok, tenant_queue_max_size} <-
+               parse_optional_pos_int(opts, runtime, :tenant_queue_max_size),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
@@ -256,6 +260,7 @@ defmodule Mom.Config do
              poll_interval_ms: Keyword.get(opts, :poll_interval_ms, 5_000),
              max_concurrency: max_concurrency,
              queue_max_size: queue_max_size,
+             tenant_queue_max_size: tenant_queue_max_size,
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
              durable_queue_path: durable_queue_path,
@@ -438,6 +443,16 @@ defmodule Mom.Config do
       nil -> {:ok, default}
       parsed when parsed > 0 -> {:ok, parsed}
       _parsed -> {:error, "#{key} must be a positive integer"}
+    end
+  end
+
+  defp parse_optional_pos_int(opts, runtime, key) do
+    value = Keyword.get(opts, key, runtime[key])
+
+    case parse_int(value) do
+      nil -> {:ok, nil}
+      parsed when parsed > 0 -> {:ok, parsed}
+      _parsed -> {:error, "#{key} must be nil or a positive integer"}
     end
   end
 
