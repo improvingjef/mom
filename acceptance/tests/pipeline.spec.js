@@ -157,6 +157,24 @@ test("mom CLI enforces per-repo spend caps for llm and test execution", async ()
   expect(result.test_second).toEqual(["error", "test_spend_cap_exceeded"]);
 });
 
+test("mom CLI applies policy-validated test command profiles for test execution", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs"
+  );
+
+  expect(result.default_test_command_profile).toBe("mix_test");
+  expect(result.custom_test_command_profile).toBe("mix_test_no_start");
+  expect(result.custom_test_run).toBe("ok");
+  expect(result.invalid_result).toEqual([
+    "error",
+    "test_command_profile must be one of: mix_test, mix_test_no_start"
+  ]);
+  expect(result.blocked_production_result).toEqual([
+    "error",
+    "test_command_profile mix_test_no_start is not allowed for execution_profile production_hardened"
+  ]);
+});
+
 test("mom CLI defaults codex to yolo exec profile", async () => {
   const { result } = runAcceptanceScript("acceptance/scripts/mom_cli_codex_profile_acceptance.exs");
 

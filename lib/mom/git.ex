@@ -35,7 +35,7 @@ defmodule Mom.Git do
 
   @spec run_tests(String.t()) :: :ok | {:error, term()}
   def run_tests(workdir) do
-    cmd(workdir, ["mix", "test"]) |> ok_or_error()
+    run_tests_for_profile(workdir, :mix_test)
   end
 
   @spec run_tests(String.t(), Config.t()) :: :ok | {:error, term()}
@@ -46,8 +46,14 @@ defmodule Mom.Git do
            config.test_run_cost_cents,
            config.test_spend_cap_cents_per_hour
          ) do
-      true -> run_tests(workdir)
-      false -> {:error, :test_spend_cap_exceeded}
+      true ->
+        run_tests_for_profile(workdir, config.test_command_profile,
+          actor_id: config.actor_id,
+          repo: config.github_repo || config.repo
+        )
+
+      false ->
+        {:error, :test_spend_cap_exceeded}
     end
   end
 
@@ -96,6 +102,34 @@ defmodule Mom.Git do
 
   defp cmd(workdir, args) do
     System.cmd("git", args, cd: workdir)
+  end
+
+  defp run_tests_for_profile(workdir, test_command_profile, audit_opts \\ []) do
+    with {:ok, spec} <- Config.resolve_test_command_profile(test_command_profile) do
+      {out, code} =
+        System.cmd(spec.command, spec.args, cd: workdir, stderr_to_stdout: true)
+
+      metadata =
+        %{
+          test_command_profile: to_string(test_command_profile),
+          command: Enum.join([spec.command | spec.args], " "),
+          workdir: workdir,
+          status: if(code == 0, do: "ok", else: "error"),
+          exit_code: code
+        }
+        |> Map.merge(%{
+          repo: Keyword.get(audit_opts, :repo),
+          actor_id: Keyword.get(audit_opts, :actor_id, "mom")
+        })
+
+      :ok = Audit.emit(:git_tests_run, metadata)
+
+      if code == 0 do
+        :ok
+      else
+        {:error, {:git_failed, code, out}}
+      end
+    end
   end
 
   defp ok_or_error({_, 0}), do: :ok

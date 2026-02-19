@@ -144,6 +144,7 @@ defmodule Mix.Tasks.Mom do
       llm_tokens_per_call_estimate: :integer,
       test_spend_cap_cents_per_hour: :integer,
       test_run_cost_cents: :integer,
+      test_command_profile: :string,
       issue_dedupe_window_ms: :integer,
       redact_keys: :string,
       open_pr: :boolean,

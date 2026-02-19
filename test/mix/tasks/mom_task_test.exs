@@ -45,7 +45,9 @@ defmodule Mix.Tasks.MomTaskTest do
         "--test-spend-cap-cents-per-hour",
         "750",
         "--test-run-cost-cents",
-        "30"
+        "30",
+        "--test-command-profile",
+        "mix_test_no_start"
       ])
 
     assert config.llm_spend_cap_cents_per_hour == 500
@@ -54,6 +56,16 @@ defmodule Mix.Tasks.MomTaskTest do
     assert config.llm_tokens_per_call_estimate == 1_500
     assert config.test_spend_cap_cents_per_hour == 750
     assert config.test_run_cost_cents == 30
+    assert config.test_command_profile == :mix_test_no_start
+  end
+
+  test "parse_args rejects invalid test command profiles" do
+    assert {:error, "test_command_profile must be one of: mix_test, mix_test_no_start"} =
+             Mix.Tasks.Mom.parse_args([
+               "/tmp/repo",
+               "--test-command-profile",
+               "not_a_profile"
+             ])
   end
 
   test "parse_args rejects invalid overflow policy values" do

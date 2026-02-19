@@ -257,4 +257,97 @@ defmodule Mom.GitTest do
     assert {:error, _} = Git.run_tests(repo, config)
     assert {:error, :test_spend_cap_exceeded} = Git.run_tests(repo, config)
   end
+
+  test "run_tests executes configured test command profile" do
+    repo = create_mix_test_repo()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: repo,
+        test_command_profile: :mix_test_no_start
+      )
+
+    assert :ok == Git.run_tests(repo, config)
+  end
+
+  test "run_tests emits audit event with profile and command details" do
+    repo = create_mix_test_repo()
+
+    {:ok, config} =
+      Config.from_opts(
+        repo: repo,
+        actor_id: "machine-user",
+        github_repo: "acme/mom",
+        allowed_actor_ids: ["machine-user"],
+        test_command_profile: :mix_test_no_start
+      )
+
+    telemetry_handler = "git-tests-run-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_tests_run]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    log =
+      capture_log(fn ->
+        assert :ok == Git.run_tests(repo, config)
+      end)
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_tests_run], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert metadata.workdir == repo
+    assert metadata.test_command_profile == "mix_test_no_start"
+    assert metadata.exit_code == 0
+    assert metadata.status == "ok"
+    assert metadata.command == "mix test --no-start"
+    assert log =~ "\"event\":\"git_tests_run\""
+    assert log =~ "\"test_command_profile\":\"mix_test_no_start\""
+  end
+
+  defp create_mix_test_repo do
+    repo = Path.join(System.tmp_dir!(), "mom-git-tests-#{System.unique_integer([:positive])}")
+    File.rm_rf!(repo)
+    File.mkdir_p!(repo)
+
+    File.write!(
+      Path.join(repo, "mix.exs"),
+      """
+      defmodule GitRunTestsAcceptance.MixProject do
+        use Mix.Project
+
+        def project do
+          [app: :git_run_tests_acceptance, version: "0.1.0", elixir: "~> 1.15", deps: []]
+        end
+
+        def application, do: [extra_applications: [:logger]]
+      end
+      """
+    )
+
+    File.mkdir_p!(Path.join(repo, "test"))
+    File.write!(Path.join(repo, "test/test_helper.exs"), "ExUnit.start()\n")
+
+    File.write!(
+      Path.join(repo, "test/smoke_test.exs"),
+      """
+      defmodule GitRunTestsSmokeTest do
+        use ExUnit.Case
+
+        test "ok" do
+          assert true
+        end
+      end
+      """
+    )
+
+    repo
+  end
 end

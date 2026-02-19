@@ -1,9 +1,9 @@
 # Mom Remaining Plan (Failure Server First)
 
 ## Next 3 Tasks
-1. [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
-2. [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
-3. [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+1. [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
+2. [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+3. [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
 
 ## Priority 0: Failure Server and Acceptance Reliability
 - [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
@@ -15,7 +15,8 @@
  - Status: complete (February 19, 2026) via checked-in GitHub Actions workflows (`.github/workflows/ci-exunit.yml`, `.github/workflows/ci-playwright.yml`), harness-integrated CI workflow verification (`Mom.CIWorkflow`), and ExUnit + Playwright acceptance coverage for required-check mapping and flaky/concurrency-report controls.
 - [x] Harden observability acceptance metric-export synchronization (deterministic post-export assertions + bounded retries) to eliminate intermittent parallel-suite false negatives in release gates.
  - Status: complete (February 19, 2026) via deterministic observability export synchronization (`Mom.Observability.sync_export/1`), bounded full-metrics post-export assertions in acceptance (`acceptance/scripts/observability_prometheus_acceptance.exs`), and ExUnit + Playwright regression coverage.
-- [ ] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
+- [x] Add explicit runtime test-command execution controls (replace implicit `git mix test` behavior with policy-validated test command profiles) to ensure production test gating is reliable and auditable.
+ - Status: complete (February 19, 2026) via `test_command_profile` policy validation (`mix_test` / `mix_test_no_start` with execution-profile enforcement), runtime `mix test` command execution with structured audit evidence (`git_tests_run`), and ExUnit + Playwright acceptance coverage.
 - [ ] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
 - [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
 - [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
@@ -71,3 +72,4 @@
 - [ ] Add automated fix-quality and safety gates (regression benchmark suite, semantic diff risk scoring, and mandatory human approval path for high-risk patches).
 - [ ] Add public launch-readiness controls (GA go/no-go checklist, rollback gate criteria, and launch-approver signoff evidence capture) to make release decisions auditable.
 - [ ] Add self-serve customer operations control plane (tenant admin for billing/contact/security settings, delegated admin roles, and audit-visible change history) to reduce enterprise onboarding/support friction.
+- [ ] Add customer-facing product documentation and versioned API/CLI reference (quickstart, operational hardening guide, migration notes, and deprecation policy) to reduce enterprise onboarding friction and procurement risk.

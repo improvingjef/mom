@@ -3,6 +3,19 @@ defmodule Mom.Config do
 
   alias Mom.Audit
 
+  @test_command_profiles %{
+    mix_test: %{
+      command: "mix",
+      args: ["test"],
+      allowed_execution_profiles: [:test_relaxed, :staging_restricted, :production_hardened]
+    },
+    mix_test_no_start: %{
+      command: "mix",
+      args: ["test", "--no-start"],
+      allowed_execution_profiles: [:test_relaxed]
+    }
+  }
+
   @type llm_provider :: :claude_code | :codex | :api_anthropic | :api_openai
 
   defstruct [
@@ -32,6 +45,7 @@ defmodule Mom.Config do
     :llm_tokens_per_call_estimate,
     :test_spend_cap_cents_per_hour,
     :test_run_cost_cents,
+    :test_command_profile,
     :issue_dedupe_window_ms,
     :redact_keys,
     :git_ssh_command,
@@ -102,6 +116,7 @@ defmodule Mom.Config do
           llm_tokens_per_call_estimate: non_neg_integer(),
           test_spend_cap_cents_per_hour: pos_integer() | nil,
           test_run_cost_cents: non_neg_integer(),
+          test_command_profile: :mix_test | :mix_test_no_start,
           issue_dedupe_window_ms: pos_integer(),
           redact_keys: [String.t()],
           git_ssh_command: String.t() | nil,
@@ -182,7 +197,8 @@ defmodule Mom.Config do
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
-             {:ok, audit_retention_days} <- parse_pos_int(opts, runtime, :audit_retention_days, 30),
+             {:ok, audit_retention_days} <-
+               parse_pos_int(opts, runtime, :audit_retention_days, 30),
              {:ok, soc2_evidence_path} <- parse_soc2_evidence_path(opts, runtime),
              {:ok, pii_handling_policy} <- parse_pii_handling_policy(opts, runtime),
              {:ok, observability_backend} <- parse_observability_backend(opts, runtime),
@@ -223,9 +239,11 @@ defmodule Mom.Config do
              {:ok, merge_pr} <- parse_merge_pr(opts, runtime),
              {:ok, workdir} <- parse_workdir(opts, runtime),
              {:ok, execution_profile} <- parse_execution_profile(opts, runtime),
+             {:ok, test_command_profile} <- parse_test_command_profile(opts, runtime),
              {:ok, open_pr} <- parse_open_pr(opts, runtime, execution_profile: execution_profile),
              llm_cmd <- default_llm_cmd(llm_provider, llm_cmd_override, execution_profile),
              policy <- execution_policy(execution_profile, workdir),
+             :ok <- validate_test_command_profile_policy(test_command_profile, execution_profile),
              :ok <-
                validate_execution_policy(
                  execution_profile,
@@ -286,6 +304,7 @@ defmodule Mom.Config do
              llm_tokens_per_call_estimate: llm_tokens_per_call_estimate,
              test_spend_cap_cents_per_hour: test_spend_cap_cents_per_hour,
              test_run_cost_cents: test_run_cost_cents,
+             test_command_profile: test_command_profile,
              issue_dedupe_window_ms:
                parse_int(
                  Keyword.get(opts, :issue_dedupe_window_ms) || runtime[:issue_dedupe_window_ms]
@@ -352,8 +371,23 @@ defmodule Mom.Config do
              config.open_pr,
              config.merge_pr,
              config.readiness_gate_approved
+           ),
+         :ok <-
+           validate_test_command_profile_policy(
+             config.test_command_profile,
+             config.execution_profile
            ) do
       :ok
+    end
+  end
+
+  @spec resolve_test_command_profile(atom()) ::
+          {:ok, %{command: String.t(), args: [String.t()], allowed_execution_profiles: [atom()]}}
+          | {:error, String.t()}
+  def resolve_test_command_profile(profile) when is_atom(profile) do
+    case Map.get(@test_command_profiles, profile) do
+      nil -> {:error, "unknown test command profile #{profile}"}
+      spec -> {:ok, spec}
     end
   end
 
@@ -544,6 +578,33 @@ defmodule Mom.Config do
     end
   end
 
+  defp parse_test_command_profile(opts, runtime) do
+    profile =
+      Keyword.get(opts, :test_command_profile, runtime[:test_command_profile] || :mix_test)
+
+    with {:ok, normalized} <- normalize_test_command_profile(profile),
+         {:ok, _spec} <- resolve_test_command_profile(normalized) do
+      {:ok, normalized}
+    else
+      {:error, _reason} ->
+        {:error, "test_command_profile must be one of: mix_test, mix_test_no_start"}
+    end
+  end
+
+  defp normalize_test_command_profile(profile) when is_atom(profile) do
+    {:ok, profile}
+  end
+
+  defp normalize_test_command_profile(profile) when is_binary(profile) do
+    case profile do
+      "mix_test" -> {:ok, :mix_test}
+      "mix_test_no_start" -> {:ok, :mix_test_no_start}
+      _other -> {:error, :invalid_test_command_profile}
+    end
+  end
+
+  defp normalize_test_command_profile(_profile), do: {:error, :invalid_test_command_profile}
+
   defp execution_policy(:test_relaxed, _workdir) do
     %{
       sandbox_mode: :unrestricted,
@@ -710,6 +771,17 @@ defmodule Mom.Config do
       "drop_newest" -> {:ok, :drop_newest}
       "drop_oldest" -> {:ok, :drop_oldest}
       _other -> {:error, "overflow_policy must be :drop_newest or :drop_oldest"}
+    end
+  end
+
+  defp validate_test_command_profile_policy(test_command_profile, execution_profile) do
+    with {:ok, spec} <- resolve_test_command_profile(test_command_profile) do
+      if execution_profile in spec.allowed_execution_profiles do
+        :ok
+      else
+        {:error,
+         "test_command_profile #{test_command_profile} is not allowed for execution_profile #{execution_profile}"}
+      end
     end
   end
 

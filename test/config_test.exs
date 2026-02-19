@@ -36,6 +36,7 @@ defmodule Mom.ConfigTest do
     assert config.llm_tokens_per_call_estimate == 0
     assert config.test_spend_cap_cents_per_hour == nil
     assert config.test_run_cost_cents == 0
+    assert config.test_command_profile == :mix_test
     assert config.audit_retention_days == 30
     assert config.soc2_evidence_path == nil
     assert config.pii_handling_policy == :redact
@@ -305,7 +306,8 @@ defmodule Mom.ConfigTest do
         llm_token_cap_per_hour: 20_000,
         llm_tokens_per_call_estimate: 1_500,
         test_spend_cap_cents_per_hour: 750,
-        test_run_cost_cents: 30
+        test_run_cost_cents: 30,
+        test_command_profile: :mix_test_no_start
       )
 
     assert config.llm_spend_cap_cents_per_hour == 500
@@ -314,6 +316,7 @@ defmodule Mom.ConfigTest do
     assert config.llm_tokens_per_call_estimate == 1_500
     assert config.test_spend_cap_cents_per_hour == 750
     assert config.test_run_cost_cents == 30
+    assert config.test_command_profile == :mix_test_no_start
   end
 
   test "validates pipeline concurrency values" do
@@ -363,6 +366,21 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "test_run_cost_cents must be a non-negative integer"} =
              Config.from_opts(repo: "/tmp/repo", test_run_cost_cents: -1)
+
+    assert {:error, "test_command_profile must be one of: mix_test, mix_test_no_start"} =
+             Config.from_opts(repo: "/tmp/repo", test_command_profile: :unknown)
+
+    workdir = isolated_workdir_fixture()
+
+    assert {:error,
+            "test_command_profile mix_test_no_start is not allowed for execution_profile production_hardened"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               test_command_profile: :mix_test_no_start
+             )
   end
 
   test "parses observability backend and slo thresholds" do
