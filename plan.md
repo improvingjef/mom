@@ -3,7 +3,8 @@
 ## Next 3 Tasks
 1. [x] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
  - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
-2. [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+2. [x] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+ - Status: complete (February 19, 2026) via startup pruning in `Mom.Config` using retention + keep-latest policy controls, `Mom.AcceptanceLifecycle` stale-artifact pruning for `_build_runner_burst_*`/worker-scoped build dirs, and ExUnit + Playwright acceptance coverage.
 3. [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
 
 ## Priority 0: Failure Server and Acceptance Reliability
@@ -20,7 +21,8 @@
  - Status: complete (February 19, 2026) via `test_command_profile` policy validation (`mix_test` / `mix_test_no_start` with execution-profile enforcement), runtime `mix test` command execution with structured audit evidence (`git_tests_run`), and ExUnit + Playwright acceptance coverage.
 - [x] Enforce CI/runtime toolchain prerequisites for acceptance reliability (Node.js >= 18 and pinned Erlang/OTP patch level), with startup fail-fast checks.
  - Status: complete (February 19, 2026) via startup fail-fast toolchain validation in `Mom.Config` (Node.js major >= 18 and pinned OTP patch `28.0.2`), CI workflow OTP pinning updates, and ExUnit + Playwright acceptance coverage for blocked and passing paths.
-- [ ] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+- [x] Add automated lifecycle cleanup for ephemeral acceptance build artifacts (`_build_runner_burst_*`, worker-scoped build dirs) with retention policy and startup pruning to prevent disk growth in long-lived runners.
+ - Status: complete (February 19, 2026) via startup pruning in `Mom.Config` using retention + keep-latest policy controls, `Mom.AcceptanceLifecycle` stale-artifact pruning for `_build_runner_burst_*`/worker-scoped build dirs, and ExUnit + Playwright acceptance coverage.
 - [ ] Enforce Elixir runtime patch-level prerequisites (stable 1.19.x baseline, reject release-candidate runtimes) with startup fail-fast validation to prevent environment drift and release-gate instability.
 
 ## Priority 1: Operational Safety and Core Platform Readiness
@@ -76,3 +78,4 @@
 - [ ] Add public launch-readiness controls (GA go/no-go checklist, rollback gate criteria, and launch-approver signoff evidence capture) to make release decisions auditable.
 - [ ] Add self-serve customer operations control plane (tenant admin for billing/contact/security settings, delegated admin roles, and audit-visible change history) to reduce enterprise onboarding/support friction.
 - [ ] Add customer-facing product documentation and versioned API/CLI reference (quickstart, operational hardening guide, migration notes, and deprecation policy) to reduce enterprise onboarding friction and procurement risk.
+- [ ] Add enterprise deal-desk and contract operations controls (MSA/DPA redline workflow, approval matrix, e-sign integration, and renewal ownership tracking) to prevent commercial bottlenecks during procurement and expansion.

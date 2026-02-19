@@ -17,6 +17,11 @@ defmodule Mom.AcceptanceLifecycle do
     "no process",
     "timeout"
   ]
+  @ephemeral_build_prefixes [
+    "_build_runner_burst_",
+    "_build_acceptance_worker_",
+    "_build_acceptance_serialized_"
+  ]
 
   @spec parse_snapshot(String.t()) :: [process_row()]
   def parse_snapshot(snapshot) when is_binary(snapshot) do
@@ -57,8 +62,8 @@ defmodule Mom.AcceptanceLifecycle do
       end
 
     rows
-      |> descendants(root_pid)
-      |> Enum.filter(&lingering_mix_run_command?/1)
+    |> descendants(root_pid)
+    |> Enum.filter(&lingering_mix_run_command?/1)
   end
 
   @spec lingering_mix_run_children_from_samples([String.t() | [process_row()]], pos_integer()) ::
@@ -123,6 +128,58 @@ defmodule Mom.AcceptanceLifecycle do
     classification == :monitor_attach_race and attempt <= retry_budget
   end
 
+  @spec prune_ephemeral_build_artifacts(binary(), keyword()) ::
+          {:ok,
+           %{
+             candidates: non_neg_integer(),
+             kept: [binary()],
+             removed: [binary()],
+             failed: [{binary(), term()}]
+           }}
+          | {:error, term()}
+  def prune_ephemeral_build_artifacts(root_path, opts \\ []) when is_binary(root_path) do
+    retention_seconds = Keyword.get(opts, :retention_seconds, 86_400)
+    keep_latest = Keyword.get(opts, :keep_latest, 8)
+    now_seconds = Keyword.get(opts, :now_seconds, System.os_time(:second))
+
+    with {:ok, entries} <- File.ls(root_path) do
+      candidates =
+        entries
+        |> Enum.flat_map(&ephemeral_candidate(root_path, &1))
+        |> Enum.sort_by(& &1.modified_seconds, :desc)
+
+      {kept, removed, failed} =
+        candidates
+        |> Enum.with_index()
+        |> Enum.reduce({[], [], []}, fn {entry, index}, {kept, removed, failed} ->
+          keep_by_rank? = index < keep_latest
+          within_retention? = now_seconds - entry.modified_seconds <= retention_seconds
+
+          cond do
+            keep_by_rank? or within_retention? ->
+              {[entry.name | kept], removed, failed}
+
+            true ->
+              case File.rm_rf(entry.path) do
+                {:ok, _deleted_paths} ->
+                  {kept, [entry.name | removed], failed}
+
+                {:error, reason, _path} ->
+                  {kept, removed, [{entry.name, reason} | failed]}
+              end
+          end
+        end)
+
+      {:ok,
+       %{
+         candidates: length(candidates),
+         kept: Enum.sort(kept),
+         removed: Enum.sort(removed),
+         failed: Enum.sort_by(failed, &elem(&1, 0))
+       }}
+    end
+  end
+
   defp walk_descendants(_grouped, [], acc), do: acc
 
   defp walk_descendants(grouped, [current | rest], acc) do
@@ -161,6 +218,18 @@ defmodule Mom.AcceptanceLifecycle do
   end
 
   defp parse_non_neg_int(_value, default), do: default
+
+  defp ephemeral_candidate(root_path, entry_name) do
+    path = Path.join(root_path, entry_name)
+
+    with true <- Enum.any?(@ephemeral_build_prefixes, &String.starts_with?(entry_name, &1)),
+         {:ok, %File.Stat{type: :directory}} <- File.stat(path),
+         {:ok, %File.Stat{mtime: modified_seconds}} <- File.stat(path, time: :posix) do
+      [%{name: entry_name, path: path, modified_seconds: modified_seconds}]
+    else
+      _ -> []
+    end
+  end
 
   defp sanitize_segment(value) do
     value

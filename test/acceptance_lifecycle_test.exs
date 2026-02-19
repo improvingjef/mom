@@ -40,9 +40,17 @@ defmodule Mom.AcceptanceLifecycleTest do
 
   test "defaults build artifact mode to worker-isolated and honors serialized env flags" do
     assert :worker_isolated == AcceptanceLifecycle.build_artifact_mode(%{})
-    assert :serialized == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_BUILD_MODE" => "serialized"})
-    assert :serialized == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_SERIALIZED" => "true"})
-    assert :worker_isolated == AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_BUILD_MODE" => "unknown"})
+
+    assert :serialized ==
+             AcceptanceLifecycle.build_artifact_mode(%{
+               "MOM_ACCEPTANCE_BUILD_MODE" => "serialized"
+             })
+
+    assert :serialized ==
+             AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_SERIALIZED" => "true"})
+
+    assert :worker_isolated ==
+             AcceptanceLifecycle.build_artifact_mode(%{"MOM_ACCEPTANCE_BUILD_MODE" => "unknown"})
   end
 
   test "builds deterministic sanitized build artifact paths" do
@@ -64,7 +72,8 @@ defmodule Mom.AcceptanceLifecycleTest do
       """
     ]
 
-    assert [%{pid: 130}] = AcceptanceLifecycle.lingering_mix_run_children_from_samples(samples, 120)
+    assert [%{pid: 130}] =
+             AcceptanceLifecycle.lingering_mix_run_children_from_samples(samples, 120)
   end
 
   test "parses retry budget and fail-on-flaky policy from env" do
@@ -78,9 +87,58 @@ defmodule Mom.AcceptanceLifecycleTest do
     assert :monitor_attach_race ==
              AcceptanceLifecycle.classify_failure("missing telemetry failed pipeline event")
 
-    assert :non_retryable == AcceptanceLifecycle.classify_failure("syntax error in acceptance script")
+    assert :non_retryable ==
+             AcceptanceLifecycle.classify_failure("syntax error in acceptance script")
+
     assert AcceptanceLifecycle.retry?(1, 2, :monitor_attach_race)
     refute AcceptanceLifecycle.retry?(3, 2, :monitor_attach_race)
     refute AcceptanceLifecycle.retry?(1, 2, :non_retryable)
+  end
+
+  test "prunes stale ephemeral build artifact directories by retention policy" do
+    root =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-acceptance-lifecycle-prune-#{System.unique_integer([:positive])}"
+      )
+
+    stale_runner = Path.join(root, "_build_runner_burst_stale")
+    stale_worker = Path.join(root, "_build_acceptance_worker_stale_0")
+    fresh_worker = Path.join(root, "_build_acceptance_worker_fresh_0")
+    keep_other = Path.join(root, "_build_kept_other")
+
+    on_exit(fn -> File.rm_rf!(root) end)
+
+    File.rm_rf!(root)
+    File.mkdir_p!(stale_runner)
+    File.mkdir_p!(stale_worker)
+    File.mkdir_p!(fresh_worker)
+    File.mkdir_p!(keep_other)
+
+    now = System.os_time(:second)
+    set_directory_mtime!(stale_runner, now - 3_600)
+    set_directory_mtime!(stale_worker, now - 3_600)
+    set_directory_mtime!(fresh_worker, now)
+
+    assert {:ok, summary} =
+             AcceptanceLifecycle.prune_ephemeral_build_artifacts(
+               root,
+               retention_seconds: 300,
+               keep_latest: 1
+             )
+
+    assert summary.candidates == 3
+    assert "_build_acceptance_worker_fresh_0" in summary.kept
+    assert "_build_runner_burst_stale" in summary.removed
+    assert "_build_acceptance_worker_stale_0" in summary.removed
+    assert File.dir?(fresh_worker)
+    refute File.exists?(stale_runner)
+    refute File.exists?(stale_worker)
+    assert File.dir?(keep_other)
+  end
+
+  defp set_directory_mtime!(path, unix_seconds) do
+    datetime = :calendar.system_time_to_local_time(unix_seconds, :second)
+    :ok = :file.change_time(String.to_charlist(path), datetime)
   end
 end

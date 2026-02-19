@@ -1,10 +1,14 @@
 defmodule Mom.Config do
   @moduledoc false
 
-  alias Mom.Audit
+  alias Mom.{AcceptanceLifecycle, Audit}
+
+  require Logger
 
   @minimum_node_major 18
   @required_otp_version "28.0.2"
+  @default_acceptance_build_artifact_retention_seconds 86_400
+  @default_acceptance_build_artifact_keep_latest 8
 
   @test_command_profiles %{
     mix_test: %{
@@ -182,6 +186,25 @@ defmodule Mom.Config do
         actor_id = parse_actor_id(opts, runtime)
 
         with :ok <- validate_toolchain_prerequisites(opts, runtime),
+             {:ok, acceptance_build_artifact_retention_seconds} <-
+               parse_non_neg_int(
+                 opts,
+                 runtime,
+                 :acceptance_build_artifact_retention_seconds,
+                 @default_acceptance_build_artifact_retention_seconds
+               ),
+             {:ok, acceptance_build_artifact_keep_latest} <-
+               parse_non_neg_int(
+                 opts,
+                 runtime,
+                 :acceptance_build_artifact_keep_latest,
+                 @default_acceptance_build_artifact_keep_latest
+               ),
+             :ok <-
+               maybe_prune_ephemeral_acceptance_build_artifacts(
+                 acceptance_build_artifact_retention_seconds,
+                 acceptance_build_artifact_keep_latest
+               ),
              {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
              {:ok, tenant_queue_max_size} <-
@@ -473,6 +496,35 @@ defmodule Mom.Config do
     value
     |> to_string()
     |> String.trim()
+  end
+
+  defp maybe_prune_ephemeral_acceptance_build_artifacts(retention_seconds, keep_latest)
+       when is_integer(retention_seconds) and retention_seconds >= 0 and is_integer(keep_latest) and
+              keep_latest >= 0 do
+    case File.cwd() do
+      {:ok, cwd} ->
+        case AcceptanceLifecycle.prune_ephemeral_build_artifacts(cwd,
+               retention_seconds: retention_seconds,
+               keep_latest: keep_latest
+             ) do
+          {:ok, _summary} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning(
+              "mom: failed pruning ephemeral acceptance build artifacts in #{cwd}: #{inspect(reason)}"
+            )
+
+            :ok
+        end
+
+      {:error, reason} ->
+        Logger.warning(
+          "mom: failed resolving cwd for acceptance build artifact pruning: #{inspect(reason)}"
+        )
+
+        :ok
+    end
   end
 
   @spec validate_runtime_policy(t()) :: :ok | {:error, String.t()}

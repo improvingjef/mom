@@ -132,3 +132,14 @@ test("acceptance runner enforces retry-budget exhaustion for monitor-attach race
     })
   ).toThrow(/Retry budget exhausted/);
 });
+
+test("mom startup prunes stale acceptance build artifacts by retention policy", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs"
+  );
+
+  expect(result.pruned_runner_burst).toBeTruthy();
+  expect(result.pruned_worker_scoped).toBeTruthy();
+  expect(result.kept_recent_worker_scoped).toBeTruthy();
+  expect(result.kept_non_matching_directory).toBeTruthy();
+});
