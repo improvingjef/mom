@@ -218,6 +218,30 @@ test("pipeline drops duplicate in-flight incidents and allows retry after comple
   expect(result.final_failed).toBe(0);
 });
 
+test("mom harness task confirms and records private harness repo location", async () => {
+  const repoRoot = path.resolve(__dirname, "..", "..");
+  const output = execFileSync(
+    "mix",
+    ["run", "acceptance/scripts/mom_cli_harness_repo_acceptance.exs"],
+    {
+      cwd: repoRoot,
+      env: { ...process.env, ASDF_ELIXIR_VERSION: "1.19.4-otp-28" }
+    }
+  ).toString();
+
+  const marker = output
+    .split("\n")
+    .find((line) => line.startsWith("RESULT_JSON:"));
+
+  expect(marker).toBeTruthy();
+  const result = JSON.parse(marker.replace("RESULT_JSON:", ""));
+
+  expect(result.name_with_owner).toBe("acme/harness");
+  expect(result.is_private).toBeTruthy();
+  expect(result.visibility).toBe("PRIVATE");
+  expect(result.loaded_matches).toBeTruthy();
+});
+
 test("mom CLI enforces allowed github repo allowlist", async () => {
   const repoRoot = path.resolve(__dirname, "..", "..");
   const output = execFileSync(

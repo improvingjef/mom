@@ -244,6 +244,7 @@ Out of scope (for this phase):
 - Production observability integration is implemented with Prometheus export and SLO-breach alert telemetry (`queue_depth`, `drop_rate`, `failure_rate`, `latency_p95_ms`), covered by ExUnit + Playwright acceptance tests.
 - Durable queue mode is implemented with disk-backed queue persistence and replay-on-restart (`durable_queue_path`), covered by ExUnit + Playwright acceptance tests.
 - Multi-tenant controls are implemented for per-repo queue quotas, tenant-scoped in-flight dedupe isolation, and fair round-robin tenant dispatch scheduling, covered by ExUnit + Playwright acceptance tests.
+- Separate private fragile Phoenix harness repo is now created/confirmed and recorded at `https://github.com/improvingjef/mom-fragile-phoenix-harness` (`acceptance/harness_repo.json`), covered by ExUnit + Playwright acceptance tests.
 
 4. Add In-Flight Signature Guard
 - Prevent duplicate concurrent work for same signature window.
@@ -423,7 +424,7 @@ Out of scope (for this phase):
 - [x] Add/maintain Playwright coverage for every applicable end-to-end task (or record N/A rationale).
 
 ### Incremental Harness Delivery (Required)
-- [ ] Create/confirm separate private fragile Phoenix harness repo and record location.
+- [x] Create/confirm separate private fragile Phoenix harness repo and record location.
 - [ ] Establish harness baseline scenario set (at least one deterministic error and one diagnostics anomaly).
 - [ ] For each completed major `mom` capability, add/update at least one corresponding harness defect scenario.
 - [ ] For each completed major `mom` capability, add/update corresponding Playwright coverage in baseline or burst mode.
@@ -482,6 +483,7 @@ Out of scope (for this phase):
 - [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
 - [ ] Add deterministic concurrency test instrumentation in CI (monitor-attach race hardening, flaky-test detection, and retry-budget policy) so reliability gates remain trustworthy under load.
 - [ ] Stabilize Playwright full-suite execution lifecycle (detect/clean leaked `mix run` children and fail fast on lingering workers) to prevent acceptance-run hangs in CI and release gates.
+- [ ] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
 - [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.
 - [ ] Add runtime policy-violation alerting and response runbooks (severity tiers, paging thresholds, and automated escalation) to operationalize fail-closed controls in production.
 - [ ] Add tamper-evident audit log integrity controls (event signing, verification tooling, and chain-of-custody reporting) for enterprise forensics.
