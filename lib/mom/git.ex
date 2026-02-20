@@ -29,6 +29,7 @@ defmodule Mom.Git do
 
       {out, code} ->
         File.rm(tmp)
+        emit_git_audit(:git_patch_failed, audit_opts, %{workdir: workdir, exit_code: code})
         {:error, {:git_apply_failed, code, out}}
     end
   end
@@ -96,6 +97,7 @@ defmodule Mom.Git do
         :ok
 
       {:error, _} = error ->
+        emit_git_audit(:git_branch_push_failed, audit_opts, %{branch: branch})
         error
     end
   end

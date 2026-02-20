@@ -16,3 +16,24 @@ test("incident-to-PR path emits an end-to-end success signal including PR creati
   expect(result.signal.branch_matches).toBeTruthy();
   expect(result.signal.pr_number).toBe(12);
 });
+
+test("incident-to-PR classifier marks each stop point failure", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/incident_to_pr_failure_classification_acceptance.exs"
+  );
+
+  expect(result.detect.failure_stop_point).toBe("detect");
+  expect(result.detect.stop_point_classification.detect).toBe("failed");
+
+  expect(result.patch_apply.failure_stop_point).toBe("patch_apply");
+  expect(result.patch_apply.stop_point_classification.patch_apply).toBe("failed");
+
+  expect(result.tests.failure_stop_point).toBe("tests");
+  expect(result.tests.stop_point_classification.tests).toBe("failed");
+
+  expect(result.push.failure_stop_point).toBe("push");
+  expect(result.push.stop_point_classification.push).toBe("failed");
+
+  expect(result.pr_create.failure_stop_point).toBe("pr_create");
+  expect(result.pr_create.stop_point_classification.pr_create).toBe("failed");
+});

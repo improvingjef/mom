@@ -94,6 +94,38 @@ defmodule Mom.GitTest do
     assert log =~ "\"actor_id\":\"machine-user\""
   end
 
+  test "apply_patch emits failure audit event when git apply fails" do
+    repo = Mom.TestHelper.create_repo()
+    File.write!(Path.join(repo, "lib.txt"), "a\n")
+    Mom.TestHelper.git(repo, ["add", "."])
+    Mom.TestHelper.git(repo, ["commit", "-m", "add file"])
+
+    telemetry_handler = "git-patch-failed-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_patch_failed]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    assert {:error, {:git_apply_failed, code, _out}} =
+             Git.apply_patch(repo, "not a valid patch",
+               actor_id: "machine-user",
+               repo: "acme/mom"
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_patch_failed], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert metadata.workdir == repo
+    assert metadata.exit_code == code
+  end
+
   test "prepare_workdir creates a git worktree" do
     repo = Mom.TestHelper.create_repo()
     {:ok, config} = Config.from_opts(repo: repo)
@@ -269,6 +301,38 @@ defmodule Mom.GitTest do
     assert metadata.branch == "mom/push-audit"
     assert log =~ "\"event\":\"git_branch_pushed\""
     assert log =~ "\"actor_id\":\"machine-user\""
+  end
+
+  test "push_branch emits failure audit event when git push fails" do
+    repo = Mom.TestHelper.create_repo()
+    File.write!(Path.join(repo, "README.md"), "hello\n")
+    Mom.TestHelper.git(repo, ["add", "."])
+    Mom.TestHelper.git(repo, ["commit", "-m", "init"])
+    {_, 0} = System.cmd("git", ["checkout", "-b", "mom/push-fail"], cd: repo)
+
+    telemetry_handler = "git-branch-push-failed-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach_many(
+      telemetry_handler,
+      [[:mom, :audit, :git_branch_push_failed]],
+      fn event, _measurements, metadata, pid ->
+        send(pid, {:telemetry_event, event, metadata})
+      end,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(telemetry_handler) end)
+
+    assert {:error, {:git_failed, _code, _out}} =
+             Git.push_branch(repo, "mom/push-fail",
+               actor_id: "machine-user",
+               repo: "acme/mom"
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :git_branch_push_failed], metadata}
+    assert metadata.actor_id == "machine-user"
+    assert metadata.repo == "acme/mom"
+    assert metadata.branch == "mom/push-fail"
   end
 
   test "enforces per-repo test execution spend cap" do

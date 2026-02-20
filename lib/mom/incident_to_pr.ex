@@ -9,6 +9,21 @@ defmodule Mom.IncidentToPr do
     pr_created: :github_pr_created
   ]
 
+  @stop_point_steps [
+    detect: :incident_detected,
+    patch_apply: :patch_applied,
+    tests: :tests_passed,
+    push: :branch_pushed,
+    pr_create: :pr_created
+  ]
+
+  @failure_events %{
+    detect: :github_issue_failed,
+    patch_apply: :git_patch_failed,
+    push: :git_branch_push_failed,
+    pr_create: :github_pr_failed
+  }
+
   @type signal :: %{
           success: boolean(),
           missing_steps: [atom()],
@@ -16,7 +31,15 @@ defmodule Mom.IncidentToPr do
           tests_status_ok: boolean(),
           branch_matches: boolean(),
           branch: String.t() | nil,
-          pr_number: integer() | nil
+          pr_number: integer() | nil,
+          stop_point_classification: %{
+            detect: :passed | :failed | :missing | :out_of_order,
+            patch_apply: :passed | :failed | :missing | :out_of_order,
+            tests: :passed | :failed | :missing | :out_of_order,
+            push: :passed | :failed | :missing | :out_of_order,
+            pr_create: :passed | :failed | :missing | :out_of_order
+          },
+          failure_stop_point: :detect | :patch_apply | :tests | :push | :pr_create | nil
         }
 
   @spec evaluate([tuple()]) :: {:ok, signal()} | {:error, signal()}
@@ -39,6 +62,8 @@ defmodule Mom.IncidentToPr do
     branch = branch_for(indexed, :git_branch_pushed)
     pr_branch = branch_for(indexed, :github_pr_created)
     branch_matches = is_binary(branch) and is_binary(pr_branch) and branch == pr_branch
+    stop_point_classification =
+      stop_point_classification(indexed, step_indexes, out_of_order_steps, tests_status_ok)
 
     signal = %{
       success:
@@ -48,7 +73,9 @@ defmodule Mom.IncidentToPr do
       tests_status_ok: tests_status_ok,
       branch_matches: branch_matches,
       branch: branch,
-      pr_number: pr_number(indexed)
+      pr_number: pr_number(indexed),
+      stop_point_classification: stop_point_classification,
+      failure_stop_point: first_failure_stop_point(stop_point_classification)
     }
 
     if signal.success, do: {:ok, signal}, else: {:error, signal}
@@ -105,6 +132,51 @@ defmodule Mom.IncidentToPr do
       nil ->
         false
     end
+  end
+
+  defp stop_point_classification(indexed, step_indexes, out_of_order_steps, tests_status_ok) do
+    Map.new(@stop_point_steps, fn {stop_point, step} ->
+      classification =
+        cond do
+          step in out_of_order_steps ->
+            :out_of_order
+
+          stop_point == :tests and Map.get(step_indexes, step) == nil ->
+            :missing
+
+          stop_point == :tests and tests_status_ok ->
+            :passed
+
+          stop_point == :tests ->
+            :failed
+
+          Map.get(step_indexes, step) != nil ->
+            :passed
+
+          failed_event?(indexed, Map.get(@failure_events, stop_point)) ->
+            :failed
+
+          true ->
+            :missing
+        end
+
+      {stop_point, classification}
+    end)
+  end
+
+  defp first_failure_stop_point(classifications) do
+    Enum.find_value(@stop_point_steps, fn {stop_point, _step} ->
+      case Map.get(classifications, stop_point) do
+        :passed -> nil
+        _failure -> stop_point
+      end
+    end)
+  end
+
+  defp failed_event?(_indexed, nil), do: false
+
+  defp failed_event?(indexed, event_name) do
+    Enum.any?(indexed, fn {{name, _metadata}, _index} -> name == event_name end)
   end
 
   defp branch_for(indexed_events, event_name) do
