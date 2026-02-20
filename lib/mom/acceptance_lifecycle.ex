@@ -23,6 +23,8 @@ defmodule Mom.AcceptanceLifecycle do
   @default_runner_burst_backoff_cap_ms 5_000
   @default_retry_budget 1
   @default_post_suite_shutdown_timeout_ms 2_000
+  @default_timeout_forensics_max_snapshot_rows 200
+  @default_timeout_forensics_retention_seconds 86_400
   @monitor_attach_race_markers [
     "missing telemetry failed pipeline event",
     "did not terminate",
@@ -129,6 +131,20 @@ defmodule Mom.AcceptanceLifecycle do
     env
     |> Map.get("MOM_ACCEPTANCE_POST_SUITE_SHUTDOWN_TIMEOUT_MS")
     |> parse_non_neg_int(@default_post_suite_shutdown_timeout_ms)
+  end
+
+  @spec timeout_forensics_max_snapshot_rows(map()) :: non_neg_integer()
+  def timeout_forensics_max_snapshot_rows(env) when is_map(env) do
+    env
+    |> Map.get("MOM_ACCEPTANCE_TIMEOUT_FORENSICS_MAX_SNAPSHOT_ROWS")
+    |> parse_non_neg_int(@default_timeout_forensics_max_snapshot_rows)
+  end
+
+  @spec timeout_forensics_retention_seconds(map()) :: non_neg_integer()
+  def timeout_forensics_retention_seconds(env) when is_map(env) do
+    env
+    |> Map.get("MOM_ACCEPTANCE_TIMEOUT_FORENSICS_RETENTION_SECONDS")
+    |> parse_non_neg_int(@default_timeout_forensics_retention_seconds)
   end
 
   @spec classify_failure(binary()) :: retryable_failure()
@@ -241,8 +257,32 @@ defmodule Mom.AcceptanceLifecycle do
             process_snapshot: [process_row()]
           }
           | nil
-  def timeout_forensics_payload(script_path, attempt, message, snapshot_or_rows)
+  def timeout_forensics_payload(script_path, attempt, message, snapshot_or_rows) do
+    timeout_forensics_payload(script_path, attempt, message, snapshot_or_rows, [])
+  end
+
+  @spec timeout_forensics_payload(
+          binary(),
+          pos_integer(),
+          binary(),
+          String.t() | [process_row()],
+          keyword()
+        ) ::
+          %{
+            script_path: binary(),
+            attempt: pos_integer(),
+            classification: retryable_failure(),
+            timeout_signal: timeout_signal(),
+            process_snapshot: [process_row()]
+          }
+          | nil
+  def timeout_forensics_payload(script_path, attempt, message, snapshot_or_rows, opts)
       when is_binary(script_path) and is_integer(attempt) and attempt > 0 and is_binary(message) do
+    max_snapshot_rows =
+      opts
+      |> Keyword.get(:max_snapshot_rows, @default_timeout_forensics_max_snapshot_rows)
+      |> normalize_non_neg_int(@default_timeout_forensics_max_snapshot_rows)
+
     classification = classify_failure(message)
     signal = timeout_signal(message)
 
@@ -262,6 +302,8 @@ defmodule Mom.AcceptanceLifecycle do
             snapshot when is_binary(snapshot) -> parse_snapshot(snapshot)
             rows when is_list(rows) -> Enum.filter(rows, &valid_process_row?/1)
           end
+          |> Enum.map(&sanitize_process_row/1)
+          |> Enum.take(max_snapshot_rows)
 
         %{
           script_path: script_path,
@@ -271,6 +313,25 @@ defmodule Mom.AcceptanceLifecycle do
           process_snapshot: process_snapshot
         }
     end
+  end
+
+  @spec prune_timeout_forensics_entries([map()], keyword()) :: [map()]
+  def prune_timeout_forensics_entries(entries, opts \\ []) when is_list(entries) do
+    now_seconds = Keyword.get(opts, :now_seconds, System.os_time(:second))
+
+    retention_seconds =
+      opts
+      |> Keyword.get(:retention_seconds, @default_timeout_forensics_retention_seconds)
+      |> normalize_non_neg_int(@default_timeout_forensics_retention_seconds)
+
+    Enum.filter(entries, fn
+      %{recorded_at_unix: recorded_at_unix}
+      when is_integer(recorded_at_unix) and recorded_at_unix >= 0 and is_integer(now_seconds) ->
+        now_seconds - recorded_at_unix <= retention_seconds
+
+      _ ->
+        false
+    end)
   end
 
   @spec orphaned_lingering_mix_run_children(String.t() | [process_row()]) :: [process_row()]
@@ -361,6 +422,52 @@ defmodule Mom.AcceptanceLifecycle do
       String.contains?(command, "acceptance/scripts/")
   end
 
+  defp sanitize_process_row(%{command: command} = row) when is_binary(command) do
+    %{row | command: redact_sensitive_fragments(command)}
+  end
+
+  defp sanitize_process_row(row), do: row
+
+  defp redact_sensitive_fragments(command) when is_binary(command) do
+    command
+    |> redact_env_assignments()
+    |> redact_sensitive_equals_flags()
+    |> redact_sensitive_space_flags()
+    |> redact_bearer_tokens()
+  end
+
+  defp redact_env_assignments(command) do
+    Regex.replace(
+      ~r/\b([A-Za-z_][A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD?|API_KEY|ACCESS_KEY|PRIVATE_KEY|AUTH|AUTHORIZATION|CREDENTIALS?)[A-Za-z0-9_]*)=([^\s]+)/i,
+      command,
+      "\\1=[REDACTED]"
+    )
+  end
+
+  defp redact_sensitive_equals_flags(command) do
+    Regex.replace(
+      ~r/(--?(?:token|api[-_]?key|password|passwd|secret|access[-_]?key|private[-_]?key|auth(?:orization)?|credential(?:s)?))=([^\s]+)/i,
+      command,
+      "\\1=[REDACTED]"
+    )
+  end
+
+  defp redact_sensitive_space_flags(command) do
+    Regex.replace(
+      ~r/(--?(?:token|api[-_]?key|password|passwd|secret|access[-_]?key|private[-_]?key|auth(?:orization)?|credential(?:s)?))\s+([^\s]+)/i,
+      command,
+      "\\1=[REDACTED]"
+    )
+  end
+
+  defp redact_bearer_tokens(command) do
+    Regex.replace(
+      ~r/\b(Bearer)\s+([A-Za-z0-9._\-~+\/]+=*)/i,
+      command,
+      "\\1 [REDACTED]"
+    )
+  end
+
   defp runner_burst_script?(script_path) do
     String.ends_with?(script_path, @runner_burst_script_suffix)
   end
@@ -390,6 +497,10 @@ defmodule Mom.AcceptanceLifecycle do
   end
 
   defp parse_non_neg_int(_value, default), do: default
+
+  defp normalize_non_neg_int(value, _default) when is_integer(value) and value >= 0, do: value
+  defp normalize_non_neg_int(value, default) when is_binary(value), do: parse_non_neg_int(value, default)
+  defp normalize_non_neg_int(_value, default), do: default
 
   defp timeout_signal(message) when is_binary(message) do
     if String.contains?(String.downcase(message), "etimedout"), do: :etimedout, else: :unknown

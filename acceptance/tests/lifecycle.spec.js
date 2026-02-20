@@ -205,6 +205,7 @@ test("acceptance runner applies deterministic retry backoff for runner_burst ret
   const { result } = runAcceptanceScript("acceptance/scripts/runner_burst_acceptance.exs", {
     env: {
       MOM_ACCEPTANCE_RETRY_BUDGET: "1",
+      MOM_ACCEPTANCE_FAIL_ON_FLAKY: "false",
       TEST_WORKER_INDEX: "2"
     },
     deps
@@ -241,9 +242,14 @@ test("acceptance runner captures attempt-level timeout forensics for repeated ru
       {
         pid: 500,
         ppid: 100,
-        command: "mix run acceptance/scripts/runner_burst_acceptance.exs"
+        command:
+          "GITHUB_TOKEN=ghp_live_secret mix run acceptance/scripts/runner_burst_acceptance.exs --api-key sk-live-value"
       },
-      { pid: 501, ppid: 500, command: "/opt/homebrew/Cellar/erlang/bin/beam.smp -- args" }
+      {
+        pid: 501,
+        ppid: 500,
+        command: "/opt/homebrew/Cellar/erlang/bin/beam.smp --password super-secret -- args"
+      }
     ],
     sleepMs: () => {}
   };
@@ -251,6 +257,7 @@ test("acceptance runner captures attempt-level timeout forensics for repeated ru
   const { result } = runAcceptanceScript("acceptance/scripts/runner_burst_acceptance.exs", {
     env: {
       MOM_ACCEPTANCE_RETRY_BUDGET: "2",
+      MOM_ACCEPTANCE_FAIL_ON_FLAKY: "false",
       MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH: reportPath
     },
     deps
@@ -265,13 +272,103 @@ test("acceptance runner captures attempt-level timeout forensics for repeated ru
   expect(report[0].timeout_forensics.process_snapshot).toContainEqual(
     expect.objectContaining({
       pid: 500,
-      command: "mix run acceptance/scripts/runner_burst_acceptance.exs"
+      command:
+        "GITHUB_TOKEN=[REDACTED] mix run acceptance/scripts/runner_burst_acceptance.exs --api-key=[REDACTED]"
     })
   );
+  expect(
+    report[0].timeout_forensics.process_snapshot.some((row) =>
+      row.command.includes("--password=[REDACTED]")
+    )
+  ).toBeTruthy();
+  expect(JSON.stringify(report[0].timeout_forensics.process_snapshot)).not.toContain("ghp_live_secret");
+  expect(JSON.stringify(report[0].timeout_forensics.process_snapshot)).not.toContain("sk-live-value");
+  expect(JSON.stringify(report[0].timeout_forensics.process_snapshot)).not.toContain("super-secret");
   expect(report[1].status).toBe("retrying");
   expect(report[1].timeout_forensics.attempt).toBe(2);
   expect(report[2].status).toBe("passed");
   expect(report[2].timeout_forensics).toBeUndefined();
+
+  fs.rmSync(reportPath, { force: true });
+});
+
+test("acceptance runner caps timeout forensics snapshot rows with max guardrail", async () => {
+  const payload = __private.timeoutForensicsPayload({
+    scriptPath: "acceptance/scripts/runner_burst_acceptance.exs",
+    attempt: 1,
+    classification: "monitor_attach_race",
+    error: Object.assign(new Error("spawnSync mix ETIMEDOUT"), { code: "ETIMEDOUT" }),
+    env: {
+      MOM_ACCEPTANCE_TIMEOUT_FORENSICS_MAX_SNAPSHOT_ROWS: "2"
+    },
+    deps: {
+      listProcesses: () => [
+        {
+          pid: 501,
+          ppid: 100,
+          command: "mix run acceptance/scripts/runner_burst_acceptance.exs --attempt 1"
+        },
+        {
+          pid: 502,
+          ppid: 100,
+          command: "mix run acceptance/scripts/runner_burst_acceptance.exs --attempt 2"
+        },
+        {
+          pid: 503,
+          ppid: 100,
+          command: "mix run acceptance/scripts/runner_burst_acceptance.exs --attempt 3"
+        }
+      ]
+    }
+  });
+
+  expect(payload.process_snapshot).toHaveLength(2);
+  expect(payload.process_snapshot.map((row) => row.pid)).toEqual([501, 502]);
+});
+
+test("acceptance runner enforces timeout forensics ttl retention when writing report artifacts", async () => {
+  const reportPath = path.join(
+    os.tmpdir(),
+    `mom-timeout-forensics-ttl-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+  );
+
+  const nowSeconds = 1_700_000_000;
+
+  __private.writeConcurrencyReport(
+    reportPath,
+    {
+      attempt_id: "old",
+      script_path: "acceptance/scripts/runner_burst_acceptance.exs",
+      attempt: 1,
+      status: "retrying",
+      recorded_at_unix: nowSeconds - 90_000,
+      timeout_forensics: { timeout_signal: "etimedout", process_snapshot: [] }
+    },
+    {
+      timeoutForensicsRetentionSeconds: 86_400,
+      nowSeconds: () => nowSeconds
+    }
+  );
+
+  __private.writeConcurrencyReport(
+    reportPath,
+    {
+      attempt_id: "recent",
+      script_path: "acceptance/scripts/runner_burst_acceptance.exs",
+      attempt: 2,
+      status: "failed",
+      recorded_at_unix: nowSeconds,
+      timeout_forensics: { timeout_signal: "etimedout", process_snapshot: [] }
+    },
+    {
+      timeoutForensicsRetentionSeconds: 86_400,
+      nowSeconds: () => nowSeconds
+    }
+  );
+
+  const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+  expect(report).toHaveLength(1);
+  expect(report[0].attempt_id).toBe("recent");
 
   fs.rmSync(reportPath, { force: true });
 });

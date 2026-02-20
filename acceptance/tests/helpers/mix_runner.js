@@ -24,6 +24,8 @@ const DEFAULT_RUNNER_BURST_BACKOFF_WORKER_STEP_MS = 50;
 const DEFAULT_RUNNER_BURST_BACKOFF_CAP_MS = 5_000;
 const DEFAULT_RETRY_BUDGET = 1;
 const DEFAULT_POST_SUITE_SHUTDOWN_TIMEOUT_MS = 2000;
+const DEFAULT_TIMEOUT_FORENSICS_MAX_SNAPSHOT_ROWS = 200;
+const DEFAULT_TIMEOUT_FORENSICS_RETENTION_SECONDS = 86_400;
 
 function parseProcessRow(line) {
   const trimmed = line.trim();
@@ -388,7 +390,7 @@ function normalizeProcessRow(row) {
 
   const pid = Number.parseInt(row.pid, 10);
   const ppid = Number.parseInt(row.ppid, 10);
-  const command = typeof row.command === "string" ? row.command : "";
+  const command = typeof row.command === "string" ? redactSensitiveFragments(row.command) : "";
 
   if (Number.isNaN(pid) || pid <= 0 || Number.isNaN(ppid) || ppid < 0 || command.length === 0) {
     return null;
@@ -397,7 +399,52 @@ function normalizeProcessRow(row) {
   return { pid, ppid, command };
 }
 
-function timeoutForensicsPayload({ scriptPath, attempt, classification, error, deps = {} }) {
+function redactSensitiveFragments(command) {
+  return redactBearerTokens(
+    redactSensitiveSpaceFlags(redactSensitiveEqualsFlags(redactEnvAssignments(command)))
+  );
+}
+
+function redactEnvAssignments(command) {
+  return command.replace(
+    /\b([A-Za-z_][A-Za-z0-9_]*(?:TOKEN|SECRET|PASSWORD|PASSWD?|API_KEY|ACCESS_KEY|PRIVATE_KEY|AUTH|AUTHORIZATION|CREDENTIALS?)[A-Za-z0-9_]*)=([^\s]+)/gi,
+    "$1=[REDACTED]"
+  );
+}
+
+function redactSensitiveEqualsFlags(command) {
+  return command.replace(
+    /(--?(?:token|api[-_]?key|password|passwd|secret|access[-_]?key|private[-_]?key|auth(?:orization)?|credential(?:s)?))=([^\s]+)/gi,
+    "$1=[REDACTED]"
+  );
+}
+
+function redactSensitiveSpaceFlags(command) {
+  return command.replace(
+    /(--?(?:token|api[-_]?key|password|passwd|secret|access[-_]?key|private[-_]?key|auth(?:orization)?|credential(?:s)?))\s+([^\s]+)/gi,
+    "$1=[REDACTED]"
+  );
+}
+
+function redactBearerTokens(command) {
+  return command.replace(/\b(Bearer)\s+([A-Za-z0-9._\-~+/]+=*)/gi, "$1 [REDACTED]");
+}
+
+function timeoutForensicsMaxSnapshotRows(env = process.env) {
+  return parseNonNegInt(
+    env.MOM_ACCEPTANCE_TIMEOUT_FORENSICS_MAX_SNAPSHOT_ROWS,
+    DEFAULT_TIMEOUT_FORENSICS_MAX_SNAPSHOT_ROWS
+  );
+}
+
+function timeoutForensicsRetentionSeconds(env = process.env) {
+  return parseNonNegInt(
+    env.MOM_ACCEPTANCE_TIMEOUT_FORENSICS_RETENTION_SECONDS,
+    DEFAULT_TIMEOUT_FORENSICS_RETENTION_SECONDS
+  );
+}
+
+function timeoutForensicsPayload({ scriptPath, attempt, classification, error, env = process.env, deps = {} }) {
   if (!isRunnerBurstScript(scriptPath) || classification !== "monitor_attach_race") {
     return undefined;
   }
@@ -409,9 +456,11 @@ function timeoutForensicsPayload({ scriptPath, attempt, classification, error, d
 
   let processSnapshot = [];
   try {
+    const maxSnapshotRows = timeoutForensicsMaxSnapshotRows(env);
     processSnapshot = (deps.listProcesses || defaultListProcesses)()
       .map(normalizeProcessRow)
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, maxSnapshotRows);
   } catch (_error) {
     processSnapshot = [];
   }
@@ -447,6 +496,17 @@ function deterministicAttemptId({ scriptPath, attempt, env }) {
   return `${runId}-${worker}-a${attempt}-${digest}`;
 }
 
+function pruneTimeoutForensicsEntries(entries, { retentionSeconds, nowSeconds }) {
+  return entries.filter((entry) => {
+    const recordedAt = Number.parseInt(entry.recorded_at_unix, 10);
+    if (Number.isNaN(recordedAt) || recordedAt < 0) {
+      return false;
+    }
+
+    return nowSeconds - recordedAt <= retentionSeconds;
+  });
+}
+
 function writeConcurrencyReport(reportPath, entry, deps = {}) {
   if (!reportPath) {
     return;
@@ -455,6 +515,7 @@ function writeConcurrencyReport(reportPath, entry, deps = {}) {
   const readFile = deps.readFileSync || fs.readFileSync;
   const writeFile = deps.writeFileSync || fs.writeFileSync;
   const mkdirP = deps.mkdirSync || fs.mkdirSync;
+  const nowSeconds = deps.nowSeconds || (() => Math.floor(Date.now() / 1000));
   const dirname = path.dirname(reportPath);
   mkdirP(dirname, { recursive: true });
 
@@ -468,7 +529,19 @@ function writeConcurrencyReport(reportPath, entry, deps = {}) {
     current = [];
   }
 
-  current.push(entry);
+  const retentionSeconds = Math.max(
+    0,
+    deps.timeoutForensicsRetentionSeconds ?? DEFAULT_TIMEOUT_FORENSICS_RETENTION_SECONDS
+  );
+
+  current.push({
+    ...entry,
+    recorded_at_unix: entry.recorded_at_unix ?? nowSeconds()
+  });
+  current = pruneTimeoutForensicsEntries(current, {
+    retentionSeconds,
+    nowSeconds: nowSeconds()
+  });
   current.sort((left, right) => left.attempt_id.localeCompare(right.attempt_id));
   writeFile(reportPath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
 }
@@ -580,6 +653,7 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
   const retryBudget = parseRetryBudget(mergedEnv.MOM_ACCEPTANCE_RETRY_BUDGET);
   const failOnFlaky = asTruthyFlag(mergedEnv.MOM_ACCEPTANCE_FAIL_ON_FLAKY);
   const reportPath = mergedEnv.MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH;
+  const timeoutForensicsRetention = timeoutForensicsRetentionSeconds(mergedEnv);
   let attempt = 0;
   let retried = false;
   let lastError;
@@ -630,7 +704,10 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
           flaky,
           timeout_budget_ms: timeoutBudgetMs
         },
-        deps
+        {
+          ...deps,
+          timeoutForensicsRetentionSeconds: timeoutForensicsRetention
+        }
       );
 
       if (flaky && failOnFlaky) {
@@ -649,6 +726,7 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
         attempt,
         classification,
         error,
+        env: mergedEnv,
         deps
       });
 
@@ -669,7 +747,10 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
           }),
           ...(timeoutForensics ? { timeout_forensics: timeoutForensics } : {})
         },
-        deps
+        {
+          ...deps,
+          timeoutForensicsRetentionSeconds: timeoutForensicsRetention
+        }
       );
 
       if (retrying) {
@@ -722,8 +803,11 @@ module.exports = {
     classifyFailure,
     shouldRetry,
     timeoutSignal,
+    timeoutForensicsMaxSnapshotRows,
+    timeoutForensicsRetentionSeconds,
     timeoutForensicsPayload,
     deterministicAttemptId,
+    pruneTimeoutForensicsEntries,
     writeConcurrencyReport,
     resolveBuildIsolationMode,
     resolveBuildArtifactPath,

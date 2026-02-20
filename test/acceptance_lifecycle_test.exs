@@ -165,10 +165,19 @@ defmodule Mom.AcceptanceLifecycleTest do
              )
   end
 
-  test "builds runner_burst ETIMEDOUT timeout forensics payload with process snapshot" do
+  test "builds runner_burst ETIMEDOUT timeout forensics payload with redacted process snapshot" do
     snapshot = [
-      %{pid: 500, ppid: 100, command: "mix run acceptance/scripts/runner_burst_acceptance.exs"},
-      %{pid: 501, ppid: 500, command: "/opt/homebrew/Cellar/erlang/bin/beam.smp -- args"}
+      %{
+        pid: 500,
+        ppid: 100,
+        command:
+          "GITHUB_TOKEN=ghp_live_secret mix run acceptance/scripts/runner_burst_acceptance.exs --api-key sk-live-value"
+      },
+      %{
+        pid: 501,
+        ppid: 500,
+        command: "/opt/homebrew/Cellar/erlang/bin/beam.smp --password super-secret -- args"
+      }
     ]
 
     assert %{
@@ -176,13 +185,64 @@ defmodule Mom.AcceptanceLifecycleTest do
              attempt: 2,
              classification: :monitor_attach_race,
              timeout_signal: :etimedout,
-             process_snapshot: ^snapshot
+             process_snapshot: process_snapshot
            } =
              AcceptanceLifecycle.timeout_forensics_payload(
                "acceptance/scripts/runner_burst_acceptance.exs",
                2,
                "spawnSync mix ETIMEDOUT",
                snapshot
+             )
+
+    assert Enum.any?(process_snapshot, fn row ->
+             row.command =~ "GITHUB_TOKEN=[REDACTED]" and
+               row.command =~ "--api-key=[REDACTED]"
+           end)
+
+    assert Enum.any?(process_snapshot, fn row ->
+             row.command =~ "--password=[REDACTED]"
+           end)
+
+    refute Enum.any?(process_snapshot, &String.contains?(&1.command, "ghp_live_secret"))
+    refute Enum.any?(process_snapshot, &String.contains?(&1.command, "sk-live-value"))
+    refute Enum.any?(process_snapshot, &String.contains?(&1.command, "super-secret"))
+  end
+
+  test "caps timeout forensics process snapshot rows using configured max guardrail" do
+    snapshot =
+      Enum.map(1..4, fn index ->
+        %{pid: 500 + index, ppid: 100, command: "mix run acceptance/scripts/runner_burst_acceptance.exs --attempt #{index}"}
+      end)
+
+    assert %{
+             process_snapshot: [
+               %{pid: 501},
+               %{pid: 502}
+             ]
+           } =
+             AcceptanceLifecycle.timeout_forensics_payload(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               1,
+               "spawnSync mix ETIMEDOUT",
+               snapshot,
+               max_snapshot_rows: 2
+             )
+  end
+
+  test "prunes timeout forensics artifact entries by ttl retention guardrail" do
+    now = 1_700_000_000
+
+    entries = [
+      %{attempt_id: "old", recorded_at_unix: now - 90_000, status: "retrying"},
+      %{attempt_id: "recent", recorded_at_unix: now - 10, status: "failed"},
+      %{attempt_id: "missing_ts", status: "passed"}
+    ]
+
+    assert [%{attempt_id: "recent"}] =
+             AcceptanceLifecycle.prune_timeout_forensics_entries(
+               entries,
+               now_seconds: now,
+               retention_seconds: 86_400
              )
   end
 
