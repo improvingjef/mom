@@ -81,6 +81,21 @@ defmodule Mom.IncidentToPr do
     if signal.success, do: {:ok, signal}, else: {:error, signal}
   end
 
+  @spec persist_summary_artifact(signal(), keyword()) ::
+          {:ok, String.t()}
+          | {:error, :artifact_dir_not_configured | :invalid_run_id | :already_exists | term()}
+  def persist_summary_artifact(signal, opts \\ []) when is_map(signal) and is_list(opts) do
+    with {:ok, artifact_dir} <- artifact_dir(opts),
+         {:ok, run_id} <- normalize_run_id(Keyword.get(opts, :run_id)),
+         :ok <- File.mkdir_p(artifact_dir),
+         path <- Path.join(artifact_dir, "#{run_id}.json"),
+         payload <- summary_payload(signal, run_id),
+         encoded <- Jason.encode!(payload),
+         :ok <- write_immutable(path, encoded) do
+      {:ok, path}
+    end
+  end
+
   defp normalize_events(events) do
     Enum.flat_map(events, fn
       {[:mom, :audit, event_name], metadata} when is_atom(event_name) and is_map(metadata) ->
@@ -92,6 +107,44 @@ defmodule Mom.IncidentToPr do
       _other ->
         []
     end)
+  end
+
+  defp artifact_dir(opts) do
+    case Keyword.get(opts, :artifact_dir) || Application.get_env(:mom, :incident_to_pr_artifact_dir) do
+      path when is_binary(path) ->
+        trimmed = String.trim(path)
+        if trimmed == "", do: {:error, :artifact_dir_not_configured}, else: {:ok, trimmed}
+
+      _other ->
+        {:error, :artifact_dir_not_configured}
+    end
+  end
+
+  defp normalize_run_id(run_id) when is_binary(run_id) do
+    sanitized =
+      run_id
+      |> String.trim()
+      |> String.replace(~r/[^A-Za-z0-9_-]/, "_")
+
+    if sanitized == "", do: {:error, :invalid_run_id}, else: {:ok, sanitized}
+  end
+
+  defp normalize_run_id(_run_id), do: {:error, :invalid_run_id}
+
+  defp summary_payload(signal, run_id) do
+    %{
+      run_id: run_id,
+      recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
+      signal: signal
+    }
+  end
+
+  defp write_immutable(path, encoded) do
+    case File.write(path, encoded <> "\n", [:write, :exclusive]) do
+      :ok -> :ok
+      {:error, :eexist} -> {:error, :already_exists}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp first_event_index(indexed_events, event_name) do

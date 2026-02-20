@@ -130,4 +130,76 @@ defmodule Mom.IncidentToPrTest do
       assert signal.failure_stop_point == stop_point
     end)
   end
+
+  test "persists incident-to-PR stop-point summary artifact for a run id" do
+    artifact_dir =
+      Path.join(System.tmp_dir!(), "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}")
+
+    on_exit(fn -> File.rm_rf!(artifact_dir) end)
+
+    signal = %{
+      success: true,
+      missing_steps: [],
+      out_of_order_steps: [],
+      tests_status_ok: true,
+      branch_matches: true,
+      branch: "mom/1",
+      pr_number: 11,
+      stop_point_classification: %{
+        detect: :passed,
+        patch_apply: :passed,
+        tests: :passed,
+        push: :passed,
+        pr_create: :passed
+      },
+      failure_stop_point: nil
+    }
+
+    assert {:ok, path} =
+             IncidentToPr.persist_summary_artifact(signal, run_id: "run-123", artifact_dir: artifact_dir)
+
+    assert File.exists?(path)
+    assert String.ends_with?(path, "run-123.json")
+
+    assert {:ok, payload} =
+             path
+             |> File.read!()
+             |> Jason.decode()
+
+    assert payload["run_id"] == "run-123"
+    assert payload["signal"]["success"] == true
+    assert payload["signal"]["stop_point_classification"]["tests"] == "passed"
+    assert is_integer(payload["recorded_at_unix"])
+  end
+
+  test "enforces immutability by rejecting overwrite for existing run artifact" do
+    artifact_dir =
+      Path.join(System.tmp_dir!(), "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}")
+
+    on_exit(fn -> File.rm_rf!(artifact_dir) end)
+
+    signal = %{
+      success: false,
+      missing_steps: [:tests_passed],
+      out_of_order_steps: [],
+      tests_status_ok: false,
+      branch_matches: false,
+      branch: nil,
+      pr_number: nil,
+      stop_point_classification: %{
+        detect: :passed,
+        patch_apply: :passed,
+        tests: :failed,
+        push: :missing,
+        pr_create: :missing
+      },
+      failure_stop_point: :tests
+    }
+
+    assert {:ok, _path} =
+             IncidentToPr.persist_summary_artifact(signal, run_id: "immutable-run", artifact_dir: artifact_dir)
+
+    assert {:error, :already_exists} =
+             IncidentToPr.persist_summary_artifact(signal, run_id: "immutable-run", artifact_dir: artifact_dir)
+  end
 end

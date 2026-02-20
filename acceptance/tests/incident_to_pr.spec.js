@@ -37,3 +37,15 @@ test("incident-to-PR classifier marks each stop point failure", async () => {
   expect(result.pr_create.failure_stop_point).toBe("pr_create");
   expect(result.pr_create.stop_point_classification.pr_create).toBe("failed");
 });
+
+test("incident-to-PR persists immutable stop-point summary artifact per run", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/incident_to_pr_summary_artifact_acceptance.exs"
+  );
+
+  expect(result.persisted).toBeTruthy();
+  expect(result.immutable).toBeTruthy();
+  expect(result.payload.run_id).toBe("acceptance-run-42");
+  expect(result.payload.signal.failure_stop_point).toBe("tests");
+  expect(result.payload.signal.stop_point_classification.tests).toBe("failed");
+});

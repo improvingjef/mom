@@ -178,9 +178,13 @@ defmodule Mom.CIWorkflowTest do
   end
 
   defp unique_workflows_path do
-    Path.join(
-      System.tmp_dir!(),
-      "mom-ci-workflows-#{System.unique_integer([:positive])}"
-    )
+    path =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-ci-workflows-#{System.unique_integer([:positive, :monotonic])}-#{System.os_time(:microsecond)}"
+      )
+
+    File.rm_rf!(path)
+    path
   end
 end

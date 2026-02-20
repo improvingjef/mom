@@ -43,7 +43,10 @@ Execute and harden one path only:
 - [ ] Plan remains restricted to incident-to-PR tasks only.
 
 ## Additional Commercial Readiness Tasks (Incident-to-PR Path Only)
-- [ ] Persist per-run incident-to-PR stop-point classification summary as an immutable audit artifact (for compliance and post-incident forensics).
+- [x] Persist per-run incident-to-PR stop-point classification summary as an immutable audit artifact (for compliance and post-incident forensics).
+  - Status: complete (February 20, 2026) via immutable summary persistence API in `Mom.IncidentToPr.persist_summary_artifact/2`, ExUnit coverage (`test/incident_to_pr_test.exs`), and Playwright acceptance coverage (`acceptance/tests/incident_to_pr.spec.js`, `acceptance/scripts/incident_to_pr_summary_artifact_acceptance.exs`).
 - [ ] Add release-gate validation requiring a recent successful incident-to-PR canary run (real push + PR URL evidence) before production deploys.
 - [ ] Redact sensitive argv/env fragments from timeout forensics process snapshots before artifact persistence to avoid credential leakage in incident evidence.
 - [ ] Enforce timeout forensics artifact size/retention guardrails (max snapshot rows and TTL) so repeated contention incidents cannot exhaust CI artifact storage.
+- [ ] Add immutable summary artifact integrity attestation (content hash + signer key id) and verify it during incident forensics replay.
+- [ ] Upload incident-to-PR summary artifacts from CI canary runs to immutable object storage with retention lock and documented retrieval runbook.
