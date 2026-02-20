@@ -126,6 +126,40 @@ defmodule Mom.Toolchain do
     }
   end
 
+  @spec bump_baseline(String.t(), keyword(), keyword()) :: {:ok, map()} | {:error, term()}
+  def bump_baseline(cwd, overrides, runtime \\ Application.get_all_env(:mom)) do
+    defaults = bootstrap_defaults(runtime)
+    node_version = Keyword.get(overrides, :node_version, defaults.node_version)
+    otp_version = Keyword.get(overrides, :otp_version, defaults.otp_version)
+    elixir_version = Keyword.get(overrides, :elixir_version, required_elixir_version(runtime))
+
+    with {:ok, bootstrap_elixir_version} <-
+           to_bootstrap_elixir_version(elixir_version, otp_version),
+         {:ok, mix_exs_path} <- bump_mix_exs(cwd, elixir_version),
+         {:ok, bootstrap_result} <-
+           bootstrap(cwd,
+             node_version: node_version,
+             otp_version: otp_version,
+             elixir_version: bootstrap_elixir_version
+           ),
+         {:ok, workflows} <- bump_workflows(cwd, elixir_version, otp_version),
+         {:ok, parity} <-
+           verify_bump_parity(cwd, node_version, otp_version, elixir_version, bootstrap_elixir_version) do
+      {:ok,
+       %{
+         mix_exs_path: mix_exs_path,
+         tool_versions_path: bootstrap_result.tool_versions_path,
+         mise_path: bootstrap_result.mise_path,
+         workflows: workflows,
+         node_version: node_version,
+         otp_version: otp_version,
+         elixir_version: elixir_version,
+         bootstrap_elixir_version: bootstrap_elixir_version,
+         parity: parity
+       }}
+    end
+  end
+
   defp required_toolchain(runtime) do
     %{
       node_major: required_node_major(runtime),
@@ -149,6 +183,121 @@ defmodule Mom.Toolchain do
 
       {:error, reason} ->
         {nil, check(id, :error, reason, remediation_fun.())}
+    end
+  end
+
+  defp bump_mix_exs(cwd, elixir_version) do
+    path = Path.join(cwd, "mix.exs")
+    replacement = ~s(elixir: "~> #{elixir_version}")
+    replace_first(path, ~r/elixir:\s*"~>\s*[^"]+"/, replacement, "mix.exs elixir requirement")
+  end
+
+  defp bump_workflows(cwd, elixir_version, otp_version) do
+    workflow_paths = [
+      Path.join([cwd, ".github", "workflows", "ci-exunit.yml"]),
+      Path.join([cwd, ".github", "workflows", "ci-playwright.yml"])
+    ]
+
+    Enum.reduce_while(workflow_paths, {:ok, []}, fn path, {:ok, acc} ->
+      with {:ok, _path} <-
+             replace_first(
+               path,
+               ~r/elixir-version:\s*"[^"]+"/,
+               ~s(elixir-version: "#{elixir_version}"),
+               "#{path} elixir-version pin"
+             ),
+           {:ok, _path} <-
+             replace_first(
+               path,
+               ~r/otp-version:\s*"[^"]+"/,
+               ~s(otp-version: "#{otp_version}"),
+               "#{path} otp-version pin"
+             ) do
+        {:cont, {:ok, [path | acc]}}
+      end
+    end)
+    |> case do
+      {:ok, paths} -> {:ok, Enum.reverse(paths)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp verify_bump_parity(cwd, node_version, otp_version, elixir_version, bootstrap_elixir_version) do
+    checks = [
+      file_contains?(Path.join(cwd, "mix.exs"), ~s(elixir: "~> #{elixir_version}")),
+      file_contains?(Path.join(cwd, ".tool-versions"), "node #{node_version}"),
+      file_contains?(Path.join(cwd, ".tool-versions"), "erlang #{otp_version}"),
+      file_contains?(Path.join(cwd, ".tool-versions"), "elixir #{bootstrap_elixir_version}"),
+      file_contains?(Path.join(cwd, "mise.toml"), ~s(node = "#{node_version}")),
+      file_contains?(Path.join(cwd, "mise.toml"), ~s(erlang = "#{otp_version}")),
+      file_contains?(Path.join(cwd, "mise.toml"), ~s(elixir = "#{bootstrap_elixir_version}")),
+      file_contains?(
+        Path.join([cwd, ".github", "workflows", "ci-exunit.yml"]),
+        ~s(elixir-version: "#{elixir_version}")
+      ),
+      file_contains?(
+        Path.join([cwd, ".github", "workflows", "ci-exunit.yml"]),
+        ~s(otp-version: "#{otp_version}")
+      ),
+      file_contains?(
+        Path.join([cwd, ".github", "workflows", "ci-playwright.yml"]),
+        ~s(elixir-version: "#{elixir_version}")
+      ),
+      file_contains?(
+        Path.join([cwd, ".github", "workflows", "ci-playwright.yml"]),
+        ~s(otp-version: "#{otp_version}")
+      )
+    ]
+
+    case Enum.find(checks, &match?({:error, _}, &1)) do
+      nil -> {:ok, %{status: "ok"}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp file_contains?(path, needle) do
+    case File.read(path) do
+      {:ok, body} ->
+        if String.contains?(body, needle) do
+          :ok
+        else
+          {:error, "#{path} missing expected content: #{needle}"}
+        end
+
+      {:error, reason} ->
+        {:error, "failed to read #{path}: #{inspect(reason)}"}
+    end
+  end
+
+  defp replace_first(path, pattern, replacement, label) do
+    case File.read(path) do
+      {:ok, body} ->
+        updated = Regex.replace(pattern, body, replacement, global: false)
+
+        if updated == body do
+          {:error, "could not update #{label}"}
+        else
+          case File.write(path, updated) do
+            :ok -> {:ok, path}
+            {:error, reason} -> {:error, "failed to write #{path}: #{inspect(reason)}"}
+          end
+        end
+
+      {:error, reason} ->
+        {:error, "failed to read #{path}: #{inspect(reason)}"}
+    end
+  end
+
+  defp to_bootstrap_elixir_version(elixir_version, otp_version) do
+    with {:ok, elixir} <- Version.parse(elixir_version),
+         true <- elixir.pre == [],
+         {otp_major, _rest} <- Integer.parse(otp_version),
+         true <- otp_major > 0 do
+      {:ok, "#{elixir.major}.#{elixir.minor}.#{elixir.patch}-otp-#{otp_major}"}
+    else
+      _ ->
+        {:error,
+         "invalid toolchain versions: --elixir-version must be stable x.y.z and --otp-version must include a numeric major version"}
     end
   end
 

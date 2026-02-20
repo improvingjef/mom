@@ -27,3 +27,16 @@ test("mom enforces aligned runtime support policy across manifests, mix requirem
   expect(result.ci_exunit_aligned).toBeTruthy();
   expect(result.ci_playwright_aligned).toBeTruthy();
 });
+
+test("mom bump_toolchain updates mix, manifests, and CI pins in one parity-verified command", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_toolchain_bump_workflow_acceptance.exs"
+  );
+
+  expect(result.command_verified_parity).toBeTruthy();
+  expect(result.mix_exs_aligned).toBeTruthy();
+  expect(result.tool_versions_aligned).toBeTruthy();
+  expect(result.mise_aligned).toBeTruthy();
+  expect(result.ci_exunit_aligned).toBeTruthy();
+  expect(result.ci_playwright_aligned).toBeTruthy();
+});
