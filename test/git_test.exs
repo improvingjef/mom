@@ -102,6 +102,33 @@ defmodule Mom.GitTest do
     assert File.exists?(Path.join(workdir, ".git"))
   end
 
+  test "prepare_workdir uses deterministic collision-safe temp worktree naming" do
+    repo = Mom.TestHelper.create_repo()
+    run_id = "git test/run ##{System.unique_integer([:positive])}"
+    env = %{"MOM_WORKTREE_RUN_ID" => run_id}
+    collision = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(0, env))
+
+    on_exit(fn ->
+      System.delete_env("MOM_WORKTREE_RUN_ID")
+      File.rm_rf!(collision)
+
+      _ =
+        System.cmd("git", ["worktree", "prune"], cd: repo, stderr_to_stdout: true)
+    end)
+
+    System.put_env("MOM_WORKTREE_RUN_ID", run_id)
+    File.rm_rf!(collision)
+    File.mkdir_p!(collision)
+
+    {:ok, config} = Config.from_opts(repo: repo)
+    {:ok, workdir} = Isolation.prepare_workdir(config)
+
+    expected = Isolation.tmp_workdir_basename(1, env)
+    assert Path.basename(workdir) == expected
+    assert File.exists?(Path.join(workdir, ".git"))
+    {_, 0} = System.cmd("git", ["worktree", "remove", "--force", workdir], cd: repo)
+  end
+
   test "prepare_workdir emits worktree audit event with actor and repo" do
     repo = Mom.TestHelper.create_repo()
 

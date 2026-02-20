@@ -1,7 +1,7 @@
 defmodule Mom.ConfigTest do
   use ExUnit.Case
 
-  alias Mom.Config
+  alias Mom.{Config, Isolation}
 
   defmodule FakeGitHubPermissionHttpClient do
     def request(_method, _request, _http_options, _options) do
@@ -490,6 +490,43 @@ defmodule Mom.ConfigTest do
     refute File.exists?(stale_worker)
     assert File.dir?(fresh_worker)
     assert File.dir?(keep_other)
+  end
+
+  test "startup prunes stale temp worktree directories from system tmp" do
+    run_id = "config-worktree-prune-#{System.unique_integer([:positive])}"
+    env = %{"MOM_WORKTREE_RUN_ID" => run_id, "MOM_WORKTREE_PID" => "config-prune"}
+    stale_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(1, env))
+    fresh_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(2, env))
+
+    on_exit(fn ->
+      Application.delete_env(:mom, :temp_worktree_retention_seconds)
+      Application.delete_env(:mom, :temp_worktree_keep_latest)
+      File.rm_rf!(stale_dir)
+      File.rm_rf!(fresh_dir)
+    end)
+
+    File.rm_rf!(stale_dir)
+    File.rm_rf!(fresh_dir)
+    File.mkdir_p!(stale_dir)
+    File.mkdir_p!(fresh_dir)
+
+    now = System.os_time(:second)
+    set_directory_mtime!(stale_dir, now - 3_600)
+    set_directory_mtime!(fresh_dir, now)
+
+    Application.put_env(:mom, :temp_worktree_retention_seconds, 300)
+    Application.put_env(:mom, :temp_worktree_keep_latest, 1)
+
+    assert {:ok, _config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               mode: :inproc,
+               toolchain_node_version_override: "v24.6.0",
+               toolchain_otp_version_override: "28.0.2"
+             )
+
+    refute File.exists?(stale_dir)
+    assert File.dir?(fresh_dir)
   end
 
   test "parses pipeline concurrency values from opts" do

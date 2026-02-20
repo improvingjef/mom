@@ -5,7 +5,8 @@
  - Status: complete (February 19, 2026) via live GitHub permission evidence verification in `Mom.GitHubCredentialEvidence` (`x-oauth-scopes` PAT introspection + `/repos/{repo}/installation` permission checks), fail-closed startup gating with HMAC-signed attestation audit events in `Mom.Config`, and ExUnit + Playwright acceptance coverage.
 2. [x] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
  - Status: complete (February 19, 2026) via startup baseline attestation in `Mom.Config` (`execution_profile_policy_attested`) with fail-closed drift blocking (`execution_profile_policy_drift_blocked`) across approved restricted-profile policy baselines, plus ExUnit + Playwright acceptance coverage.
-3. [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+3. [x] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+ - Status: complete (February 20, 2026) via deterministic temp worktree naming and collision-safe allocation in `Mom.Isolation` (`mom-worktree-<run-id>-<pid>-<attempt>`), startup stale temp-worktree pruning in `Mom.Config`, and ExUnit + Playwright acceptance coverage.
 
 ## Priority 0: Failure Server and Acceptance Reliability
 - [x] Add automated harness branch-protection verification and evidence capture (required checks + review rules) before enabling burst-mode promotion gates.
@@ -35,9 +36,11 @@
  - Status: complete (February 19, 2026) via `Mom.GitHubCredentialEvidence` PAT scope introspection (`x-oauth-scopes`) + installation permission evidence (`/repos/{repo}/installation`), HMAC-signed startup attestation audit events (`github_credential_permission_attested` / `github_credential_permission_blocked`), and ExUnit + Playwright acceptance coverage.
 - [x] Add policy-drift detection and attestation for execution profiles (detect runtime/config divergence from approved `staging_restricted`/`production_hardened` baselines and block unsafe starts).
  - Status: complete (February 19, 2026) via approved-baseline policy attestation and fail-closed startup drift detection in `Mom.Config` (`execution_profile_policy_attested` / `execution_profile_policy_drift_blocked`), with ExUnit + Playwright acceptance coverage.
-- [ ] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+- [x] Add deterministic worktree temp-path lifecycle controls for test and runtime execution (collision-safe naming + startup cleanup) to prevent flaky failures and residue buildup.
+ - Status: complete (February 20, 2026) via deterministic temp worktree naming and collision-safe allocation in `Mom.Isolation`, startup stale temp-worktree pruning in `Mom.Config`, and ExUnit + Playwright acceptance coverage.
 - [ ] Add local developer toolchain bootstrap + doctor command (`.tool-versions`/mise support, Node+OTP preflight, and actionable remediation output) to reduce onboarding drift and support escalation load before GA.
 - [ ] Align Elixir runtime support policy with enforced startup/tooling checks (single supported patch baseline in `.tool-versions`/mise + `mix.exs` compatibility guardrails + CI parity checks) to prevent RC/stable mismatch startup blocks in operator and CI environments.
+- [ ] Add temp-worktree capacity guardrails and observability (max active temp worktrees per host, prune/backpressure alerts, and saturation runbook) to prevent disk exhaustion and stalled mutation operations under sustained production load.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
 - [ ] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.

@@ -1,7 +1,7 @@
 defmodule Mom.Config do
   @moduledoc false
 
-  alias Mom.{AcceptanceLifecycle, Audit}
+  alias Mom.{AcceptanceLifecycle, Audit, Isolation}
   alias Mom.GitHubCredentialEvidence
 
   require Logger
@@ -12,6 +12,8 @@ defmodule Mom.Config do
   @required_github_credential_scopes ["contents", "pull_requests", "issues"]
   @default_acceptance_build_artifact_retention_seconds 86_400
   @default_acceptance_build_artifact_keep_latest 8
+  @default_temp_worktree_retention_seconds 86_400
+  @default_temp_worktree_keep_latest 16
 
   @test_command_profiles %{
     mix_test: %{
@@ -220,6 +222,25 @@ defmodule Mom.Config do
                maybe_prune_ephemeral_acceptance_build_artifacts(
                  acceptance_build_artifact_retention_seconds,
                  acceptance_build_artifact_keep_latest
+               ),
+             {:ok, temp_worktree_retention_seconds} <-
+               parse_non_neg_int(
+                 opts,
+                 runtime,
+                 :temp_worktree_retention_seconds,
+                 @default_temp_worktree_retention_seconds
+               ),
+             {:ok, temp_worktree_keep_latest} <-
+               parse_non_neg_int(
+                 opts,
+                 runtime,
+                 :temp_worktree_keep_latest,
+                 @default_temp_worktree_keep_latest
+               ),
+             :ok <-
+               maybe_prune_ephemeral_tmp_worktrees(
+                 temp_worktree_retention_seconds,
+                 temp_worktree_keep_latest
                ),
              {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
@@ -619,6 +640,34 @@ defmodule Mom.Config do
 
         :ok
     end
+  end
+
+  defp maybe_prune_ephemeral_tmp_worktrees(retention_seconds, keep_latest)
+       when is_integer(retention_seconds) and retention_seconds >= 0 and is_integer(keep_latest) and
+              keep_latest >= 0 do
+    tmp_root = System.tmp_dir!()
+
+    case Isolation.prune_ephemeral_tmp_worktrees(tmp_root,
+           retention_seconds: retention_seconds,
+           keep_latest: keep_latest
+         ) do
+      {:ok, _summary} ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning(
+          "mom: failed pruning ephemeral temp worktrees in #{tmp_root}: #{inspect(reason)}"
+        )
+
+        :ok
+    end
+  rescue
+    exception ->
+      Logger.warning(
+        "mom: failed resolving temp directory for worktree pruning: #{inspect(exception)}"
+      )
+
+      :ok
   end
 
   @spec validate_runtime_policy(t()) :: :ok | {:error, String.t()}

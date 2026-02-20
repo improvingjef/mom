@@ -143,3 +143,14 @@ test("mom startup prunes stale acceptance build artifacts by retention policy", 
   expect(result.kept_recent_worker_scoped).toBeTruthy();
   expect(result.kept_non_matching_directory).toBeTruthy();
 });
+
+test("mom startup enforces deterministic temp worktree lifecycle controls", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs"
+  );
+
+  expect(result.pruned_stale_worktree).toBeTruthy();
+  expect(result.kept_recent_worktree).toBeTruthy();
+  expect(result.collision_avoided).toBeTruthy();
+  expect(result.worktree_path_deterministic).toBeTruthy();
+});
