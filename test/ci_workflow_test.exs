@@ -19,6 +19,7 @@ defmodule Mom.CIWorkflowTest do
           name: ci/exunit
           runs-on: ubuntu-latest
           steps:
+            - run: mix mom.doctor --fail-on-error
             - run: mix test
       """
     )
@@ -35,6 +36,7 @@ defmodule Mom.CIWorkflowTest do
           name: ci/playwright
           runs-on: ubuntu-latest
           steps:
+            - run: mix mom.doctor --fail-on-error
             - run: npm run test:ci --prefix acceptance
               env:
                 MOM_ACCEPTANCE_FAIL_ON_FLAKY: "true"
@@ -55,6 +57,7 @@ defmodule Mom.CIWorkflowTest do
     assert evidence.playwright_fail_on_flaky
     assert evidence.playwright_concurrency_report_path_set
     assert evidence.playwright_concurrency_artifact_uploaded
+    assert evidence.toolchain_drift_gate_enforced
   end
 
   test "verify_required_checks fails when required workflow check is missing" do
@@ -70,6 +73,7 @@ defmodule Mom.CIWorkflowTest do
           name: ci/exunit
           runs-on: ubuntu-latest
           steps:
+            - run: mix mom.doctor --fail-on-error
             - run: mix test
       """
     )
@@ -97,6 +101,7 @@ defmodule Mom.CIWorkflowTest do
           name: ci/exunit
           runs-on: ubuntu-latest
           steps:
+            - run: mix mom.doctor --fail-on-error
             - run: mix test
       """
     )
@@ -110,7 +115,55 @@ defmodule Mom.CIWorkflowTest do
           name: ci/playwright
           runs-on: ubuntu-latest
           steps:
+            - run: mix mom.doctor --fail-on-error
             - run: npm run test:ci --prefix acceptance
+      """
+    )
+
+    assert {:error, reason} =
+            CIWorkflow.verify_required_checks(
+              ["ci/exunit", "ci/playwright"],
+              workflows_path: workflows_path
+            )
+
+    assert reason =~ "MOM_ACCEPTANCE_FAIL_ON_FLAKY"
+  end
+
+  test "verify_required_checks fails when toolchain drift gate is missing from required workflows" do
+    workflows_path = unique_workflows_path()
+    File.mkdir_p!(workflows_path)
+
+    File.write!(
+      Path.join(workflows_path, "ci-exunit.yml"),
+      """
+      name: ci/exunit
+      jobs:
+        exunit:
+          name: ci/exunit
+          runs-on: ubuntu-latest
+          steps:
+            - run: mix test
+      """
+    )
+
+    File.write!(
+      Path.join(workflows_path, "ci-playwright.yml"),
+      """
+      name: ci/playwright
+      jobs:
+        playwright:
+          name: ci/playwright
+          runs-on: ubuntu-latest
+          steps:
+            - run: mix mom.doctor --fail-on-error
+            - run: npm run test:ci --prefix acceptance
+              env:
+                MOM_ACCEPTANCE_FAIL_ON_FLAKY: "true"
+                MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH: acceptance/.artifacts/concurrency-report.json
+            - uses: actions/upload-artifact@v4
+              with:
+                name: acceptance-concurrency-report
+                path: acceptance/.artifacts/concurrency-report.json
       """
     )
 
@@ -120,7 +173,8 @@ defmodule Mom.CIWorkflowTest do
                workflows_path: workflows_path
              )
 
-    assert reason =~ "MOM_ACCEPTANCE_FAIL_ON_FLAKY"
+    assert reason =~ "mix mom.doctor --fail-on-error"
+    assert reason =~ "ci/exunit"
   end
 
   defp unique_workflows_path do

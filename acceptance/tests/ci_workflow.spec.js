@@ -11,4 +11,5 @@ test("mom checks in CI workflow manifests with required checks and flaky protect
   expect(result.playwright_fail_on_flaky).toBeTruthy();
   expect(result.playwright_concurrency_report_path_set).toBeTruthy();
   expect(result.playwright_concurrency_artifact_uploaded).toBeTruthy();
+  expect(result.toolchain_drift_gate_enforced).toBeTruthy();
 });

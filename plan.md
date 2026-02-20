@@ -42,7 +42,8 @@
  - Status: complete (February 20, 2026) via `mix mom.doctor` preflight/reporting (runtime + manifest checks with actionable remediation), `mix mom.bootstrap` manifest generation (`.tool-versions` + `mise.toml`), shared `Mom.Toolchain` validation logic, and ExUnit + Playwright acceptance coverage.
 - [x] Align Elixir runtime support policy with enforced startup/tooling checks (single supported patch baseline in `.tool-versions`/mise + `mix.exs` compatibility guardrails + CI parity checks) to prevent RC/stable mismatch startup blocks in operator and CI environments.
  - Status: complete (February 20, 2026) via strict startup/runtime Elixir patch enforcement (`1.19.4`) in `Mom.Config` and `Mom.Toolchain`, aligned repository toolchain manifests (`.tool-versions`, `mise.toml`), tightened `mix.exs` compatibility guardrail (`~> 1.19.4`), and ExUnit + Playwright acceptance parity coverage across manifests and CI workflow pins.
-- [ ] Add CI drift gate for developer toolchain manifests (`mix mom.doctor --fail-on-error` with `.tool-versions`/`mise.toml` parity enforcement) to keep onboarding bootstrap outputs continuously aligned before GA.
+- [x] Add CI drift gate for developer toolchain manifests (`mix mom.doctor --fail-on-error` with `.tool-versions`/`mise.toml` parity enforcement) to keep onboarding bootstrap outputs continuously aligned before GA.
+ - Status: complete (February 20, 2026) via enforced `mix mom.doctor --fail-on-error` drift-gate verification for required CI workflows in `Mom.CIWorkflow`, checked-in workflow wiring in `.github/workflows/ci-exunit.yml` and `.github/workflows/ci-playwright.yml`, and ExUnit + Playwright acceptance coverage.
 - [ ] Add automated toolchain baseline bump workflow (single command to update `mix.exs`, `.tool-versions`, `mise.toml`, and CI workflow pins with parity verification) to reduce human error during security/patch upgrades before GA.
 - [ ] Add temp-worktree capacity guardrails and observability (max active temp worktrees per host, prune/backpressure alerts, and saturation runbook) to prevent disk exhaustion and stalled mutation operations under sustained production load.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
@@ -65,6 +66,7 @@
 - [ ] Add software supply-chain trust controls (release artifact signing, provenance attestations/SLSA, and verification gates for customer deployments).
 - [ ] Add startup attestation signing-key rotation controls (dual-key overlap window, key-id governance, and forced re-attestation rollout) to support enterprise cryptographic hygiene.
 - [ ] Add customer-verifiable attestation export and verification tooling (signed startup proof bundle + offline verifier) to reduce security-review friction during enterprise procurement.
+- [ ] Add secrets lifecycle and rotation controls (managed secret backend integration, automated rotation policy enforcement, and break-glass audit workflow) to meet enterprise production security baselines.
 
 ## Priority 3: Multi-Tenant Production Controls and Observability
 - [ ] Add tenant-scoped observability and alerting (per-tenant queue depth, drop rate, failure rate, and quota-breach events) so multi-tenant SLOs are enforceable in production.

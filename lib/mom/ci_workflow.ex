@@ -8,6 +8,7 @@ defmodule Mom.CIWorkflow do
           required_checks: [String.t()],
           workflows_path: String.t(),
           matched_checks: [String.t()],
+          toolchain_drift_gate_enforced: boolean(),
           playwright_fail_on_flaky: boolean(),
           playwright_concurrency_report_path_set: boolean(),
           playwright_concurrency_artifact_uploaded: boolean()
@@ -23,6 +24,7 @@ defmodule Mom.CIWorkflow do
     with :ok <- validate_required_checks(required_checks),
          {:ok, workflows} <- load_workflows(workflows_path),
          {:ok, matched_checks} <- ensure_required_checks(required_checks, workflows),
+         :ok <- ensure_toolchain_drift_gate(required_checks, workflows),
          {:ok, playwright_workflow} <- find_playwright_workflow(playwright_check, workflows),
          :ok <- ensure_playwright_fail_on_flaky(playwright_workflow),
          :ok <- ensure_playwright_concurrency_report_path(playwright_workflow),
@@ -32,6 +34,7 @@ defmodule Mom.CIWorkflow do
          required_checks: required_checks,
          workflows_path: workflows_path,
          matched_checks: matched_checks,
+         toolchain_drift_gate_enforced: true,
          playwright_fail_on_flaky: true,
          playwright_concurrency_report_path_set: true,
          playwright_concurrency_artifact_uploaded: true
@@ -97,6 +100,31 @@ defmodule Mom.CIWorkflow do
     end
   end
 
+  defp ensure_toolchain_drift_gate(required_checks, workflows) do
+    missing =
+      Enum.reduce(required_checks, [], fn check, acc ->
+        case Enum.find(workflows, &workflow_declares_check?(&1.body, check)) do
+          nil ->
+            [check | acc]
+
+          workflow ->
+            if workflow_enforces_toolchain_drift_gate?(workflow.body) do
+              acc
+            else
+              [check | acc]
+            end
+        end
+      end)
+      |> Enum.reverse()
+
+    if missing == [] do
+      :ok
+    else
+      {:error,
+       "workflow manifests must run `mix mom.doctor --fail-on-error` for required checks: #{Enum.join(missing, ", ")}"}
+    end
+  end
+
   defp ensure_playwright_fail_on_flaky(%{body: body}) do
     if Regex.match?(~r/MOM_ACCEPTANCE_FAIL_ON_FLAKY:\s*["']?(?:1|true|yes|on)["']?/i, body) do
       :ok
@@ -125,5 +153,12 @@ defmodule Mom.CIWorkflow do
   defp workflow_declares_check?(body, check) do
     escaped = Regex.escape(check)
     Regex.match?(~r/\bname:\s*["']?#{escaped}["']?\s*$/m, body)
+  end
+
+  defp workflow_enforces_toolchain_drift_gate?(body) do
+    Regex.match?(
+      ~r/\bmix\s+mom\.doctor\b[\s\S]{0,200}--fail-on-error/,
+      body
+    )
   end
 end

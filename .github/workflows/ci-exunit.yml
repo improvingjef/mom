@@ -24,5 +24,8 @@ jobs:
       - name: Install Dependencies
         run: mix deps.get
 
+      - name: Verify Toolchain Manifest Drift Gate
+        run: mix mom.doctor --fail-on-error
+
       - name: Run ExUnit
         run: mix test

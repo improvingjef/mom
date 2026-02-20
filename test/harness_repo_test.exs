@@ -319,6 +319,8 @@ defmodule Mom.HarnessRepoTest do
       jobs:
         exunit:
           name: ci/exunit
+          steps:
+            - run: mix mom.doctor --fail-on-error
       """
     )
 
@@ -329,6 +331,8 @@ defmodule Mom.HarnessRepoTest do
       jobs:
         playwright:
           name: ci/playwright
+          steps:
+            - run: mix mom.doctor --fail-on-error
       """
     )
 

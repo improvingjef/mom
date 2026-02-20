@@ -31,6 +31,9 @@ jobs:
       - name: Install Elixir Dependencies
         run: mix deps.get
 
+      - name: Verify Toolchain Manifest Drift Gate
+        run: mix mom.doctor --fail-on-error
+
       - name: Install Playwright Dependencies
         run: npm ci --prefix acceptance
 
