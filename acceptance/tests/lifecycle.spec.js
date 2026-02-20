@@ -216,6 +216,66 @@ test("acceptance runner applies deterministic retry backoff for runner_burst ret
   expect(sleeps).toContain(350);
 });
 
+test("acceptance runner captures attempt-level timeout forensics for repeated runner_burst ETIMEDOUT retries", async () => {
+  const reportPath = path.join(
+    os.tmpdir(),
+    `mom-runner-burst-timeout-forensics-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
+  );
+
+  let calls = 0;
+  const deps = {
+    execFileSync: () => {
+      calls += 1;
+
+      if (calls <= 2) {
+        const error = new Error("spawnSync mix ETIMEDOUT");
+        error.code = "ETIMEDOUT";
+        error.stderr = Buffer.alloc(0);
+        throw error;
+      }
+
+      return Buffer.from('RESULT_JSON:{"ok":true}\n');
+    },
+    listProcesses: () => [
+      { pid: 100, ppid: 1, command: "node playwright" },
+      {
+        pid: 500,
+        ppid: 100,
+        command: "mix run acceptance/scripts/runner_burst_acceptance.exs"
+      },
+      { pid: 501, ppid: 500, command: "/opt/homebrew/Cellar/erlang/bin/beam.smp -- args" }
+    ],
+    sleepMs: () => {}
+  };
+
+  const { result } = runAcceptanceScript("acceptance/scripts/runner_burst_acceptance.exs", {
+    env: {
+      MOM_ACCEPTANCE_RETRY_BUDGET: "2",
+      MOM_ACCEPTANCE_CONCURRENCY_REPORT_PATH: reportPath
+    },
+    deps
+  });
+
+  expect(result.ok).toBeTruthy();
+  const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+  expect(report).toHaveLength(3);
+  expect(report[0].status).toBe("retrying");
+  expect(report[0].timeout_forensics.classification).toBe("monitor_attach_race");
+  expect(report[0].timeout_forensics.timeout_signal).toBe("etimedout");
+  expect(report[0].timeout_forensics.process_snapshot).toContainEqual(
+    expect.objectContaining({
+      pid: 500,
+      command: "mix run acceptance/scripts/runner_burst_acceptance.exs"
+    })
+  );
+  expect(report[1].status).toBe("retrying");
+  expect(report[1].timeout_forensics.attempt).toBe(2);
+  expect(report[2].status).toBe("passed");
+  expect(report[2].timeout_forensics).toBeUndefined();
+
+  fs.rmSync(reportPath, { force: true });
+});
+
 test("acceptance runner post-suite guardrail is a no-op when no lingering acceptance processes exist", async () => {
   const result = __private.runPostSuiteTerminationGuardrails({
     rootPid: 100,

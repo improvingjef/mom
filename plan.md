@@ -31,7 +31,8 @@ Execute and harden one path only:
   - Status: complete (February 20, 2026) via stop-point classification in `Mom.IncidentToPr` (`stop_point_classification`, `failure_stop_point`), explicit git failure audit events (`git_patch_failed`, `git_branch_push_failed`), ExUnit coverage (`test/incident_to_pr_test.exs`, `test/git_test.exs`), and Playwright acceptance coverage (`acceptance/tests/incident_to_pr.spec.js`, `acceptance/scripts/incident_to_pr_failure_classification_acceptance.exs`).
 - [x] Add retry policy only where it improves this path (patch apply conflict or transient GitHub/API failures).
   - Status: complete (February 20, 2026) via burst-workload acceptance retry hardening: adaptive timeout budgets, deterministic retry backoff for `runner_burst`, and ETIMEDOUT retry classification in `acceptance/tests/helpers/mix_runner.js` with ExUnit + Playwright coverage.
-- [ ] Add timeout forensics for repeated `runner_burst` ETIMEDOUT attempts (capture attempt-level process snapshot and classification payload) to reduce MTTR when host contention blocks incident-to-PR validation runs.
+- [x] Add timeout forensics for repeated `runner_burst` ETIMEDOUT attempts (capture attempt-level process snapshot and classification payload) to reduce MTTR when host contention blocks incident-to-PR validation runs.
+  - Status: complete (February 20, 2026) via timeout forensics payload support in `Mom.AcceptanceLifecycle` and attempt-level forensics capture in `acceptance/tests/helpers/mix_runner.js`, covered by ExUnit (`test/acceptance_lifecycle_test.exs`) and Playwright acceptance (`acceptance/tests/lifecycle.spec.js`).
 
 ## Done Criteria
 - [ ] At least one reproducible live run produces a real PR in the harness repo.
@@ -44,3 +45,5 @@ Execute and harden one path only:
 ## Additional Commercial Readiness Tasks (Incident-to-PR Path Only)
 - [ ] Persist per-run incident-to-PR stop-point classification summary as an immutable audit artifact (for compliance and post-incident forensics).
 - [ ] Add release-gate validation requiring a recent successful incident-to-PR canary run (real push + PR URL evidence) before production deploys.
+- [ ] Redact sensitive argv/env fragments from timeout forensics process snapshots before artifact persistence to avoid credential leakage in incident evidence.
+- [ ] Enforce timeout forensics artifact size/retention guardrails (max snapshot rows and TTL) so repeated contention incidents cannot exhaust CI artifact storage.

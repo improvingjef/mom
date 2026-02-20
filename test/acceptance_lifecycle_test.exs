@@ -165,6 +165,43 @@ defmodule Mom.AcceptanceLifecycleTest do
              )
   end
 
+  test "builds runner_burst ETIMEDOUT timeout forensics payload with process snapshot" do
+    snapshot = [
+      %{pid: 500, ppid: 100, command: "mix run acceptance/scripts/runner_burst_acceptance.exs"},
+      %{pid: 501, ppid: 500, command: "/opt/homebrew/Cellar/erlang/bin/beam.smp -- args"}
+    ]
+
+    assert %{
+             script_path: "acceptance/scripts/runner_burst_acceptance.exs",
+             attempt: 2,
+             classification: :monitor_attach_race,
+             timeout_signal: :etimedout,
+             process_snapshot: ^snapshot
+           } =
+             AcceptanceLifecycle.timeout_forensics_payload(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               2,
+               "spawnSync mix ETIMEDOUT",
+               snapshot
+             )
+  end
+
+  test "returns nil timeout forensics payload for non runner_burst or non-timeout failures" do
+    refute AcceptanceLifecycle.timeout_forensics_payload(
+             "acceptance/scripts/pipeline_acceptance.exs",
+             1,
+             "spawnSync mix ETIMEDOUT",
+             []
+           )
+
+    refute AcceptanceLifecycle.timeout_forensics_payload(
+             "acceptance/scripts/runner_burst_acceptance.exs",
+             1,
+             "missing telemetry failed pipeline event",
+             []
+           )
+  end
+
   test "detects lingering orphaned acceptance mix run children from snapshot samples" do
     samples = [
       """

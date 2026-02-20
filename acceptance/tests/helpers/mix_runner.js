@@ -371,6 +371,60 @@ function shouldRetry({ attempt, retryBudget, classification }) {
   return classification === "monitor_attach_race" && attempt <= retryBudget;
 }
 
+function timeoutSignal(error) {
+  const body = extractErrorBody(error).toLowerCase();
+
+  if (body.includes("etimedout")) {
+    return "etimedout";
+  }
+
+  return "unknown";
+}
+
+function normalizeProcessRow(row) {
+  if (!row || typeof row !== "object") {
+    return null;
+  }
+
+  const pid = Number.parseInt(row.pid, 10);
+  const ppid = Number.parseInt(row.ppid, 10);
+  const command = typeof row.command === "string" ? row.command : "";
+
+  if (Number.isNaN(pid) || pid <= 0 || Number.isNaN(ppid) || ppid < 0 || command.length === 0) {
+    return null;
+  }
+
+  return { pid, ppid, command };
+}
+
+function timeoutForensicsPayload({ scriptPath, attempt, classification, error, deps = {} }) {
+  if (!isRunnerBurstScript(scriptPath) || classification !== "monitor_attach_race") {
+    return undefined;
+  }
+
+  const signal = timeoutSignal(error);
+  if (signal !== "etimedout") {
+    return undefined;
+  }
+
+  let processSnapshot = [];
+  try {
+    processSnapshot = (deps.listProcesses || defaultListProcesses)()
+      .map(normalizeProcessRow)
+      .filter(Boolean);
+  } catch (_error) {
+    processSnapshot = [];
+  }
+
+  return {
+    script_path: scriptPath,
+    attempt,
+    classification,
+    timeout_signal: signal,
+    process_snapshot: processSnapshot
+  };
+}
+
 function findOrphanedLingeringMixRunChildren({ deps = {} } = {}) {
   const listProcesses = deps.listProcesses || defaultListProcesses;
   const processes = listProcesses();
@@ -590,6 +644,13 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
       lastError = error;
       const classification = classifyFailure(error);
       const retrying = shouldRetry({ attempt, retryBudget, classification });
+      const timeoutForensics = timeoutForensicsPayload({
+        scriptPath,
+        attempt,
+        classification,
+        error,
+        deps
+      });
 
       writeConcurrencyReport(
         reportPath,
@@ -605,7 +666,8 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
             attempt,
             baseTimeoutMs: timeoutMs,
             env: mergedEnv
-          })
+          }),
+          ...(timeoutForensics ? { timeout_forensics: timeoutForensics } : {})
         },
         deps
       );
@@ -659,6 +721,8 @@ module.exports = {
     resolveRetryBackoffMs,
     classifyFailure,
     shouldRetry,
+    timeoutSignal,
+    timeoutForensicsPayload,
     deterministicAttemptId,
     writeConcurrencyReport,
     resolveBuildIsolationMode,

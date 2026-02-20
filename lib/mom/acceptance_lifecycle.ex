@@ -8,6 +8,7 @@ defmodule Mom.AcceptanceLifecycle do
   @type process_row :: %{pid: pos_integer(), ppid: pos_integer(), command: String.t()}
   @type build_artifact_mode :: :worker_isolated | :serialized
   @type retryable_failure :: :monitor_attach_race | :non_retryable
+  @type timeout_signal :: :etimedout | :unknown
 
   @truthy_values ~w(1 true TRUE yes YES on ON)
   @default_acceptance_timeout_ms 120_000
@@ -231,6 +232,47 @@ defmodule Mom.AcceptanceLifecycle do
     end
   end
 
+  @spec timeout_forensics_payload(binary(), pos_integer(), binary(), String.t() | [process_row()]) ::
+          %{
+            script_path: binary(),
+            attempt: pos_integer(),
+            classification: retryable_failure(),
+            timeout_signal: timeout_signal(),
+            process_snapshot: [process_row()]
+          }
+          | nil
+  def timeout_forensics_payload(script_path, attempt, message, snapshot_or_rows)
+      when is_binary(script_path) and is_integer(attempt) and attempt > 0 and is_binary(message) do
+    classification = classify_failure(message)
+    signal = timeout_signal(message)
+
+    cond do
+      not runner_burst_script?(script_path) ->
+        nil
+
+      classification != :monitor_attach_race ->
+        nil
+
+      signal != :etimedout ->
+        nil
+
+      true ->
+        process_snapshot =
+          case snapshot_or_rows do
+            snapshot when is_binary(snapshot) -> parse_snapshot(snapshot)
+            rows when is_list(rows) -> Enum.filter(rows, &valid_process_row?/1)
+          end
+
+        %{
+          script_path: script_path,
+          attempt: attempt,
+          classification: classification,
+          timeout_signal: signal,
+          process_snapshot: process_snapshot
+        }
+    end
+  end
+
   @spec orphaned_lingering_mix_run_children(String.t() | [process_row()]) :: [process_row()]
   def orphaned_lingering_mix_run_children(snapshot_or_rows) do
     rows =
@@ -348,6 +390,17 @@ defmodule Mom.AcceptanceLifecycle do
   end
 
   defp parse_non_neg_int(_value, default), do: default
+
+  defp timeout_signal(message) when is_binary(message) do
+    if String.contains?(String.downcase(message), "etimedout"), do: :etimedout, else: :unknown
+  end
+
+  defp valid_process_row?(%{pid: pid, ppid: ppid, command: command})
+       when is_integer(pid) and pid > 0 and is_integer(ppid) and ppid >= 0 and
+              is_binary(command) and command != "",
+       do: true
+
+  defp valid_process_row?(_row), do: false
 
   defp ephemeral_candidate(root_path, entry_name) do
     path = Path.join(root_path, entry_name)
