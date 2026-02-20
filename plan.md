@@ -46,13 +46,15 @@
  - Status: complete (February 20, 2026) via enforced `mix mom.doctor --fail-on-error` drift-gate verification for required CI workflows in `Mom.CIWorkflow`, checked-in workflow wiring in `.github/workflows/ci-exunit.yml` and `.github/workflows/ci-playwright.yml`, and ExUnit + Playwright acceptance coverage.
 - [x] Add automated toolchain baseline bump workflow (single command to update `mix.exs`, `.tool-versions`, `mise.toml`, and CI workflow pins with parity verification) to reduce human error during security/patch upgrades before GA.
  - Status: complete (February 20, 2026) via `mix mom.bump_toolchain` + `Mom.Toolchain.bump_baseline/3` coordinated updates across `mix.exs`, `.tool-versions`, `mise.toml`, and required CI workflow pins with fail-closed parity verification, plus ExUnit + Playwright acceptance coverage.
-- [ ] Add temp-worktree capacity guardrails and observability (max active temp worktrees per host, prune/backpressure alerts, and saturation runbook) to prevent disk exhaustion and stalled mutation operations under sustained production load.
+- [x] Add temp-worktree capacity guardrails and observability (max active temp worktrees per host, prune/backpressure alerts, and saturation runbook) to prevent disk exhaustion and stalled mutation operations under sustained production load.
+ - Status: complete (February 20, 2026) via startup fail-closed capacity enforcement and audit attestation in `Mom.Config` (`temp_worktree_capacity_observed` / `temp_worktree_capacity_alert` / `temp_worktree_capacity_blocked`), explicit backpressure alert telemetry (`[:mom, :alert, :temp_worktree_capacity]` with `:alert` and `:blocked` statuses), saturation-response runbook coverage in `Mom.Runbook`, and ExUnit + Playwright acceptance coverage.
 - [ ] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
 - [ ] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
 - [ ] Add burst-workload acceptance timeout hardening (adaptive timeout budgets + deterministic backoff for `runner_burst` scenarios) to reduce CI false negatives under variable host contention before GA.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
 - [ ] Replace static readiness-gate flag with signed/expiring readiness attestations (branch-protection check, credential-scope proof, and approval provenance).
 - [ ] Remove deprecated ExUnit property registration usage (`ExUnit.Case.register_test/4`) to keep CI/test tooling forward-compatible with upcoming Elixir releases.
+- [ ] Raise Erlang/OTP runtime baseline to `28.1+` (toolchain manifests + CI + startup guardrails) to eliminate regex recompilation performance degradation warnings and reduce production CPU overhead.
 - [ ] Add scalable SOC2 evidence sink lifecycle controls (append-only writer, scheduled compaction, and file-locking strategy) to prevent audit-write contention and unbounded rewrite overhead under sustained production event rates.
 
 ## Priority 2: Security, Compliance, and Governance

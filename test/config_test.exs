@@ -27,6 +27,8 @@ defmodule Mom.ConfigTest do
     assert config.max_concurrency == 4
     assert config.queue_max_size == 200
     assert config.tenant_queue_max_size == nil
+    assert config.temp_worktree_max_active == 256
+    assert config.temp_worktree_alert_utilization_threshold == 0.75
     assert config.job_timeout_ms == 120_000
     assert config.overflow_policy == :drop_newest
     assert config.durable_queue_path == nil
@@ -556,6 +558,179 @@ defmodule Mom.ConfigTest do
     assert File.dir?(fresh_dir)
   end
 
+  test "emits temp worktree capacity observability and alert events near saturation" do
+    run_id = "config-worktree-capacity-alert-#{System.unique_integer([:positive])}"
+    env = %{"MOM_WORKTREE_RUN_ID" => run_id, "MOM_WORKTREE_PID" => "capacity-alert"}
+    first_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(1, env))
+    second_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(2, env))
+
+    observed_handler_id = "mom-config-temp-worktree-observed-#{System.unique_integer([:positive])}"
+    alert_handler_id = "mom-config-temp-worktree-alert-#{System.unique_integer([:positive])}"
+    backpressure_alert_handler_id =
+      "mom-config-temp-worktree-backpressure-alert-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        observed_handler_id,
+        [:mom, :audit, :temp_worktree_capacity_observed],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    :ok =
+      :telemetry.attach(
+        alert_handler_id,
+        [:mom, :audit, :temp_worktree_capacity_alert],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    :ok =
+      :telemetry.attach(
+        backpressure_alert_handler_id,
+        [:mom, :alert, :temp_worktree_capacity],
+        fn event, measurements, metadata, pid ->
+          send(pid, {:telemetry_event_with_measurements, event, measurements, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn ->
+      :telemetry.detach(observed_handler_id)
+      :telemetry.detach(alert_handler_id)
+      :telemetry.detach(backpressure_alert_handler_id)
+      Application.delete_env(:mom, :temp_worktree_retention_seconds)
+      Application.delete_env(:mom, :temp_worktree_keep_latest)
+      Application.delete_env(:mom, :temp_worktree_max_active)
+      Application.delete_env(:mom, :temp_worktree_alert_utilization_threshold)
+      File.rm_rf!(first_dir)
+      File.rm_rf!(second_dir)
+    end)
+
+    File.rm_rf!(first_dir)
+    File.rm_rf!(second_dir)
+    File.mkdir_p!(first_dir)
+    File.mkdir_p!(second_dir)
+    {:ok, active_count} = Isolation.count_ephemeral_tmp_worktrees(System.tmp_dir!())
+
+    Application.put_env(:mom, :temp_worktree_retention_seconds, 86_400)
+    Application.put_env(:mom, :temp_worktree_keep_latest, 16)
+    Application.put_env(:mom, :temp_worktree_max_active, active_count)
+    Application.put_env(:mom, :temp_worktree_alert_utilization_threshold, 0.5)
+
+    assert {:ok, _config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               mode: :inproc,
+               toolchain_node_version_override: "v24.6.0",
+               toolchain_otp_version_override: "28.0.2"
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :temp_worktree_capacity_observed], observed}
+    assert observed.active_worktrees == active_count
+    assert observed.max_active_worktrees == active_count
+
+    assert_receive {:telemetry_event, [:mom, :audit, :temp_worktree_capacity_alert], alert}
+    assert alert.max_active_worktrees == active_count
+    assert alert.alert_utilization_threshold == 0.5
+
+    assert_receive {:telemetry_event_with_measurements, [:mom, :alert, :temp_worktree_capacity],
+                    %{count: 1}, backpressure_alert}
+
+    assert backpressure_alert.status == :alert
+    assert backpressure_alert.active_worktrees == active_count
+  end
+
+  test "blocks startup when temp worktree capacity is exceeded and emits blocked event" do
+    run_id = "config-worktree-capacity-blocked-#{System.unique_integer([:positive])}"
+    env = %{"MOM_WORKTREE_RUN_ID" => run_id, "MOM_WORKTREE_PID" => "capacity-blocked"}
+    first_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(1, env))
+    second_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(2, env))
+    third_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(3, env))
+    blocked_handler_id = "mom-config-temp-worktree-blocked-#{System.unique_integer([:positive])}"
+    backpressure_alert_handler_id =
+      "mom-config-temp-worktree-backpressure-blocked-#{System.unique_integer([:positive])}"
+
+    :ok =
+      :telemetry.attach(
+        blocked_handler_id,
+        [:mom, :audit, :temp_worktree_capacity_blocked],
+        fn event, _measurements, metadata, pid ->
+          send(pid, {:telemetry_event, event, metadata})
+        end,
+        self()
+      )
+
+    :ok =
+      :telemetry.attach(
+        backpressure_alert_handler_id,
+        [:mom, :alert, :temp_worktree_capacity],
+        fn event, measurements, metadata, pid ->
+          send(pid, {:telemetry_event_with_measurements, event, measurements, metadata})
+        end,
+        self()
+      )
+
+    on_exit(fn ->
+      :telemetry.detach(blocked_handler_id)
+      :telemetry.detach(backpressure_alert_handler_id)
+      Application.delete_env(:mom, :temp_worktree_retention_seconds)
+      Application.delete_env(:mom, :temp_worktree_keep_latest)
+      Application.delete_env(:mom, :temp_worktree_max_active)
+      Application.delete_env(:mom, :temp_worktree_alert_utilization_threshold)
+      File.rm_rf!(first_dir)
+      File.rm_rf!(second_dir)
+      File.rm_rf!(third_dir)
+    end)
+
+    File.rm_rf!(first_dir)
+    File.rm_rf!(second_dir)
+    File.rm_rf!(third_dir)
+    File.mkdir_p!(first_dir)
+    File.mkdir_p!(second_dir)
+    File.mkdir_p!(third_dir)
+    {:ok, active_count} = Isolation.count_ephemeral_tmp_worktrees(System.tmp_dir!())
+    max_active = active_count - 1
+
+    Application.put_env(:mom, :temp_worktree_retention_seconds, 86_400)
+    Application.put_env(:mom, :temp_worktree_keep_latest, 16)
+    Application.put_env(:mom, :temp_worktree_max_active, max_active)
+    Application.put_env(:mom, :temp_worktree_alert_utilization_threshold, 0.5)
+
+    expected_reason = "temp_worktree_max_active exceeded: #{active_count}/#{max_active}"
+
+    assert {:error, ^expected_reason} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               mode: :inproc,
+               toolchain_node_version_override: "v24.6.0",
+               toolchain_otp_version_override: "28.0.2"
+             )
+
+    assert_receive {:telemetry_event, [:mom, :audit, :temp_worktree_capacity_blocked], metadata}
+    assert metadata.active_worktrees == active_count
+    assert metadata.max_active_worktrees == max_active
+
+    assert_receive {:telemetry_event_with_measurements, [:mom, :alert, :temp_worktree_capacity],
+                    %{count: 1}, first_backpressure_alert}
+
+    assert_receive {:telemetry_event_with_measurements, [:mom, :alert, :temp_worktree_capacity],
+                    %{count: 1}, second_backpressure_alert}
+
+    statuses =
+      [first_backpressure_alert.status, second_backpressure_alert.status]
+      |> Enum.sort()
+
+    assert statuses == [:alert, :blocked]
+    blocked_backpressure_alert = Enum.find([first_backpressure_alert, second_backpressure_alert], &(&1.status == :blocked))
+    assert blocked_backpressure_alert.active_worktrees == active_count
+    assert blocked_backpressure_alert.max_active_worktrees == max_active
+  end
+
   test "parses pipeline concurrency values from opts" do
     {:ok, config} =
       Config.from_opts(
@@ -616,6 +791,12 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "job_timeout_ms must be a positive integer"} =
              Config.from_opts(repo: "/tmp/repo", job_timeout_ms: 0)
+
+    assert {:error, "temp_worktree_max_active must be a positive integer"} =
+             Config.from_opts(repo: "/tmp/repo", temp_worktree_max_active: 0)
+
+    assert {:error, "temp_worktree_alert_utilization_threshold must be between 0.0 and 1.0"} =
+             Config.from_opts(repo: "/tmp/repo", temp_worktree_alert_utilization_threshold: 1.5)
 
     assert {:error, "overflow_policy must be :drop_newest or :drop_oldest"} =
              Config.from_opts(repo: "/tmp/repo", overflow_policy: :drop_middle)

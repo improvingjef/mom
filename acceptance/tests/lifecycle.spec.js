@@ -154,3 +154,17 @@ test("mom startup enforces deterministic temp worktree lifecycle controls", asyn
   expect(result.collision_avoided).toBeTruthy();
   expect(result.worktree_path_deterministic).toBeTruthy();
 });
+
+test("mom startup enforces temp worktree capacity guardrails and runbook coverage", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_worktree_capacity_guardrails_acceptance.exs"
+  );
+
+  expect(result.startup_blocked).toBeTruthy();
+  expect(result.observed_event_emitted).toBeTruthy();
+  expect(result.alert_event_emitted).toBeTruthy();
+  expect(result.blocked_event_emitted).toBeTruthy();
+  expect(result.backpressure_alert_emitted).toBeTruthy();
+  expect(result.backpressure_blocked_emitted).toBeTruthy();
+  expect(result.saturation_runbook_present).toBeTruthy();
+});

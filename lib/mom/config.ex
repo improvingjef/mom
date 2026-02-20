@@ -14,6 +14,8 @@ defmodule Mom.Config do
   @default_acceptance_build_artifact_keep_latest 8
   @default_temp_worktree_retention_seconds 86_400
   @default_temp_worktree_keep_latest 16
+  @default_temp_worktree_max_active 256
+  @default_temp_worktree_alert_utilization_threshold 0.75
 
   @test_command_profiles %{
     mix_test: %{
@@ -68,6 +70,8 @@ defmodule Mom.Config do
     :max_concurrency,
     :queue_max_size,
     :tenant_queue_max_size,
+    :temp_worktree_max_active,
+    :temp_worktree_alert_utilization_threshold,
     :job_timeout_ms,
     :overflow_policy,
     :durable_queue_path,
@@ -141,6 +145,8 @@ defmodule Mom.Config do
           max_concurrency: non_neg_integer(),
           queue_max_size: pos_integer(),
           tenant_queue_max_size: pos_integer() | nil,
+          temp_worktree_max_active: pos_integer(),
+          temp_worktree_alert_utilization_threshold: float(),
           job_timeout_ms: pos_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           durable_queue_path: String.t() | nil,
@@ -237,10 +243,31 @@ defmodule Mom.Config do
                  :temp_worktree_keep_latest,
                  @default_temp_worktree_keep_latest
                ),
-             :ok <-
+             {:ok, temp_worktree_prune_summary} <-
                maybe_prune_ephemeral_tmp_worktrees(
                  temp_worktree_retention_seconds,
                  temp_worktree_keep_latest
+               ),
+             {:ok, temp_worktree_max_active} <-
+               parse_pos_int(
+                 opts,
+                 runtime,
+                 :temp_worktree_max_active,
+                 @default_temp_worktree_max_active
+               ),
+             {:ok, temp_worktree_alert_utilization_threshold} <-
+               parse_ratio(
+                 opts,
+                 runtime,
+                 :temp_worktree_alert_utilization_threshold,
+                 @default_temp_worktree_alert_utilization_threshold
+               ),
+             :ok <-
+               enforce_temp_worktree_capacity_guardrails(
+                 temp_worktree_prune_summary,
+                 temp_worktree_max_active,
+                 temp_worktree_alert_utilization_threshold,
+                 actor_id
                ),
              {:ok, max_concurrency} <- parse_non_neg_int(opts, runtime, :max_concurrency, 4),
              {:ok, queue_max_size} <- parse_pos_int(opts, runtime, :queue_max_size, 200),
@@ -414,6 +441,9 @@ defmodule Mom.Config do
              max_concurrency: max_concurrency,
              queue_max_size: queue_max_size,
              tenant_queue_max_size: tenant_queue_max_size,
+             temp_worktree_max_active: temp_worktree_max_active,
+             temp_worktree_alert_utilization_threshold:
+               temp_worktree_alert_utilization_threshold,
              job_timeout_ms: job_timeout_ms,
              overflow_policy: overflow_policy,
              durable_queue_path: durable_queue_path,
@@ -641,15 +671,15 @@ defmodule Mom.Config do
            retention_seconds: retention_seconds,
            keep_latest: keep_latest
          ) do
-      {:ok, _summary} ->
-        :ok
+      {:ok, summary} ->
+        {:ok, summary}
 
       {:error, reason} ->
         Logger.warning(
           "mom: failed pruning ephemeral temp worktrees in #{tmp_root}: #{inspect(reason)}"
         )
 
-        :ok
+        {:ok, %{candidates: 0, kept: [], removed: [], failed: []}}
     end
   rescue
     exception ->
@@ -657,7 +687,61 @@ defmodule Mom.Config do
         "mom: failed resolving temp directory for worktree pruning: #{inspect(exception)}"
       )
 
+      {:ok, %{candidates: 0, kept: [], removed: [], failed: []}}
+  end
+
+  defp enforce_temp_worktree_capacity_guardrails(
+         prune_summary,
+         max_active,
+         alert_utilization_threshold,
+         actor_id
+       )
+       when is_map(prune_summary) and is_integer(max_active) and max_active > 0 and
+              is_float(alert_utilization_threshold) do
+    active_worktrees =
+      (prune_summary[:kept] || [])
+      |> length()
+      |> Kernel.+(length(prune_summary[:failed] || []))
+
+    pruned_worktrees = length(prune_summary[:removed] || [])
+    utilization = active_worktrees / max_active
+
+    metadata = %{
+      actor_id: actor_id,
+      active_worktrees: active_worktrees,
+      max_active_worktrees: max_active,
+      utilization: utilization,
+      alert_utilization_threshold: alert_utilization_threshold,
+      pruned_worktrees: pruned_worktrees,
+      prune_failures: length(prune_summary[:failed] || [])
+    }
+
+    :ok = Audit.emit(:temp_worktree_capacity_observed, metadata)
+
+    if utilization >= alert_utilization_threshold do
+      :telemetry.execute(
+        [:mom, :alert, :temp_worktree_capacity],
+        %{count: 1},
+        Map.put(metadata, :status, :alert)
+      )
+
+      :ok = Audit.emit(:temp_worktree_capacity_alert, metadata)
+    end
+
+    if active_worktrees > max_active do
+      :telemetry.execute(
+        [:mom, :alert, :temp_worktree_capacity],
+        %{count: 1},
+        metadata
+        |> Map.put(:status, :blocked)
+        |> Map.put(:exceeded_by, active_worktrees - max_active)
+      )
+
+      :ok = Audit.emit(:temp_worktree_capacity_blocked, metadata)
+      {:error, "temp_worktree_max_active exceeded: #{active_worktrees}/#{max_active}"}
+    else
       :ok
+    end
   end
 
   @spec validate_runtime_policy(t()) :: :ok | {:error, String.t()}
