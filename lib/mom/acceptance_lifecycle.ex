@@ -10,13 +10,24 @@ defmodule Mom.AcceptanceLifecycle do
   @type retryable_failure :: :monitor_attach_race | :non_retryable
 
   @truthy_values ~w(1 true TRUE yes YES on ON)
+  @default_acceptance_timeout_ms 120_000
+  @runner_burst_script_suffix "acceptance/scripts/runner_burst_acceptance.exs"
+  @default_runner_burst_timeout_floor_ms 120_000
+  @default_runner_burst_timeout_step_ms 30_000
+  @default_runner_burst_timeout_worker_step_ms 5_000
+  @default_runner_burst_timeout_cap_ms 300_000
+  @default_runner_burst_backoff_base_ms 250
+  @default_runner_burst_backoff_step_ms 500
+  @default_runner_burst_backoff_worker_step_ms 50
+  @default_runner_burst_backoff_cap_ms 5_000
   @default_retry_budget 1
   @default_post_suite_shutdown_timeout_ms 2_000
   @monitor_attach_race_markers [
     "missing telemetry failed pipeline event",
     "did not terminate",
     "no process",
-    "timeout"
+    "timeout",
+    "etimedout"
   ]
   @ephemeral_build_prefixes [
     "_build_runner_burst_",
@@ -136,6 +147,90 @@ defmodule Mom.AcceptanceLifecycle do
     classification == :monitor_attach_race and attempt <= retry_budget
   end
 
+  @spec acceptance_timeout_ms(binary(), pos_integer(), map(), non_neg_integer()) ::
+          non_neg_integer()
+  def acceptance_timeout_ms(script_path, attempt, env, base_timeout_ms \\ @default_acceptance_timeout_ms)
+      when is_binary(script_path) and is_integer(attempt) and attempt > 0 and is_map(env) and
+             is_integer(base_timeout_ms) and base_timeout_ms >= 0 do
+    if runner_burst_script?(script_path) do
+      timeout_floor_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_FLOOR_MS"),
+          @default_runner_burst_timeout_floor_ms
+        )
+
+      timeout_step_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_STEP_MS"),
+          @default_runner_burst_timeout_step_ms
+        )
+
+      worker_step_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_WORKER_STEP_MS"),
+          @default_runner_burst_timeout_worker_step_ms
+        )
+
+      timeout_cap_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_CAP_MS"),
+          @default_runner_burst_timeout_cap_ms
+        )
+
+      worker_index = parse_non_neg_int(Map.get(env, "TEST_WORKER_INDEX"), 0)
+
+      timeout =
+        max(base_timeout_ms, timeout_floor_ms) +
+          max(attempt - 1, 0) * timeout_step_ms +
+          worker_index * worker_step_ms
+
+      min(timeout, timeout_cap_ms)
+    else
+      base_timeout_ms
+    end
+  end
+
+  @spec retry_backoff_ms(binary(), pos_integer(), map()) :: non_neg_integer()
+  def retry_backoff_ms(script_path, attempt, env)
+      when is_binary(script_path) and is_integer(attempt) and attempt > 0 and is_map(env) do
+    if runner_burst_script?(script_path) do
+      backoff_base_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_BASE_MS"),
+          @default_runner_burst_backoff_base_ms
+        )
+
+      backoff_step_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_STEP_MS"),
+          @default_runner_burst_backoff_step_ms
+        )
+
+      backoff_worker_step_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_WORKER_STEP_MS"),
+          @default_runner_burst_backoff_worker_step_ms
+        )
+
+      backoff_cap_ms =
+        parse_non_neg_int(
+          Map.get(env, "MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_CAP_MS"),
+          @default_runner_burst_backoff_cap_ms
+        )
+
+      worker_index = parse_non_neg_int(Map.get(env, "TEST_WORKER_INDEX"), 0)
+
+      backoff =
+        backoff_base_ms +
+          max(attempt - 1, 0) * backoff_step_ms +
+          worker_index * backoff_worker_step_ms
+
+      min(backoff, backoff_cap_ms)
+    else
+      0
+    end
+  end
+
   @spec orphaned_lingering_mix_run_children(String.t() | [process_row()]) :: [process_row()]
   def orphaned_lingering_mix_run_children(snapshot_or_rows) do
     rows =
@@ -222,6 +317,10 @@ defmodule Mom.AcceptanceLifecycle do
     String.match?(command, ~r/\bmix\b/) and
       String.match?(command, ~r/\brun\b/) and
       String.contains?(command, "acceptance/scripts/")
+  end
+
+  defp runner_burst_script?(script_path) do
+    String.ends_with?(script_path, @runner_burst_script_suffix)
   end
 
   defp normalize_mode(mode) when is_binary(mode) do

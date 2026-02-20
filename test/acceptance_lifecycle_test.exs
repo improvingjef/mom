@@ -87,6 +87,9 @@ defmodule Mom.AcceptanceLifecycleTest do
     assert :monitor_attach_race ==
              AcceptanceLifecycle.classify_failure("missing telemetry failed pipeline event")
 
+    assert :monitor_attach_race ==
+             AcceptanceLifecycle.classify_failure("spawnSync mix ETIMEDOUT")
+
     assert :non_retryable ==
              AcceptanceLifecycle.classify_failure("syntax error in acceptance script")
 
@@ -107,6 +110,59 @@ defmodule Mom.AcceptanceLifecycleTest do
              })
 
     assert 2_000 == AcceptanceLifecycle.post_suite_shutdown_timeout_ms(%{})
+  end
+
+  test "adapts runner_burst acceptance timeout budget by attempt and worker index" do
+    env = %{"TEST_WORKER_INDEX" => "2"}
+
+    assert 130_000 ==
+             AcceptanceLifecycle.acceptance_timeout_ms(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               1,
+               env,
+               120_000
+             )
+
+    assert 160_000 ==
+             AcceptanceLifecycle.acceptance_timeout_ms(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               2,
+               env,
+               120_000
+             )
+
+    assert 120_000 ==
+             AcceptanceLifecycle.acceptance_timeout_ms(
+               "acceptance/scripts/pipeline_acceptance.exs",
+               2,
+               env,
+               120_000
+             )
+  end
+
+  test "computes deterministic retry backoff only for runner_burst acceptance" do
+    env = %{"TEST_WORKER_INDEX" => "3"}
+
+    assert 400 ==
+             AcceptanceLifecycle.retry_backoff_ms(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               1,
+               env
+             )
+
+    assert 900 ==
+             AcceptanceLifecycle.retry_backoff_ms(
+               "acceptance/scripts/runner_burst_acceptance.exs",
+               2,
+               env
+             )
+
+    assert 0 ==
+             AcceptanceLifecycle.retry_backoff_ms(
+               "acceptance/scripts/pipeline_acceptance.exs",
+               2,
+               env
+             )
   end
 
   test "detects lingering orphaned acceptance mix run children from snapshot samples" do

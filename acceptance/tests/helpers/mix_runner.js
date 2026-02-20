@@ -9,8 +9,19 @@ const MONITOR_ATTACH_RACE_MARKERS = [
   "missing telemetry failed pipeline event",
   "did not terminate",
   "no process",
-  "timeout"
+  "timeout",
+  "etimedout"
 ];
+const DEFAULT_ACCEPTANCE_TIMEOUT_MS = 120_000;
+const RUNNER_BURST_SCRIPT_SUFFIX = "acceptance/scripts/runner_burst_acceptance.exs";
+const DEFAULT_RUNNER_BURST_TIMEOUT_FLOOR_MS = 120_000;
+const DEFAULT_RUNNER_BURST_TIMEOUT_STEP_MS = 30_000;
+const DEFAULT_RUNNER_BURST_TIMEOUT_WORKER_STEP_MS = 5_000;
+const DEFAULT_RUNNER_BURST_TIMEOUT_CAP_MS = 300_000;
+const DEFAULT_RUNNER_BURST_BACKOFF_BASE_MS = 250;
+const DEFAULT_RUNNER_BURST_BACKOFF_STEP_MS = 500;
+const DEFAULT_RUNNER_BURST_BACKOFF_WORKER_STEP_MS = 50;
+const DEFAULT_RUNNER_BURST_BACKOFF_CAP_MS = 5_000;
 const DEFAULT_RETRY_BUDGET = 1;
 const DEFAULT_POST_SUITE_SHUTDOWN_TIMEOUT_MS = 2000;
 
@@ -226,8 +237,96 @@ function parsePostSuiteShutdownTimeoutMs(value) {
   return parsed;
 }
 
+function parseNonNegInt(value, defaultValue) {
+  if (typeof value !== "string") {
+    return defaultValue;
+  }
+
+  const parsed = Number.parseInt(value.trim(), 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    return defaultValue;
+  }
+
+  return parsed;
+}
+
+function isRunnerBurstScript(scriptPath) {
+  return scriptPath.endsWith(RUNNER_BURST_SCRIPT_SUFFIX);
+}
+
+function resolveAcceptanceTimeoutMs({
+  scriptPath,
+  attempt,
+  baseTimeoutMs = DEFAULT_ACCEPTANCE_TIMEOUT_MS,
+  env = process.env
+}) {
+  const normalizedAttempt = Math.max(1, attempt || 1);
+
+  if (!isRunnerBurstScript(scriptPath)) {
+    return baseTimeoutMs;
+  }
+
+  const workerIndex = parseNonNegInt(env.TEST_WORKER_INDEX, 0);
+  const timeoutFloorMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_FLOOR_MS,
+    DEFAULT_RUNNER_BURST_TIMEOUT_FLOOR_MS
+  );
+  const timeoutStepMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_STEP_MS,
+    DEFAULT_RUNNER_BURST_TIMEOUT_STEP_MS
+  );
+  const timeoutWorkerStepMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_WORKER_STEP_MS,
+    DEFAULT_RUNNER_BURST_TIMEOUT_WORKER_STEP_MS
+  );
+  const timeoutCapMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_TIMEOUT_CAP_MS,
+    DEFAULT_RUNNER_BURST_TIMEOUT_CAP_MS
+  );
+
+  const timeoutMs =
+    Math.max(baseTimeoutMs, timeoutFloorMs) +
+    (normalizedAttempt - 1) * timeoutStepMs +
+    workerIndex * timeoutWorkerStepMs;
+
+  return Math.min(timeoutMs, timeoutCapMs);
+}
+
+function resolveRetryBackoffMs({ scriptPath, attempt, env = process.env }) {
+  const normalizedAttempt = Math.max(1, attempt || 1);
+
+  if (!isRunnerBurstScript(scriptPath)) {
+    return 0;
+  }
+
+  const workerIndex = parseNonNegInt(env.TEST_WORKER_INDEX, 0);
+  const backoffBaseMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_BASE_MS,
+    DEFAULT_RUNNER_BURST_BACKOFF_BASE_MS
+  );
+  const backoffStepMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_STEP_MS,
+    DEFAULT_RUNNER_BURST_BACKOFF_STEP_MS
+  );
+  const backoffWorkerStepMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_WORKER_STEP_MS,
+    DEFAULT_RUNNER_BURST_BACKOFF_WORKER_STEP_MS
+  );
+  const backoffCapMs = parseNonNegInt(
+    env.MOM_ACCEPTANCE_RUNNER_BURST_BACKOFF_CAP_MS,
+    DEFAULT_RUNNER_BURST_BACKOFF_CAP_MS
+  );
+
+  const backoffMs =
+    backoffBaseMs +
+    (normalizedAttempt - 1) * backoffStepMs +
+    workerIndex * backoffWorkerStepMs;
+
+  return Math.min(backoffMs, backoffCapMs);
+}
+
 function classifyFailure(error) {
-  const body = String(error && (error.stderr || error.stdout || error.message || error) || "");
+  const body = extractErrorBody(error);
   const downcased = body.toLowerCase();
 
   if (MONITOR_ATTACH_RACE_MARKERS.some((marker) => downcased.includes(marker))) {
@@ -235,6 +334,37 @@ function classifyFailure(error) {
   }
 
   return "non_retryable";
+}
+
+function extractErrorBody(error) {
+  if (!error) {
+    return "";
+  }
+
+  const candidates = [
+    error.stderr,
+    error.stdout,
+    error.message,
+    error.code,
+    error.errno,
+    error.signal,
+    error.stack,
+    error
+  ];
+  const parts = [];
+
+  for (const candidate of candidates) {
+    if (candidate == null) {
+      continue;
+    }
+
+    const text = String(candidate).trim();
+    if (text.length > 0) {
+      parts.push(text);
+    }
+  }
+
+  return parts.join("\n");
 }
 
 function shouldRetry({ attempt, retryBudget, classification }) {
@@ -412,6 +542,13 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
     let output;
 
     try {
+      const timeoutBudgetMs = resolveAcceptanceTimeoutMs({
+        scriptPath,
+        attempt,
+        baseTimeoutMs: timeoutMs,
+        env: mergedEnv
+      });
+
       const baseEnv = {
         ...mergedEnv,
         ASDF_ELIXIR_VERSION: "1.19.4-otp-28",
@@ -421,7 +558,7 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
       output = runnerExecFileSync("mix", ["run", scriptPath], {
         cwd: repoRoot,
         env: withBuildIsolationEnv(baseEnv),
-        timeout: timeoutMs,
+        timeout: timeoutBudgetMs,
         killSignal: "SIGKILL"
       }).toString();
 
@@ -436,7 +573,8 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
           attempt,
           retry_budget: retryBudget,
           status: "passed",
-          flaky
+          flaky,
+          timeout_budget_ms: timeoutBudgetMs
         },
         deps
       );
@@ -461,13 +599,28 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
           attempt,
           retry_budget: retryBudget,
           status: retrying ? "retrying" : "failed",
-          classification
+          classification,
+          timeout_budget_ms: resolveAcceptanceTimeoutMs({
+            scriptPath,
+            attempt,
+            baseTimeoutMs: timeoutMs,
+            env: mergedEnv
+          })
         },
         deps
       );
 
       if (retrying) {
         retried = true;
+        const backoffMs = resolveRetryBackoffMs({
+          scriptPath,
+          attempt,
+          env: mergedEnv
+        });
+
+        if (backoffMs > 0) {
+          (deps.sleepMs || sleepMs)(backoffMs);
+        }
       } else {
         const reason =
           classification === "monitor_attach_race" && attempt > retryBudget
@@ -501,6 +654,9 @@ module.exports = {
     parseResultJson,
     parseRetryBudget,
     parsePostSuiteShutdownTimeoutMs,
+    parseNonNegInt,
+    resolveAcceptanceTimeoutMs,
+    resolveRetryBackoffMs,
     classifyFailure,
     shouldRetry,
     deterministicAttemptId,

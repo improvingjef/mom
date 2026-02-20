@@ -138,6 +138,84 @@ test("acceptance runner parses bounded post-suite shutdown timeout policy", asyn
   expect(__private.parsePostSuiteShutdownTimeoutMs("invalid")).toBe(2000);
 });
 
+test("acceptance runner classifies ETIMEDOUT error codes as retryable monitor-attach races", async () => {
+  expect(
+    __private.classifyFailure({
+      code: "ETIMEDOUT",
+      stderr: Buffer.alloc(0)
+    })
+  ).toBe("monitor_attach_race");
+});
+
+test("acceptance runner computes adaptive timeout budgets for runner_burst scenarios", async () => {
+  const env = { TEST_WORKER_INDEX: "2" };
+
+  expect(
+    __private.resolveAcceptanceTimeoutMs({
+      scriptPath: "acceptance/scripts/runner_burst_acceptance.exs",
+      attempt: 1,
+      baseTimeoutMs: 120000,
+      env
+    })
+  ).toBe(130000);
+
+  expect(
+    __private.resolveAcceptanceTimeoutMs({
+      scriptPath: "acceptance/scripts/runner_burst_acceptance.exs",
+      attempt: 2,
+      baseTimeoutMs: 120000,
+      env
+    })
+  ).toBe(160000);
+
+  expect(
+    __private.resolveAcceptanceTimeoutMs({
+      scriptPath: "acceptance/scripts/pipeline_acceptance.exs",
+      attempt: 2,
+      baseTimeoutMs: 120000,
+      env
+    })
+  ).toBe(120000);
+});
+
+test("acceptance runner applies deterministic retry backoff for runner_burst retries", async () => {
+  let calls = 0;
+  const sleeps = [];
+  const timeouts = [];
+
+  const deps = {
+    execFileSync: (_cmd, _args, options) => {
+      calls += 1;
+      timeouts.push(options.timeout);
+
+      if (calls === 1) {
+        const error = new Error("spawnSync mix ETIMEDOUT");
+        error.stderr = Buffer.alloc(0);
+        throw error;
+      }
+
+      return Buffer.from('RESULT_JSON:{"ok":true}\n');
+    },
+    listProcesses: () => [],
+    sleepMs: (duration) => {
+      sleeps.push(duration);
+    }
+  };
+
+  const { result } = runAcceptanceScript("acceptance/scripts/runner_burst_acceptance.exs", {
+    env: {
+      MOM_ACCEPTANCE_RETRY_BUDGET: "1",
+      TEST_WORKER_INDEX: "2"
+    },
+    deps
+  });
+
+  expect(result.ok).toBeTruthy();
+  expect(calls).toBe(2);
+  expect(timeouts).toEqual([130000, 160000]);
+  expect(sleeps).toContain(350);
+});
+
 test("acceptance runner post-suite guardrail is a no-op when no lingering acceptance processes exist", async () => {
   const result = __private.runPostSuiteTerminationGuardrails({
     rootPid: 100,
