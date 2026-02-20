@@ -168,3 +168,13 @@ test("mom startup enforces temp worktree capacity guardrails and runbook coverag
   expect(result.backpressure_blocked_emitted).toBeTruthy();
   expect(result.saturation_runbook_present).toBeTruthy();
 });
+
+test("worker lifecycle watchdog force-cleans orphan processes and emits alerts", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/mom_cli_worker_lifecycle_watchdog_acceptance.exs"
+  );
+
+  expect(result.watchdog_alert_emitted).toBeTruthy();
+  expect(result.watchdog_audit_emitted).toBeTruthy();
+  expect(result.orphan_force_cleaned).toBeTruthy();
+});

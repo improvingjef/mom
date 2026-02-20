@@ -30,6 +30,8 @@ defmodule Mom.ConfigTest do
     assert config.temp_worktree_max_active == 256
     assert config.temp_worktree_alert_utilization_threshold == 0.75
     assert config.job_timeout_ms == 120_000
+    assert config.execution_watchdog_enabled == true
+    assert config.execution_watchdog_orphan_grace_ms == 250
     assert config.overflow_policy == :drop_newest
     assert config.durable_queue_path == nil
     assert "api.github.com" in config.allowed_egress_hosts
@@ -739,6 +741,8 @@ defmodule Mom.ConfigTest do
         queue_max_size: 350,
         tenant_queue_max_size: 120,
         job_timeout_ms: 9_000,
+        execution_watchdog_enabled: false,
+        execution_watchdog_orphan_grace_ms: 800,
         overflow_policy: :drop_oldest,
         durable_queue_path: "/tmp/mom/queue.bin",
         audit_retention_days: 45,
@@ -750,6 +754,8 @@ defmodule Mom.ConfigTest do
     assert config.queue_max_size == 350
     assert config.tenant_queue_max_size == 120
     assert config.job_timeout_ms == 9_000
+    assert config.execution_watchdog_enabled == false
+    assert config.execution_watchdog_orphan_grace_ms == 800
     assert config.overflow_policy == :drop_oldest
     assert config.durable_queue_path == "/tmp/mom/queue.bin"
     assert config.audit_retention_days == 45
@@ -791,6 +797,12 @@ defmodule Mom.ConfigTest do
 
     assert {:error, "job_timeout_ms must be a positive integer"} =
              Config.from_opts(repo: "/tmp/repo", job_timeout_ms: 0)
+
+    assert {:error, "execution_watchdog_enabled must be a boolean"} =
+             Config.from_opts(repo: "/tmp/repo", execution_watchdog_enabled: :yes)
+
+    assert {:error, "execution_watchdog_orphan_grace_ms must be a non-negative integer"} =
+             Config.from_opts(repo: "/tmp/repo", execution_watchdog_orphan_grace_ms: -1)
 
     assert {:error, "temp_worktree_max_active must be a positive integer"} =
              Config.from_opts(repo: "/tmp/repo", temp_worktree_max_active: 0)

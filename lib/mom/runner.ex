@@ -26,7 +26,15 @@ defmodule Mom.Runner do
       durable_queue_path: Keyword.get(opts, :durable_queue_path, config.durable_queue_path),
       worker_module: worker_module,
       worker_opts:
-        Keyword.merge([config: config, job_timeout_ms: config.job_timeout_ms], worker_opts)
+        Keyword.merge(
+          [
+            config: config,
+            job_timeout_ms: config.job_timeout_ms,
+            execution_watchdog_enabled: config.execution_watchdog_enabled,
+            execution_watchdog_orphan_grace_ms: config.execution_watchdog_orphan_grace_ms
+          ],
+          worker_opts
+        )
     ]
 
     with {:ok, pipeline} <- pipeline_module.start_link(pipeline_opts),

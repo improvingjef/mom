@@ -16,6 +16,7 @@ defmodule Mom.Config do
   @default_temp_worktree_keep_latest 16
   @default_temp_worktree_max_active 256
   @default_temp_worktree_alert_utilization_threshold 0.75
+  @default_execution_watchdog_orphan_grace_ms 250
 
   @test_command_profiles %{
     mix_test: %{
@@ -73,6 +74,8 @@ defmodule Mom.Config do
     :temp_worktree_max_active,
     :temp_worktree_alert_utilization_threshold,
     :job_timeout_ms,
+    :execution_watchdog_enabled,
+    :execution_watchdog_orphan_grace_ms,
     :overflow_policy,
     :durable_queue_path,
     :audit_retention_days,
@@ -148,6 +151,8 @@ defmodule Mom.Config do
           temp_worktree_max_active: pos_integer(),
           temp_worktree_alert_utilization_threshold: float(),
           job_timeout_ms: pos_integer(),
+          execution_watchdog_enabled: boolean(),
+          execution_watchdog_orphan_grace_ms: non_neg_integer(),
           overflow_policy: :drop_newest | :drop_oldest,
           durable_queue_path: String.t() | nil,
           audit_retention_days: pos_integer(),
@@ -286,6 +291,21 @@ defmodule Mom.Config do
              {:ok, test_run_cost_cents} <-
                parse_non_neg_int(opts, runtime, :test_run_cost_cents, 0),
              {:ok, job_timeout_ms} <- parse_pos_int(opts, runtime, :job_timeout_ms, 120_000),
+             {:ok, execution_watchdog_enabled} <-
+               parse_boolean_opt(
+                 opts,
+                 runtime,
+                 :execution_watchdog_enabled,
+                 true,
+                 "execution_watchdog_enabled must be a boolean"
+               ),
+             {:ok, execution_watchdog_orphan_grace_ms} <-
+               parse_non_neg_int(
+                 opts,
+                 runtime,
+                 :execution_watchdog_orphan_grace_ms,
+                 @default_execution_watchdog_orphan_grace_ms
+               ),
              {:ok, overflow_policy} <- parse_overflow_policy(opts, runtime),
              {:ok, durable_queue_path} <- parse_durable_queue_path(opts, runtime),
              {:ok, audit_retention_days} <-
@@ -445,6 +465,8 @@ defmodule Mom.Config do
              temp_worktree_alert_utilization_threshold:
                temp_worktree_alert_utilization_threshold,
              job_timeout_ms: job_timeout_ms,
+             execution_watchdog_enabled: execution_watchdog_enabled,
+             execution_watchdog_orphan_grace_ms: execution_watchdog_orphan_grace_ms,
              overflow_policy: overflow_policy,
              durable_queue_path: durable_queue_path,
              audit_retention_days: audit_retention_days,
