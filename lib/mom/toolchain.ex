@@ -3,7 +3,7 @@ defmodule Mom.Toolchain do
 
   @minimum_node_major 18
   @required_otp_version "28.0.2"
-  @required_elixir_series "1.19"
+  @required_elixir_version "1.19.4"
   @default_bootstrap_node_version "24.6.0"
   @default_bootstrap_elixir_version "1.19.4-otp-28"
 
@@ -16,7 +16,7 @@ defmodule Mom.Toolchain do
          {:ok, otp_version} <- detect_otp_version(opts, runtime),
          :ok <- validate_otp_version(otp_version, required_otp_version(runtime)),
          {:ok, elixir_version} <- detect_elixir_version(opts, runtime),
-         :ok <- validate_elixir_version(elixir_version, required_elixir_series(runtime)) do
+         :ok <- validate_elixir_version(elixir_version, required_elixir_version(runtime)) do
       :ok
     end
   end
@@ -54,10 +54,10 @@ defmodule Mom.Toolchain do
         :elixir_runtime,
         fn -> detect_elixir_version(opts, runtime) end,
         fn version ->
-          validate_elixir_version(version, required.elixir_series)
+          validate_elixir_version(version, required.elixir_version)
         end,
         fn ->
-          "Install stable Elixir #{required.elixir_series}.x (for asdf: `asdf install elixir #{required.bootstrap_elixir_version}`)."
+          "Install stable Elixir #{required.elixir_version} (for asdf: `asdf install elixir #{required.bootstrap_elixir_version}`)."
         end
       )
 
@@ -73,7 +73,7 @@ defmodule Mom.Toolchain do
       required: %{
         node_major: required.node_major,
         otp_version: required.otp_version,
-        elixir_series: required.elixir_series,
+        elixir_version: required.elixir_version,
         bootstrap_node_version: required.bootstrap_node_version,
         bootstrap_elixir_version: required.bootstrap_elixir_version
       },
@@ -130,7 +130,7 @@ defmodule Mom.Toolchain do
     %{
       node_major: required_node_major(runtime),
       otp_version: required_otp_version(runtime),
-      elixir_series: required_elixir_series(runtime),
+      elixir_version: required_elixir_version(runtime),
       bootstrap_node_version: bootstrap_node_version(runtime),
       bootstrap_elixir_version: bootstrap_elixir_version(runtime)
     }
@@ -314,10 +314,10 @@ defmodule Mom.Toolchain do
     end
   end
 
-  defp required_elixir_series(runtime) do
-    case runtime[:required_elixir_series] do
+  defp required_elixir_version(runtime) do
+    case runtime[:required_elixir_version] do
       value when is_binary(value) and value != "" -> String.trim(value)
-      _ -> @required_elixir_series
+      _ -> @required_elixir_version
     end
   end
 
@@ -410,30 +410,20 @@ defmodule Mom.Toolchain do
     end
   end
 
-  defp validate_elixir_version(actual_version, required_series) do
-    with {:ok, required_major, required_minor} <- parse_elixir_series(required_series),
+  defp validate_elixir_version(actual_version, required_version) do
+    with {:ok, required} <- Version.parse(required_version),
          {:ok, parsed} <- Version.parse(actual_version),
+         true <- required.pre == [],
          true <- parsed.pre == [] do
-      if parsed.major == required_major and parsed.minor == required_minor do
+      if parsed.major == required.major and parsed.minor == required.minor and
+           parsed.patch == required.patch do
         :ok
       else
-        {:error, "elixir version must be stable #{required_series}.x; found #{actual_version}"}
+        {:error, "elixir version must be stable #{required_version}; found #{actual_version}"}
       end
     else
       _ ->
-        {:error, "elixir version must be stable #{required_series}.x; found #{actual_version}"}
-    end
-  end
-
-  defp parse_elixir_series(series) do
-    case Regex.run(~r/^(\d+)\.(\d+)$/, series) do
-      [_full, major, minor] ->
-        {major_int, ""} = Integer.parse(major)
-        {minor_int, ""} = Integer.parse(minor)
-        {:ok, major_int, minor_int}
-
-      _ ->
-        {:error, :invalid_required_elixir_series}
+        {:error, "elixir version must be stable #{required_version}; found #{actual_version}"}
     end
   end
 

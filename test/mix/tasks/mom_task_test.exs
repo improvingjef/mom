@@ -337,7 +337,12 @@ defmodule Mix.Tasks.MomTaskTest do
       System.put_env("MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE", "28.0.2")
       System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.0-rc.0")
 
-      assert {:error, "elixir version must be stable 1.19.x; found 1.19.0-rc.0"} =
+      assert {:error, "elixir version must be stable 1.19.4; found 1.19.0-rc.0"} =
+               Mix.Tasks.Mom.parse_args(["/tmp/repo"])
+
+      System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.3")
+
+      assert {:error, "elixir version must be stable 1.19.4; found 1.19.3"} =
                Mix.Tasks.Mom.parse_args(["/tmp/repo"])
     after
       if is_nil(original_node),

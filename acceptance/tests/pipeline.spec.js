@@ -51,11 +51,15 @@ test("mom CLI fails fast when runtime toolchain prerequisites are not met", asyn
   ]);
   expect(result.elixir_rc_blocked).toEqual([
     "error",
-    "elixir version must be stable 1.19.x; found 1.19.0-rc.0"
+    "elixir version must be stable 1.19.4; found 1.19.0-rc.0"
+  ]);
+  expect(result.elixir_patch_blocked).toEqual([
+    "error",
+    "elixir version must be stable 1.19.4; found 1.19.3"
   ]);
   expect(result.elixir_series_blocked).toEqual([
     "error",
-    "elixir version must be stable 1.19.x; found 1.18.4"
+    "elixir version must be stable 1.19.4; found 1.18.4"
   ]);
   expect(result.valid_mode).toBe("remote");
 });

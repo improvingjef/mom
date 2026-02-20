@@ -5,7 +5,7 @@ defmodule Mom.MixProject do
     [
       app: :mom,
       version: "0.1.0",
-      elixir: "~> 1.19",
+      elixir: "~> 1.19.4",
       start_permanent: Mix.env() == :prod,
       description: "Autonomous BEAM error monitor and fixer",
       source_url: "https://github.com/your-org/mom",

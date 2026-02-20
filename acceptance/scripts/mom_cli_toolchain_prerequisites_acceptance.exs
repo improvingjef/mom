@@ -17,6 +17,9 @@ defmodule Mom.Acceptance.MomCliToolchainPrerequisitesScript do
         System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.0-rc.0")
         elixir_rc_blocked = Mix.Tasks.Mom.parse_args(["/tmp/repo"])
 
+        System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.19.3")
+        elixir_patch_blocked = Mix.Tasks.Mom.parse_args(["/tmp/repo"])
+
         System.put_env("MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE", "1.18.4")
         elixir_series_blocked = Mix.Tasks.Mom.parse_args(["/tmp/repo"])
 
@@ -28,6 +31,7 @@ defmodule Mom.Acceptance.MomCliToolchainPrerequisitesScript do
           node_blocked: normalize(node_blocked),
           otp_blocked: normalize(otp_blocked),
           elixir_rc_blocked: normalize(elixir_rc_blocked),
+          elixir_patch_blocked: normalize(elixir_patch_blocked),
           elixir_series_blocked: normalize(elixir_series_blocked),
           valid_mode: Atom.to_string(parsed.mode)
         }

@@ -52,6 +52,7 @@ defmodule Mix.Tasks.MomDoctorTaskTest do
     report = output |> String.trim() |> Jason.decode!()
 
     assert report["status"] == "error"
+    assert report["required"]["elixir_version"] == "1.19.4"
     assert Enum.any?(report["checks"], &(&1["id"] == "node_runtime" and &1["status"] == "error"))
 
     assert Enum.any?(report["checks"], fn check ->
