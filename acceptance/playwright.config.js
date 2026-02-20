@@ -9,5 +9,6 @@ module.exports = defineConfig({
   testDir: "./tests",
   fullyParallel: !serialized,
   workers: serialized ? 1 : undefined,
-  reporter: "list"
+  reporter: "list",
+  globalTeardown: require.resolve("./tests/helpers/global_teardown")
 });

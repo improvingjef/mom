@@ -12,6 +12,7 @@ const MONITOR_ATTACH_RACE_MARKERS = [
   "timeout"
 ];
 const DEFAULT_RETRY_BUDGET = 1;
+const DEFAULT_POST_SUITE_SHUTDOWN_TIMEOUT_MS = 2000;
 
 function parseProcessRow(line) {
   const trimmed = line.trim();
@@ -212,6 +213,19 @@ function parseRetryBudget(value) {
   return parsed;
 }
 
+function parsePostSuiteShutdownTimeoutMs(value) {
+  if (typeof value !== "string") {
+    return DEFAULT_POST_SUITE_SHUTDOWN_TIMEOUT_MS;
+  }
+
+  const parsed = Number.parseInt(value.trim(), 10);
+  if (Number.isNaN(parsed) || parsed < 0) {
+    return DEFAULT_POST_SUITE_SHUTDOWN_TIMEOUT_MS;
+  }
+
+  return parsed;
+}
+
 function classifyFailure(error) {
   const body = String(error && (error.stderr || error.stdout || error.message || error) || "");
   const downcased = body.toLowerCase();
@@ -225,6 +239,17 @@ function classifyFailure(error) {
 
 function shouldRetry({ attempt, retryBudget, classification }) {
   return classification === "monitor_attach_race" && attempt <= retryBudget;
+}
+
+function findOrphanedLingeringMixRunChildren({ deps = {} } = {}) {
+  const listProcesses = deps.listProcesses || defaultListProcesses;
+  const processes = listProcesses();
+  const knownPids = new Set(processes.map((proc) => proc.pid));
+
+  return processes.filter(
+    (proc) =>
+      MIX_RUN_ACCEPTANCE_PATTERN.test(proc.command) && proc.ppid > 1 && !knownPids.has(proc.ppid)
+  );
 }
 
 function deterministicAttemptId({ scriptPath, attempt, env }) {
@@ -306,6 +331,62 @@ function withBuildIsolationEnv(baseEnv, options = {}) {
     ...baseEnv,
     MIX_BUILD_PATH: resolveBuildArtifactPath(options)
   };
+}
+
+function collectPostSuiteLingeringChildren({ rootPid = process.pid, deps = {} } = {}) {
+  const childrenByPid = new Map();
+
+  for (const child of findLingeringMixRunChildrenStable({ rootPid, deps })) {
+    childrenByPid.set(child.pid, child);
+  }
+
+  for (const child of findOrphanedLingeringMixRunChildren({ deps })) {
+    childrenByPid.set(child.pid, child);
+  }
+
+  return Array.from(childrenByPid.values());
+}
+
+function runPostSuiteTerminationGuardrails({
+  rootPid = process.pid,
+  timeoutMs = parsePostSuiteShutdownTimeoutMs(
+    process.env.MOM_ACCEPTANCE_POST_SUITE_SHUTDOWN_TIMEOUT_MS
+  ),
+  deps = {}
+} = {}) {
+  const sleep = deps.sleepMs || sleepMs;
+  const nowMs = deps.nowMs || Date.now;
+  const budgetMs = Math.max(0, timeoutMs || 0);
+  const initialLingering = collectPostSuiteLingeringChildren({ rootPid, deps });
+
+  if (initialLingering.length === 0) {
+    return { status: "clean", lingering: [], forced: false };
+  }
+
+  cleanupLingeringMixRunChildren(initialLingering, deps);
+
+  const deadline = nowMs() + budgetMs;
+  let remaining = collectPostSuiteLingeringChildren({ rootPid, deps });
+
+  while (remaining.length > 0 && nowMs() < deadline) {
+    sleep(25);
+    remaining = collectPostSuiteLingeringChildren({ rootPid, deps });
+  }
+
+  if (remaining.length === 0) {
+    return { status: "cleaned", lingering: initialLingering, forced: false };
+  }
+
+  const finalCleanup = cleanupLingeringMixRunChildren(remaining, deps);
+  throw new Error(
+    `Post-suite acceptance termination guardrail forced shutdown: timeout_ms=${budgetMs} lingering=${remaining
+      .map(formatChild)
+      .join(", ")} cleanup_attempts=${JSON.stringify(finalCleanup)}`
+  );
+}
+
+function enforcePostSuiteTerminationGuardrails(options = {}) {
+  return runPostSuiteTerminationGuardrails(options);
 }
 
 function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps = {} } = {}) {
@@ -409,20 +490,24 @@ function runAcceptanceScript(scriptPath, { timeoutMs = 120_000, env = {}, deps =
 module.exports = {
   runAcceptanceScript,
   enforceNoLingeringMixRunChildren,
+  enforcePostSuiteTerminationGuardrails,
   __private: {
     parseProcessRow,
     descendantPids,
     findLingeringMixRunChildren,
     cleanupLingeringMixRunChildren,
     findLingeringMixRunChildrenStable,
+    findOrphanedLingeringMixRunChildren,
     parseResultJson,
     parseRetryBudget,
+    parsePostSuiteShutdownTimeoutMs,
     classifyFailure,
     shouldRetry,
     deterministicAttemptId,
     writeConcurrencyReport,
     resolveBuildIsolationMode,
     resolveBuildArtifactPath,
-    withBuildIsolationEnv
+    withBuildIsolationEnv,
+    runPostSuiteTerminationGuardrails
   }
 };

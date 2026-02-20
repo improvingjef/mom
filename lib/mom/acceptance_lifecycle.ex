@@ -11,6 +11,7 @@ defmodule Mom.AcceptanceLifecycle do
 
   @truthy_values ~w(1 true TRUE yes YES on ON)
   @default_retry_budget 1
+  @default_post_suite_shutdown_timeout_ms 2_000
   @monitor_attach_race_markers [
     "missing telemetry failed pipeline event",
     "did not terminate",
@@ -111,6 +112,13 @@ defmodule Mom.AcceptanceLifecycle do
     truthy?(Map.get(env, "MOM_ACCEPTANCE_FAIL_ON_FLAKY"))
   end
 
+  @spec post_suite_shutdown_timeout_ms(map()) :: non_neg_integer()
+  def post_suite_shutdown_timeout_ms(env) when is_map(env) do
+    env
+    |> Map.get("MOM_ACCEPTANCE_POST_SUITE_SHUTDOWN_TIMEOUT_MS")
+    |> parse_non_neg_int(@default_post_suite_shutdown_timeout_ms)
+  end
+
   @spec classify_failure(binary()) :: retryable_failure()
   def classify_failure(message) when is_binary(message) do
     downcased = String.downcase(message)
@@ -126,6 +134,29 @@ defmodule Mom.AcceptanceLifecycle do
   def retry?(attempt, retry_budget, classification)
       when is_integer(attempt) and attempt > 0 and is_integer(retry_budget) and retry_budget >= 0 do
     classification == :monitor_attach_race and attempt <= retry_budget
+  end
+
+  @spec orphaned_lingering_mix_run_children(String.t() | [process_row()]) :: [process_row()]
+  def orphaned_lingering_mix_run_children(snapshot_or_rows) do
+    rows =
+      case snapshot_or_rows do
+        snapshot when is_binary(snapshot) -> parse_snapshot(snapshot)
+        rows when is_list(rows) -> rows
+      end
+
+    known_pids = MapSet.new(rows, & &1.pid)
+
+    Enum.filter(rows, fn row ->
+      lingering_mix_run_command?(row) and row.ppid > 1 and not MapSet.member?(known_pids, row.ppid)
+    end)
+  end
+
+  @spec orphaned_lingering_mix_run_children_from_samples([String.t() | [process_row()]]) ::
+          [process_row()]
+  def orphaned_lingering_mix_run_children_from_samples(samples) when is_list(samples) do
+    samples
+    |> Enum.flat_map(&orphaned_lingering_mix_run_children/1)
+    |> Enum.uniq_by(& &1.pid)
   end
 
   @spec prune_ephemeral_build_artifacts(binary(), keyword()) ::

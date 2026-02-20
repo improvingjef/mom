@@ -95,6 +95,34 @@ defmodule Mom.AcceptanceLifecycleTest do
     refute AcceptanceLifecycle.retry?(1, 2, :non_retryable)
   end
 
+  test "parses post-suite bounded shutdown timeout from env" do
+    assert 2_500 ==
+             AcceptanceLifecycle.post_suite_shutdown_timeout_ms(%{
+               "MOM_ACCEPTANCE_POST_SUITE_SHUTDOWN_TIMEOUT_MS" => "2500"
+             })
+
+    assert 2_000 ==
+             AcceptanceLifecycle.post_suite_shutdown_timeout_ms(%{
+               "MOM_ACCEPTANCE_POST_SUITE_SHUTDOWN_TIMEOUT_MS" => "invalid"
+             })
+
+    assert 2_000 == AcceptanceLifecycle.post_suite_shutdown_timeout_ms(%{})
+  end
+
+  test "detects lingering orphaned acceptance mix run children from snapshot samples" do
+    samples = [
+      """
+      400 1 node playwright
+      401 400 node worker
+      500 999 mix run acceptance/scripts/pipeline_acceptance.exs
+      600 500 /opt/homebrew/Cellar/erlang/bin/beam.smp -- args
+      """
+    ]
+
+    assert [%{pid: 500}] =
+             AcceptanceLifecycle.orphaned_lingering_mix_run_children_from_samples(samples)
+  end
+
   test "prunes stale ephemeral build artifact directories by retention policy" do
     root =
       Path.join(

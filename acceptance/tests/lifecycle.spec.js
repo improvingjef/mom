@@ -133,6 +133,65 @@ test("acceptance runner enforces retry-budget exhaustion for monitor-attach race
   ).toThrow(/Retry budget exhausted/);
 });
 
+test("acceptance runner parses bounded post-suite shutdown timeout policy", async () => {
+  expect(__private.parsePostSuiteShutdownTimeoutMs("2500")).toBe(2500);
+  expect(__private.parsePostSuiteShutdownTimeoutMs("invalid")).toBe(2000);
+});
+
+test("acceptance runner post-suite guardrail is a no-op when no lingering acceptance processes exist", async () => {
+  const result = __private.runPostSuiteTerminationGuardrails({
+    rootPid: 100,
+    timeoutMs: 25,
+    deps: {
+      listProcesses: () => [{ pid: 100, ppid: 1, command: "node playwright" }],
+      sleepMs: () => {},
+      nowMs: (() => {
+        let tick = 0;
+        return () => ++tick;
+      })()
+    }
+  });
+
+  expect(result.status).toBe("clean");
+  expect(result.lingering).toHaveLength(0);
+});
+
+test("acceptance runner post-suite guardrail forces bounded shutdown when lingering orphan survives cleanup", async () => {
+  const killed = [];
+
+  expect(() =>
+    __private.runPostSuiteTerminationGuardrails({
+      rootPid: 100,
+      timeoutMs: 2,
+      deps: {
+        listProcesses: () => [
+          { pid: 100, ppid: 1, command: "node playwright" },
+          {
+            pid: 500,
+            ppid: 999,
+            command: "mix run acceptance/scripts/pipeline_acceptance.exs"
+          }
+        ],
+        killProcess: (pid, signal) => {
+          killed.push([pid, signal]);
+        },
+        isProcessAlive: (pid) => pid === 500,
+        sleepMs: () => {},
+        nowMs: (() => {
+          let tick = 0;
+          return () => {
+            tick += 5;
+            return tick;
+          };
+        })()
+      }
+    })
+  ).toThrow(/Post-suite acceptance termination guardrail forced shutdown/);
+
+  expect(killed).toContainEqual([500, "SIGTERM"]);
+  expect(killed).toContainEqual([500, "SIGKILL"]);
+});
+
 test("mom startup prunes stale acceptance build artifacts by retention policy", async () => {
   const { result } = runAcceptanceScript(
     "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs"

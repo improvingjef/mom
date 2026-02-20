@@ -50,7 +50,8 @@
  - Status: complete (February 20, 2026) via startup fail-closed capacity enforcement and audit attestation in `Mom.Config` (`temp_worktree_capacity_observed` / `temp_worktree_capacity_alert` / `temp_worktree_capacity_blocked`), explicit backpressure alert telemetry (`[:mom, :alert, :temp_worktree_capacity]` with `:alert` and `:blocked` statuses), saturation-response runbook coverage in `Mom.Runbook`, and ExUnit + Playwright acceptance coverage.
 - [x] Add worker/process lifecycle safeguards for long-running operations (orphan process detection, forced timeout cleanup, and execution watchdog alerts).
  - Status: complete (February 20, 2026) via execution watchdog controls in `Mom.Workers.EngineTriage` (timeout-triggered orphan descendant detection via process ancestry/link scanning, bounded grace window, forced orphan cleanup, and fail-closed watchdog alert emission), new watchdog policy controls in `Mom.Config`/`Mix.Tasks.Mom` (`execution_watchdog_enabled`, `execution_watchdog_orphan_grace_ms`) wired through `Mom.Runner`, and ExUnit + Playwright acceptance coverage.
-- [ ] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
+- [x] Add acceptance-suite termination guardrails (post-suite Playwright parent-process liveness checks + bounded forced shutdown) to prevent CI hangs after all tests report passed.
+ - Status: complete (February 20, 2026) via post-suite orphan/liveness detection and bounded forced-shutdown enforcement in acceptance lifecycle helpers (`Mom.AcceptanceLifecycle` and `acceptance/tests/helpers/mix_runner.js`), Playwright global teardown guardrail wiring (`acceptance/tests/helpers/global_teardown.js`, `acceptance/playwright.config.js`), and ExUnit + Playwright acceptance coverage.
 - [ ] Add burst-workload acceptance timeout hardening (adaptive timeout budgets + deterministic backoff for `runner_burst` scenarios) to reduce CI false negatives under variable host contention before GA.
 - [ ] Add durable queue snapshot integrity/versioning controls (checksums, schema-versioned payloads, and corruption-recovery fallback) to protect replay reliability across upgrades.
 - [ ] Add host-level subprocess resource isolation controls for worker-spawned commands (CPU/memory/file-descriptor ceilings + emergency kill-switch) to prevent noisy-neighbor resource exhaustion in commercial multi-tenant deployments.
@@ -58,6 +59,7 @@
 - [ ] Remove deprecated ExUnit property registration usage (`ExUnit.Case.register_test/4`) to keep CI/test tooling forward-compatible with upcoming Elixir releases.
 - [ ] Raise Erlang/OTP runtime baseline to `28.1+` (toolchain manifests + CI + startup guardrails) to eliminate regex recompilation performance degradation warnings and reduce production CPU overhead.
 - [ ] Add scalable SOC2 evidence sink lifecycle controls (append-only writer, scheduled compaction, and file-locking strategy) to prevent audit-write contention and unbounded rewrite overhead under sustained production event rates.
+- [ ] Add acceptance termination-forensics evidence capture (process-tree snapshot + kill-attempt timeline artifact on forced-shutdown paths) to accelerate CI hang triage and enterprise incident-response readiness.
 
 ## Priority 2: Security, Compliance, and Governance
 - [ ] Add compliance controls (audit retention policy, SOC2 evidence hooks, PII handling policy).
