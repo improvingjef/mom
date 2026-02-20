@@ -40,7 +40,8 @@ defmodule Mom.GitHub do
           repo: repo,
           actor_id: actor_id,
           branch: branch,
-          pr_number: pr.number
+          pr_number: pr.number,
+          pr_url: pr.url
         })
 
       {:ok, pr}

@@ -369,6 +369,10 @@ test("mom CLI requires readiness gate approval before enabling automated PR crea
     "error",
     "readiness_gate_approved must be true before enabling automated PR creation"
   ]);
+  expect(result.release_gate_blocked).toEqual([
+    "error",
+    "release gate requires recent successful incident-to-PR canary evidence with push + PR URL proof"
+  ]);
   expect(result.approved_gate).toBeTruthy();
   expect(result.approved_repo).toBe("acme/mom");
 });

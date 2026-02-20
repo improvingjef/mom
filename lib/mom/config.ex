@@ -350,6 +350,10 @@ defmodule Mom.Config do
              {:ok, protected_branches} <-
                parse_protected_branches(opts, runtime, github_base_branch),
              {:ok, readiness_gate_approved} <- parse_readiness_gate_approved(opts, runtime),
+             {:ok, incident_to_pr_canary_artifact_path} <-
+               parse_incident_to_pr_canary_artifact_path(opts, runtime),
+             {:ok, incident_to_pr_canary_max_age_seconds} <-
+               parse_incident_to_pr_canary_max_age_seconds(opts, runtime),
              {:ok, merge_pr} <- parse_merge_pr(opts, runtime),
              {:ok, workdir} <- parse_workdir(opts, runtime),
              {:ok, execution_profile} <- parse_execution_profile(opts, runtime),
@@ -387,6 +391,9 @@ defmodule Mom.Config do
                  github_token,
                  Keyword.get(opts, :github_repo) || runtime[:github_repo],
                  readiness_gate_approved,
+                 execution_profile,
+                 incident_to_pr_canary_artifact_path,
+                 incident_to_pr_canary_max_age_seconds,
                  actor_id,
                  github_base_branch,
                  protected_branches
@@ -1580,6 +1587,28 @@ defmodule Mom.Config do
     end
   end
 
+  defp parse_incident_to_pr_canary_artifact_path(opts, runtime) do
+    case Keyword.get(opts, :incident_to_pr_canary_artifact_path, runtime[:incident_to_pr_canary_artifact_path]) do
+      nil ->
+        {:ok, nil}
+
+      path when is_binary(path) ->
+        trimmed = String.trim(path)
+        if trimmed == "", do: {:error, "incident_to_pr_canary_artifact_path must not be empty"}, else: {:ok, trimmed}
+
+      _other ->
+        {:error, "incident_to_pr_canary_artifact_path must be a string"}
+    end
+  end
+
+  defp parse_incident_to_pr_canary_max_age_seconds(opts, runtime) do
+    case parse_int(Keyword.get(opts, :incident_to_pr_canary_max_age_seconds, runtime[:incident_to_pr_canary_max_age_seconds])) do
+      nil -> {:ok, 86_400}
+      value when is_integer(value) and value > 0 -> {:ok, value}
+      _ -> {:error, "incident_to_pr_canary_max_age_seconds must be a positive integer"}
+    end
+  end
+
   defp parse_open_pr(opts, runtime, opts_for_profile) do
     default =
       case Keyword.get(opts_for_profile, :execution_profile) do
@@ -1751,6 +1780,9 @@ defmodule Mom.Config do
          github_token,
          github_repo,
          readiness_gate_approved,
+         execution_profile,
+         incident_to_pr_canary_artifact_path,
+         incident_to_pr_canary_max_age_seconds,
          actor_id,
          github_base_branch,
          protected_branches
@@ -1770,6 +1802,40 @@ defmodule Mom.Config do
           )
 
           {:error, "github_base_branch must be included in protected_branches"}
+
+        execution_profile == :production_hardened ->
+          case Mom.IncidentToPr.validate_recent_canary_run(
+                 artifact_path: incident_to_pr_canary_artifact_path,
+                 max_age_seconds: incident_to_pr_canary_max_age_seconds
+               ) do
+            {:ok, evidence} ->
+              :ok =
+                Audit.emit(:automated_pr_release_gate_passed, %{
+                  repo: github_repo,
+                  actor_id: actor_id,
+                  run_id: evidence.run_id,
+                  pr_number: evidence.pr_number,
+                  pr_url: evidence.pr_url,
+                  age_seconds: evidence.age_seconds,
+                  max_age_seconds: incident_to_pr_canary_max_age_seconds
+                })
+
+              :ok
+
+            {:error, reason} ->
+              :ok =
+                Audit.emit(:automated_pr_readiness_blocked, %{
+                  repo: github_repo,
+                  actor_id: actor_id,
+                  base_branch: github_base_branch,
+                  protected_branches: protected_branches,
+                  reason: :incident_to_pr_canary_release_gate_failed,
+                  canary_reason: reason
+                })
+
+              {:error,
+               "release gate requires recent successful incident-to-PR canary evidence with push + PR URL proof"}
+          end
 
         true ->
           :ok

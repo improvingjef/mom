@@ -45,8 +45,11 @@ Execute and harden one path only:
 ## Additional Commercial Readiness Tasks (Incident-to-PR Path Only)
 - [x] Persist per-run incident-to-PR stop-point classification summary as an immutable audit artifact (for compliance and post-incident forensics).
   - Status: complete (February 20, 2026) via immutable summary persistence API in `Mom.IncidentToPr.persist_summary_artifact/2`, ExUnit coverage (`test/incident_to_pr_test.exs`), and Playwright acceptance coverage (`acceptance/tests/incident_to_pr.spec.js`, `acceptance/scripts/incident_to_pr_summary_artifact_acceptance.exs`).
-- [ ] Add release-gate validation requiring a recent successful incident-to-PR canary run (real push + PR URL evidence) before production deploys.
-- [ ] Redact sensitive argv/env fragments from timeout forensics process snapshots before artifact persistence to avoid credential leakage in incident evidence.
+- [x] Add release-gate validation requiring a recent successful incident-to-PR canary run (real push + PR URL evidence) before production deploys.
+  - Status: complete (February 20, 2026) via production-hardened automated PR release-gate enforcement in `Mom.Config` backed by `Mom.IncidentToPr.validate_recent_canary_run/1`, PR URL propagation in GitHub audit events, ExUnit coverage (`test/config_test.exs`, `test/incident_to_pr_test.exs`), and Playwright acceptance coverage (`acceptance/tests/pipeline.spec.js`, `acceptance/scripts/mom_cli_readiness_gate_acceptance.exs`).
+- [x] Redact sensitive argv/env fragments from timeout forensics process snapshots before artifact persistence to avoid credential leakage in incident evidence.
+  - Status: complete (February 20, 2026) via timeout-forensics process snapshot sanitization in `Mom.AcceptanceLifecycle` and `acceptance/tests/helpers/mix_runner.js`, with ExUnit coverage (`test/acceptance_lifecycle_test.exs`) and Playwright acceptance coverage (`acceptance/tests/lifecycle.spec.js`).
 - [ ] Enforce timeout forensics artifact size/retention guardrails (max snapshot rows and TTL) so repeated contention incidents cannot exhaust CI artifact storage.
 - [ ] Add immutable summary artifact integrity attestation (content hash + signer key id) and verify it during incident forensics replay.
 - [ ] Upload incident-to-PR summary artifacts from CI canary runs to immutable object storage with retention lock and documented retrieval runbook.
+- [ ] Wire production deploy workflow to pass immutable canary evidence into startup release-gate checks (`--incident-to-pr-canary-artifact-path` + max age policy) so deploy blocking is enforced by CI/CD rather than operator convention.

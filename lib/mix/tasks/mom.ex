@@ -156,6 +156,8 @@ defmodule Mix.Tasks.Mom do
       open_pr: :boolean,
       merge_pr: :boolean,
       readiness_gate_approved: :boolean,
+      incident_to_pr_canary_artifact_path: :string,
+      incident_to_pr_canary_max_age_seconds: :integer,
       poll_interval_ms: :integer,
       max_concurrency: :integer,
       queue_max_size: :integer,

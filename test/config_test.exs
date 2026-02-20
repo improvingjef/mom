@@ -1301,6 +1301,67 @@ defmodule Mom.ConfigTest do
     assert config.readiness_gate_approved
   end
 
+  test "requires recent incident-to-PR canary evidence for production_hardened automated PR flows" do
+    workdir = isolated_workdir_fixture()
+
+    assert {:error,
+            "release gate requires recent successful incident-to-PR canary evidence with push + PR URL proof"} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               open_pr: true,
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"],
+               readiness_gate_approved: true
+             )
+
+    artifact_path =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-config-release-gate-#{System.unique_integer([:positive])}.json"
+      )
+
+    on_exit(fn -> File.rm_rf!(artifact_path) end)
+
+    File.write!(
+      artifact_path,
+      Jason.encode!(%{
+        run_id: "canary-42",
+        recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
+        signal: %{
+          success: true,
+          pr_number: 42,
+          pr_url: "https://example/pull/42",
+          stop_point_classification: %{push: :passed, pr_create: :passed}
+        }
+      }) <> "\n"
+    )
+
+    assert {:ok, config} =
+             Config.from_opts(
+               repo: "/tmp/repo",
+               llm_provider: :codex,
+               execution_profile: :production_hardened,
+               workdir: workdir,
+               open_pr: true,
+               github_repo: "acme/mom",
+               github_token: "token",
+               actor_id: "mom-app[bot]",
+               allowed_actor_ids: ["mom-app[bot]"],
+               github_credential_scopes: ["contents", "pull_requests", "issues"],
+               readiness_gate_approved: true,
+               incident_to_pr_canary_artifact_path: artifact_path,
+               incident_to_pr_canary_max_age_seconds: 600
+             )
+
+    assert config.open_pr
+  end
+
   test "emits audit event when automated PR readiness gate blocks startup" do
     handler_id = "mom-config-readiness-blocked-#{System.unique_integer([:positive])}"
 

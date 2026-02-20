@@ -32,6 +32,7 @@ defmodule Mom.IncidentToPr do
           branch_matches: boolean(),
           branch: String.t() | nil,
           pr_number: integer() | nil,
+          pr_url: String.t() | nil,
           stop_point_classification: %{
             detect: :passed | :failed | :missing | :out_of_order,
             patch_apply: :passed | :failed | :missing | :out_of_order,
@@ -74,11 +75,51 @@ defmodule Mom.IncidentToPr do
       branch_matches: branch_matches,
       branch: branch,
       pr_number: pr_number(indexed),
+      pr_url: pr_url(indexed),
       stop_point_classification: stop_point_classification,
       failure_stop_point: first_failure_stop_point(stop_point_classification)
     }
 
     if signal.success, do: {:ok, signal}, else: {:error, signal}
+  end
+
+  @spec validate_recent_canary_run(keyword()) ::
+          {:ok,
+           %{
+             run_id: String.t() | nil,
+             recorded_at_unix: integer(),
+             age_seconds: non_neg_integer(),
+             pr_number: integer(),
+             pr_url: String.t()
+           }}
+          | {:error, :artifact_path_not_configured | :artifact_not_found | :invalid_artifact_payload}
+          | {:error, {:stale_canary_evidence, %{age_seconds: non_neg_integer(), max_age_seconds: integer()}}}
+          | {:error, :canary_run_not_successful}
+          | {:error, :push_stop_point_not_passed}
+          | {:error, :pr_create_stop_point_not_passed}
+          | {:error, :missing_pr_number_evidence}
+          | {:error, :missing_pr_url_evidence}
+  def validate_recent_canary_run(opts \\ []) when is_list(opts) do
+    with {:ok, artifact_path} <- artifact_path_for_canary(opts),
+         {:ok, max_age_seconds} <- max_age_seconds(opts),
+         {:ok, payload} <- read_canary_payload(artifact_path),
+         {:ok, recorded_at_unix} <- fetch_recorded_at_unix(payload),
+         {:ok, signal} <- fetch_signal(payload),
+         :ok <- ensure_recent(recorded_at_unix, now_unix(opts), max_age_seconds),
+         :ok <- ensure_successful_signal(signal),
+         :ok <- ensure_stop_point_passed(signal, "push"),
+         :ok <- ensure_stop_point_passed(signal, "pr_create"),
+         {:ok, pr_number} <- fetch_pr_number(signal),
+         {:ok, pr_url} <- fetch_pr_url(signal) do
+      {:ok,
+       %{
+         run_id: fetch_field(payload, :run_id),
+         recorded_at_unix: recorded_at_unix,
+         age_seconds: now_unix(opts) - recorded_at_unix,
+         pr_number: pr_number,
+         pr_url: pr_url
+       }}
+    end
   end
 
   @spec persist_summary_artifact(signal(), keyword()) ::
@@ -248,6 +289,136 @@ defmodule Mom.IncidentToPr do
 
       nil ->
         nil
+    end
+  end
+
+  defp pr_url(indexed_events) do
+    case Enum.find(indexed_events, fn {{name, _metadata}, _index} ->
+           name == :github_pr_created
+         end) do
+      {{:github_pr_created, metadata}, _index} ->
+        fetch_field(metadata, :pr_url)
+
+      nil ->
+        nil
+    end
+  end
+
+  defp artifact_path_for_canary(opts) do
+    case Keyword.get(opts, :artifact_path) ||
+           Application.get_env(:mom, :incident_to_pr_canary_artifact_path) do
+      path when is_binary(path) ->
+        trimmed = String.trim(path)
+        if trimmed == "", do: {:error, :artifact_path_not_configured}, else: {:ok, trimmed}
+
+      _ ->
+        {:error, :artifact_path_not_configured}
+    end
+  end
+
+  defp max_age_seconds(opts) do
+    case Keyword.get(opts, :max_age_seconds) ||
+           Application.get_env(:mom, :incident_to_pr_canary_max_age_seconds) || 86_400 do
+      value when is_integer(value) and value > 0 ->
+        {:ok, value}
+
+      _ ->
+        {:error, :invalid_artifact_payload}
+    end
+  end
+
+  defp now_unix(opts) do
+    case Keyword.get(opts, :now_unix) do
+      value when is_integer(value) -> value
+      _ -> DateTime.utc_now() |> DateTime.to_unix()
+    end
+  end
+
+  defp read_canary_payload(path) do
+    with true <- File.exists?(path),
+         {:ok, body} <- File.read(path),
+         {:ok, payload} <- Jason.decode(body) do
+      {:ok, payload}
+    else
+      false -> {:error, :artifact_not_found}
+      {:error, :enoent} -> {:error, :artifact_not_found}
+      {:error, _reason} -> {:error, :invalid_artifact_payload}
+    end
+  end
+
+  defp fetch_recorded_at_unix(payload) do
+    case fetch_field(payload, :recorded_at_unix) do
+      value when is_integer(value) -> {:ok, value}
+      _ -> {:error, :invalid_artifact_payload}
+    end
+  end
+
+  defp fetch_signal(payload) do
+    case fetch_field(payload, :signal) do
+      signal when is_map(signal) -> {:ok, signal}
+      _ -> {:error, :invalid_artifact_payload}
+    end
+  end
+
+  defp ensure_recent(recorded_at_unix, now_unix, max_age_seconds)
+       when is_integer(recorded_at_unix) and is_integer(now_unix) and is_integer(max_age_seconds) do
+    age_seconds = max(now_unix - recorded_at_unix, 0)
+
+    if age_seconds <= max_age_seconds do
+      :ok
+    else
+      {:error,
+       {:stale_canary_evidence, %{age_seconds: age_seconds, max_age_seconds: max_age_seconds}}}
+    end
+  end
+
+  defp ensure_successful_signal(signal) do
+    case fetch_field(signal, :success) do
+      true -> :ok
+      _ -> {:error, :canary_run_not_successful}
+    end
+  end
+
+  defp ensure_stop_point_passed(signal, stop_point) do
+    classification = fetch_field(signal, :stop_point_classification) || %{}
+    atom_key = String.to_atom(stop_point)
+    raw = Map.get(classification, atom_key) || Map.get(classification, stop_point)
+
+    normalized =
+      case raw do
+        value when is_atom(value) -> Atom.to_string(value)
+        value when is_binary(value) -> value
+        _ -> nil
+      end
+
+    case {stop_point, normalized} do
+      {_, "passed"} -> :ok
+      {"push", _} -> {:error, :push_stop_point_not_passed}
+      {"pr_create", _} -> {:error, :pr_create_stop_point_not_passed}
+    end
+  end
+
+  defp fetch_pr_number(signal) do
+    case fetch_field(signal, :pr_number) do
+      value when is_integer(value) and value > 0 -> {:ok, value}
+      _ -> {:error, :missing_pr_number_evidence}
+    end
+  end
+
+  defp fetch_pr_url(signal) do
+    case fetch_field(signal, :pr_url) do
+      value when is_binary(value) ->
+        trimmed = String.trim(value)
+        uri = URI.parse(trimmed)
+
+        if trimmed != "" and is_binary(uri.scheme) and is_binary(uri.host) do
+          {:ok, trimmed}
+        else
+          {:error, :missing_pr_url_evidence}
+        end
+
+      _ ->
+        {:error, :missing_pr_url_evidence}
     end
   end
 

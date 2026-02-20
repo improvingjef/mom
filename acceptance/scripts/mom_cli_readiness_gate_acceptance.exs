@@ -2,6 +2,7 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
   def run do
     System.put_env("MOM_GITHUB_TOKEN", "token")
     System.put_env("MOM_GITHUB_CREDENTIAL_SCOPES", "contents,pull_requests,issues")
+    workdir = isolated_workdir_fixture()
 
     blocked_result =
       Mix.Tasks.Mom.parse_args([
@@ -14,25 +15,80 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
         "mom-app[bot]"
       ])
 
-    approved_result =
+    release_gate_blocked =
       Mix.Tasks.Mom.parse_args([
         "/tmp/repo",
+        "--llm",
+        "codex",
+        "--execution-profile",
+        "production_hardened",
+        "--workdir",
+        workdir,
         "--github-repo",
         "acme/mom",
         "--actor-id",
         "mom-app[bot]",
         "--allowed-actor-ids",
         "mom-app[bot]",
+        "--open-pr",
         "--readiness-gate-approved"
       ])
 
-    result = %{
-      blocked_result: blocked_result,
-      approved_gate: readiness_gate_approved(approved_result),
-      approved_repo: github_repo(approved_result)
-    }
+    canary_artifact_path =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-readiness-gate-canary-#{System.unique_integer([:positive])}.json"
+      )
 
-    IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
+    try do
+      File.write!(
+        canary_artifact_path,
+        Jason.encode!(%{
+          run_id: "acceptance-canary-42",
+          recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
+          signal: %{
+            success: true,
+            pr_number: 42,
+            pr_url: "https://example/pull/42",
+            stop_point_classification: %{push: :passed, pr_create: :passed}
+          }
+        }) <> "\n"
+      )
+
+      approved_result =
+        Mix.Tasks.Mom.parse_args([
+          "/tmp/repo",
+          "--llm",
+          "codex",
+          "--execution-profile",
+          "production_hardened",
+          "--workdir",
+          workdir,
+          "--github-repo",
+          "acme/mom",
+          "--actor-id",
+          "mom-app[bot]",
+          "--allowed-actor-ids",
+          "mom-app[bot]",
+          "--open-pr",
+          "--readiness-gate-approved",
+          "--incident-to-pr-canary-artifact-path",
+          canary_artifact_path,
+          "--incident-to-pr-canary-max-age-seconds",
+          "600"
+        ])
+
+      result = %{
+        blocked_result: blocked_result,
+        release_gate_blocked: release_gate_blocked,
+        approved_gate: readiness_gate_approved(approved_result),
+        approved_repo: github_repo(approved_result)
+      }
+
+      IO.puts("RESULT_JSON:" <> Jason.encode!(normalize(result)))
+    after
+      File.rm_rf!(canary_artifact_path)
+    end
   after
     System.delete_env("MOM_GITHUB_TOKEN")
     System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
@@ -43,6 +99,19 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
 
   defp github_repo({:ok, config}), do: config.github_repo
   defp github_repo(_), do: nil
+
+  defp isolated_workdir_fixture do
+    workdir =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-acceptance-readiness-worktree-#{System.unique_integer([:positive])}"
+      )
+
+    File.rm_rf!(workdir)
+    File.mkdir_p!(workdir)
+    File.write!(Path.join(workdir, ".git"), "gitdir: /tmp/mom-acceptance-readiness-gitdir\n")
+    workdir
+  end
 
   defp normalize(term) when is_tuple(term) do
     term
