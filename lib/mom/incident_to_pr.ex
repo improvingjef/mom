@@ -63,6 +63,7 @@ defmodule Mom.IncidentToPr do
     branch = branch_for(indexed, :git_branch_pushed)
     pr_branch = branch_for(indexed, :github_pr_created)
     branch_matches = is_binary(branch) and is_binary(pr_branch) and branch == pr_branch
+
     stop_point_classification =
       stop_point_classification(indexed, step_indexes, out_of_order_steps, tests_status_ok)
 
@@ -92,17 +93,21 @@ defmodule Mom.IncidentToPr do
              pr_number: integer(),
              pr_url: String.t()
            }}
-          | {:error, :artifact_path_not_configured | :artifact_not_found | :invalid_artifact_payload}
-          | {:error, {:stale_canary_evidence, %{age_seconds: non_neg_integer(), max_age_seconds: integer()}}}
+          | {:error,
+             :artifact_path_not_configured | :artifact_not_found | :invalid_artifact_payload}
+          | {:error,
+             {:stale_canary_evidence,
+              %{age_seconds: non_neg_integer(), max_age_seconds: integer()}}}
           | {:error, :canary_run_not_successful}
           | {:error, :push_stop_point_not_passed}
           | {:error, :pr_create_stop_point_not_passed}
           | {:error, :missing_pr_number_evidence}
           | {:error, :missing_pr_url_evidence}
+          | {:error, :invalid_artifact_attestation}
   def validate_recent_canary_run(opts \\ []) when is_list(opts) do
     with {:ok, artifact_path} <- artifact_path_for_canary(opts),
          {:ok, max_age_seconds} <- max_age_seconds(opts),
-         {:ok, payload} <- read_canary_payload(artifact_path),
+         {:ok, payload} <- replay_summary_artifact(artifact_path, opts),
          {:ok, recorded_at_unix} <- fetch_recorded_at_unix(payload),
          {:ok, signal} <- fetch_signal(payload),
          :ok <- ensure_recent(recorded_at_unix, now_unix(opts), max_age_seconds),
@@ -130,10 +135,21 @@ defmodule Mom.IncidentToPr do
          {:ok, run_id} <- normalize_run_id(Keyword.get(opts, :run_id)),
          :ok <- File.mkdir_p(artifact_dir),
          path <- Path.join(artifact_dir, "#{run_id}.json"),
-         payload <- summary_payload(signal, run_id),
+         payload <- summary_payload(signal, run_id, opts),
          encoded <- Jason.encode!(payload),
          :ok <- write_immutable(path, encoded) do
       {:ok, path}
+    end
+  end
+
+  @spec replay_summary_artifact(String.t(), keyword()) ::
+          {:ok, map()}
+          | {:error,
+             :artifact_not_found | :invalid_artifact_payload | :invalid_artifact_attestation}
+  def replay_summary_artifact(path, opts \\ []) when is_binary(path) and is_list(opts) do
+    with {:ok, payload} <- read_canary_payload(path),
+         :ok <- verify_integrity_attestation(payload, opts) do
+      {:ok, payload}
     end
   end
 
@@ -151,7 +167,8 @@ defmodule Mom.IncidentToPr do
   end
 
   defp artifact_dir(opts) do
-    case Keyword.get(opts, :artifact_dir) || Application.get_env(:mom, :incident_to_pr_artifact_dir) do
+    case Keyword.get(opts, :artifact_dir) ||
+           Application.get_env(:mom, :incident_to_pr_artifact_dir) do
       path when is_binary(path) ->
         trimmed = String.trim(path)
         if trimmed == "", do: {:error, :artifact_dir_not_configured}, else: {:ok, trimmed}
@@ -172,13 +189,186 @@ defmodule Mom.IncidentToPr do
 
   defp normalize_run_id(_run_id), do: {:error, :invalid_run_id}
 
-  defp summary_payload(signal, run_id) do
-    %{
+  defp summary_payload(signal, run_id, opts) do
+    payload = %{
       run_id: run_id,
       recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
       signal: signal
     }
+
+    Map.put(payload, :integrity, integrity_attestation(payload, opts))
   end
+
+  defp integrity_attestation(payload, opts) do
+    content = integrity_content(payload)
+    content_sha256 = integrity_content_sha256(content)
+    signing_key = normalize_attestation_signing_key(Keyword.get(opts, :attestation_signing_key))
+
+    %{
+      content_sha256: content_sha256,
+      signer_key_id: attestation_key_id(signing_key),
+      signature: maybe_sign_integrity_content(content, signing_key)
+    }
+  end
+
+  defp verify_integrity_attestation(payload, opts) when is_map(payload) and is_list(opts) do
+    if Keyword.get(opts, :verify_attestation, true) == false do
+      :ok
+    else
+      with {:ok, content} <- extract_integrity_content(payload),
+           {:ok, integrity} <- fetch_integrity(payload),
+           :ok <- verify_content_sha256(content, integrity),
+           :ok <- verify_signature(content, integrity, opts) do
+        :ok
+      end
+    end
+  end
+
+  defp verify_integrity_attestation(_payload, _opts), do: {:error, :invalid_artifact_payload}
+
+  defp extract_integrity_content(payload) when is_map(payload) do
+    with {:ok, run_id} <- fetch_required_field(payload, :run_id),
+         {:ok, recorded_at_unix} <- fetch_required_field(payload, :recorded_at_unix),
+         {:ok, signal} <- fetch_required_field(payload, :signal) do
+      {:ok,
+       %{
+         "run_id" => run_id,
+         "recorded_at_unix" => recorded_at_unix,
+         "signal" => signal
+       }}
+    end
+  end
+
+  defp extract_integrity_content(_payload), do: {:error, :invalid_artifact_payload}
+
+  defp fetch_required_field(payload, key) do
+    case fetch_field(payload, key) do
+      nil -> {:error, :invalid_artifact_payload}
+      value -> {:ok, value}
+    end
+  end
+
+  defp fetch_integrity(payload) do
+    case fetch_field(payload, :integrity) do
+      integrity when is_map(integrity) -> {:ok, integrity}
+      _ -> {:error, :invalid_artifact_attestation}
+    end
+  end
+
+  defp verify_content_sha256(content, integrity) do
+    expected = integrity_content_sha256(content)
+
+    case fetch_field(integrity, :content_sha256) do
+      ^expected -> :ok
+      _ -> {:error, :invalid_artifact_attestation}
+    end
+  end
+
+  defp verify_signature(content, integrity, opts) do
+    signer_key_id = fetch_field(integrity, :signer_key_id)
+    signature = fetch_field(integrity, :signature)
+
+    cond do
+      signer_key_id == "unsigned" ->
+        if is_nil(signature) or signature == "" do
+          :ok
+        else
+          {:error, :invalid_artifact_attestation}
+        end
+
+      not is_binary(signer_key_id) or String.trim(signer_key_id) == "" ->
+        {:error, :invalid_artifact_attestation}
+
+      true ->
+        with {:ok, signing_key} <- attestation_signing_key(opts),
+             ^signer_key_id <- attestation_key_id(signing_key),
+             true <- is_binary(signature) and String.trim(signature) != "",
+             true <- secure_compare(signature, maybe_sign_integrity_content(content, signing_key)) do
+          :ok
+        else
+          _ -> {:error, :invalid_artifact_attestation}
+        end
+    end
+  end
+
+  defp attestation_signing_key(opts) do
+    key =
+      Keyword.get(opts, :attestation_signing_key) ||
+        Application.get_env(:mom, :incident_to_pr_artifact_signing_key)
+
+    case normalize_attestation_signing_key(key) do
+      nil -> {:error, :invalid_artifact_attestation}
+      signing_key -> {:ok, signing_key}
+    end
+  end
+
+  defp normalize_attestation_signing_key(signing_key)
+       when is_binary(signing_key) do
+    trimmed = String.trim(signing_key)
+    if trimmed == "", do: nil, else: trimmed
+  end
+
+  defp normalize_attestation_signing_key(_), do: nil
+
+  defp integrity_content(payload) do
+    %{
+      "run_id" => fetch_field(payload, :run_id),
+      "recorded_at_unix" => fetch_field(payload, :recorded_at_unix),
+      "signal" => fetch_field(payload, :signal)
+    }
+  end
+
+  defp integrity_content_sha256(content) do
+    content
+    |> normalize_integrity_term()
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp maybe_sign_integrity_content(_content, nil), do: nil
+
+  defp maybe_sign_integrity_content(content, signing_key) do
+    content
+    |> normalize_integrity_term()
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.mac(:hmac, :sha256, signing_key, &1))
+    |> Base.encode64()
+  end
+
+  defp attestation_key_id(nil), do: "unsigned"
+
+  defp attestation_key_id(signing_key) do
+    signing_key
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> then(&("sha256:" <> &1))
+  end
+
+  defp secure_compare(left, right)
+       when is_binary(left) and is_binary(right) and byte_size(left) == byte_size(right),
+       do: :crypto.hash_equals(left, right)
+
+  defp secure_compare(_left, _right), do: false
+
+  defp normalize_integrity_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} ->
+      {normalize_integrity_key(key), normalize_integrity_term(nested)}
+    end)
+    |> Enum.sort_by(fn {key, _nested} -> key end)
+  end
+
+  defp normalize_integrity_term(value) when is_list(value),
+    do: Enum.map(value, &normalize_integrity_term/1)
+
+  defp normalize_integrity_term(value) when is_atom(value) and value not in [true, false, nil],
+    do: Atom.to_string(value)
+
+  defp normalize_integrity_term(value), do: value
+
+  defp normalize_integrity_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_integrity_key(key), do: key
 
   defp write_immutable(path, encoded) do
     case File.write(path, encoded <> "\n", [:write, :exclusive]) do

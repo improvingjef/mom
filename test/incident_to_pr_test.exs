@@ -21,6 +21,7 @@ defmodule Mom.IncidentToPrTest do
     assert signal.branch == "mom/1"
     assert signal.missing_steps == []
     assert signal.out_of_order_steps == []
+
     assert signal.stop_point_classification == %{
              detect: :passed,
              patch_apply: :passed,
@@ -28,6 +29,7 @@ defmodule Mom.IncidentToPrTest do
              push: :passed,
              pr_create: :passed
            }
+
     assert signal.failure_stop_point == nil
   end
 
@@ -76,7 +78,8 @@ defmodule Mom.IncidentToPrTest do
          {[:mom, :audit, :git_patch_applied],
           %{repo: "acme/mom", actor_id: "bot", workdir: "/tmp/w"}},
          {[:mom, :audit, :git_tests_run], %{repo: "acme/mom", actor_id: "bot", status: "ok"}},
-         {[:mom, :audit, :git_branch_pushed], %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
+         {[:mom, :audit, :git_branch_pushed],
+          %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
          {[:mom, :audit, :github_pr_created],
           %{repo: "acme/mom", actor_id: "bot", branch: "mom/1", pr_number: 11}}
        ]},
@@ -86,7 +89,8 @@ defmodule Mom.IncidentToPrTest do
           %{repo: "acme/mom", actor_id: "bot", issue_number: 7}},
          {[:mom, :audit, :git_patch_failed], %{repo: "acme/mom", actor_id: "bot"}},
          {[:mom, :audit, :git_tests_run], %{repo: "acme/mom", actor_id: "bot", status: "ok"}},
-         {[:mom, :audit, :git_branch_pushed], %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
+         {[:mom, :audit, :git_branch_pushed],
+          %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
          {[:mom, :audit, :github_pr_created],
           %{repo: "acme/mom", actor_id: "bot", branch: "mom/1", pr_number: 11}}
        ]},
@@ -97,7 +101,8 @@ defmodule Mom.IncidentToPrTest do
          {[:mom, :audit, :git_patch_applied],
           %{repo: "acme/mom", actor_id: "bot", workdir: "/tmp/w"}},
          {[:mom, :audit, :git_tests_run], %{repo: "acme/mom", actor_id: "bot", status: "error"}},
-         {[:mom, :audit, :git_branch_pushed], %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
+         {[:mom, :audit, :git_branch_pushed],
+          %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
          {[:mom, :audit, :github_pr_created],
           %{repo: "acme/mom", actor_id: "bot", branch: "mom/1", pr_number: 11}}
        ]},
@@ -119,7 +124,8 @@ defmodule Mom.IncidentToPrTest do
          {[:mom, :audit, :git_patch_applied],
           %{repo: "acme/mom", actor_id: "bot", workdir: "/tmp/w"}},
          {[:mom, :audit, :git_tests_run], %{repo: "acme/mom", actor_id: "bot", status: "ok"}},
-         {[:mom, :audit, :git_branch_pushed], %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
+         {[:mom, :audit, :git_branch_pushed],
+          %{repo: "acme/mom", actor_id: "bot", branch: "mom/1"}},
          {[:mom, :audit, :github_pr_failed], %{repo: "acme/mom", actor_id: "bot"}}
        ]}
     ]
@@ -133,7 +139,10 @@ defmodule Mom.IncidentToPrTest do
 
   test "persists incident-to-PR stop-point summary artifact for a run id" do
     artifact_dir =
-      Path.join(System.tmp_dir!(), "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}")
+      Path.join(
+        System.tmp_dir!(),
+        "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}"
+      )
 
     on_exit(fn -> File.rm_rf!(artifact_dir) end)
 
@@ -156,7 +165,10 @@ defmodule Mom.IncidentToPrTest do
     }
 
     assert {:ok, path} =
-             IncidentToPr.persist_summary_artifact(signal, run_id: "run-123", artifact_dir: artifact_dir)
+             IncidentToPr.persist_summary_artifact(signal,
+               run_id: "run-123",
+               artifact_dir: artifact_dir
+             )
 
     assert File.exists?(path)
     assert String.ends_with?(path, "run-123.json")
@@ -174,7 +186,10 @@ defmodule Mom.IncidentToPrTest do
 
   test "enforces immutability by rejecting overwrite for existing run artifact" do
     artifact_dir =
-      Path.join(System.tmp_dir!(), "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}")
+      Path.join(
+        System.tmp_dir!(),
+        "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}"
+      )
 
     on_exit(fn -> File.rm_rf!(artifact_dir) end)
 
@@ -197,10 +212,115 @@ defmodule Mom.IncidentToPrTest do
     }
 
     assert {:ok, _path} =
-             IncidentToPr.persist_summary_artifact(signal, run_id: "immutable-run", artifact_dir: artifact_dir)
+             IncidentToPr.persist_summary_artifact(signal,
+               run_id: "immutable-run",
+               artifact_dir: artifact_dir
+             )
 
     assert {:error, :already_exists} =
-             IncidentToPr.persist_summary_artifact(signal, run_id: "immutable-run", artifact_dir: artifact_dir)
+             IncidentToPr.persist_summary_artifact(signal,
+               run_id: "immutable-run",
+               artifact_dir: artifact_dir
+             )
+  end
+
+  test "persists signed integrity attestation and verifies replay payload" do
+    artifact_dir =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}"
+      )
+
+    on_exit(fn -> File.rm_rf!(artifact_dir) end)
+
+    signing_key = "incident-to-pr-signing-key"
+
+    signal = %{
+      success: true,
+      missing_steps: [],
+      out_of_order_steps: [],
+      tests_status_ok: true,
+      branch_matches: true,
+      branch: "mom/1",
+      pr_number: 11,
+      pr_url: "https://example/pull/11",
+      stop_point_classification: %{
+        detect: :passed,
+        patch_apply: :passed,
+        tests: :passed,
+        push: :passed,
+        pr_create: :passed
+      },
+      failure_stop_point: nil
+    }
+
+    assert {:ok, path} =
+             IncidentToPr.persist_summary_artifact(
+               signal,
+               run_id: "signed-run",
+               artifact_dir: artifact_dir,
+               attestation_signing_key: signing_key
+             )
+
+    assert {:ok, replayed_payload} =
+             IncidentToPr.replay_summary_artifact(path,
+               attestation_signing_key: signing_key,
+               verify_attestation: true
+             )
+
+    assert replayed_payload["integrity"]["content_sha256"] != nil
+    assert replayed_payload["integrity"]["signature"] != nil
+    assert replayed_payload["integrity"]["signer_key_id"] =~ "sha256:"
+  end
+
+  test "rejects replay when signed summary artifact is tampered" do
+    artifact_dir =
+      Path.join(
+        System.tmp_dir!(),
+        "mom-incident-to-pr-artifacts-#{System.unique_integer([:positive])}"
+      )
+
+    on_exit(fn -> File.rm_rf!(artifact_dir) end)
+
+    signing_key = "incident-to-pr-signing-key"
+
+    signal = %{
+      success: true,
+      missing_steps: [],
+      out_of_order_steps: [],
+      tests_status_ok: true,
+      branch_matches: true,
+      branch: "mom/1",
+      pr_number: 11,
+      pr_url: "https://example/pull/11",
+      stop_point_classification: %{
+        detect: :passed,
+        patch_apply: :passed,
+        tests: :passed,
+        push: :passed,
+        pr_create: :passed
+      },
+      failure_stop_point: nil
+    }
+
+    assert {:ok, path} =
+             IncidentToPr.persist_summary_artifact(
+               signal,
+               run_id: "tampered-run",
+               artifact_dir: artifact_dir,
+               attestation_signing_key: signing_key
+             )
+
+    payload = path |> File.read!() |> Jason.decode!()
+
+    tampered = put_in(payload, ["signal", "pr_url"], "https://example/pull/999")
+    File.write!(path, Jason.encode!(tampered) <> "\n")
+
+    assert {:error, :invalid_artifact_attestation} =
+             IncidentToPr.replay_summary_artifact(path,
+               attestation_signing_key: signing_key,
+               verify_attestation: true
+             )
   end
 
   test "validates recent successful canary evidence with push and PR URL proof" do
@@ -212,24 +332,28 @@ defmodule Mom.IncidentToPrTest do
 
     on_exit(fn -> File.rm_rf!(artifact_path) end)
 
+    signing_key = "incident-to-pr-signing-key"
+
     payload = %{
-      run_id: "canary-123",
-      recorded_at_unix: 1_000,
-      signal: %{
-        success: true,
-        pr_number: 42,
-        pr_url: "https://example/pull/42",
-        stop_point_classification: %{push: :passed, pr_create: :passed}
+      "run_id" => "canary-123",
+      "recorded_at_unix" => 1_000,
+      "signal" => %{
+        "success" => true,
+        "pr_number" => 42,
+        "pr_url" => "https://example/pull/42",
+        "stop_point_classification" => %{"push" => "passed", "pr_create" => "passed"}
       }
     }
 
-    File.write!(artifact_path, Jason.encode!(payload) <> "\n")
+    write_signed_artifact!(artifact_path, payload, signing_key)
 
     assert {:ok, evidence} =
              IncidentToPr.validate_recent_canary_run(
                artifact_path: artifact_path,
                now_unix: 1_200,
-               max_age_seconds: 600
+               max_age_seconds: 600,
+               attestation_signing_key: signing_key,
+               verify_attestation: true
              )
 
     assert evidence.run_id == "canary-123"
@@ -249,48 +373,102 @@ defmodule Mom.IncidentToPrTest do
     File.mkdir_p!(base_dir)
 
     stale_path = Path.join(base_dir, "stale.json")
+    signing_key = "incident-to-pr-signing-key"
 
-    File.write!(
+    write_signed_artifact!(
       stale_path,
-      Jason.encode!(%{
-        run_id: "old",
-        recorded_at_unix: 10,
-        signal: %{
-          success: true,
-          pr_number: 9,
-          pr_url: "https://example/pull/9",
-          stop_point_classification: %{push: :passed, pr_create: :passed}
+      %{
+        "run_id" => "old",
+        "recorded_at_unix" => 10,
+        "signal" => %{
+          "success" => true,
+          "pr_number" => 9,
+          "pr_url" => "https://example/pull/9",
+          "stop_point_classification" => %{"push" => "passed", "pr_create" => "passed"}
         }
-      }) <> "\n"
+      },
+      signing_key
     )
 
     assert {:error, {:stale_canary_evidence, %{age_seconds: 990, max_age_seconds: 300}}} =
              IncidentToPr.validate_recent_canary_run(
                artifact_path: stale_path,
                now_unix: 1_000,
-               max_age_seconds: 300
+               max_age_seconds: 300,
+               attestation_signing_key: signing_key,
+               verify_attestation: true
              )
 
     incomplete_path = Path.join(base_dir, "incomplete.json")
 
-    File.write!(
+    write_signed_artifact!(
       incomplete_path,
-      Jason.encode!(%{
-        run_id: "incomplete",
-        recorded_at_unix: 1_000,
-        signal: %{
-          success: true,
-          pr_number: 9,
-          stop_point_classification: %{push: :passed, pr_create: :passed}
+      %{
+        "run_id" => "incomplete",
+        "recorded_at_unix" => 1_000,
+        "signal" => %{
+          "success" => true,
+          "pr_number" => 9,
+          "stop_point_classification" => %{"push" => "passed", "pr_create" => "passed"}
         }
-      }) <> "\n"
+      },
+      signing_key
     )
 
     assert {:error, :missing_pr_url_evidence} =
              IncidentToPr.validate_recent_canary_run(
                artifact_path: incomplete_path,
                now_unix: 1_100,
-               max_age_seconds: 600
+               max_age_seconds: 600,
+               attestation_signing_key: signing_key,
+               verify_attestation: true
              )
   end
+
+  defp write_signed_artifact!(path, payload, signing_key) do
+    encoded_content =
+      payload
+      |> normalize_integrity_term()
+      |> :erlang.term_to_binary()
+
+    content_sha256 = :crypto.hash(:sha256, encoded_content) |> Base.encode16(case: :lower)
+
+    key_id =
+      signing_key
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+      |> then(&("sha256:" <> &1))
+
+    signature =
+      :crypto.mac(:hmac, :sha256, signing_key, encoded_content)
+      |> Base.encode64()
+
+    signed_payload =
+      Map.put(payload, "integrity", %{
+        "content_sha256" => content_sha256,
+        "signer_key_id" => key_id,
+        "signature" => signature
+      })
+
+    File.write!(path, Jason.encode!(signed_payload) <> "\n")
+  end
+
+  defp normalize_integrity_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} ->
+      {normalize_integrity_key(key), normalize_integrity_term(nested)}
+    end)
+    |> Enum.sort_by(fn {key, _nested} -> key end)
+  end
+
+  defp normalize_integrity_term(value) when is_list(value),
+    do: Enum.map(value, &normalize_integrity_term/1)
+
+  defp normalize_integrity_term(value) when is_atom(value) and value not in [true, false, nil],
+    do: Atom.to_string(value)
+
+  defp normalize_integrity_term(value), do: value
+
+  defp normalize_integrity_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_integrity_key(key), do: key
 end

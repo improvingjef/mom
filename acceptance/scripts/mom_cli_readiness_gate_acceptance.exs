@@ -41,19 +41,25 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
       )
 
     try do
-      File.write!(
-        canary_artifact_path,
-        Jason.encode!(%{
-          run_id: "acceptance-canary-42",
-          recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
-          signal: %{
-            success: true,
-            pr_number: 42,
-            pr_url: "https://example/pull/42",
-            stop_point_classification: %{push: :passed, pr_create: :passed}
-          }
-        }) <> "\n"
-      )
+      payload = %{
+        "run_id" => "acceptance-canary-42",
+        "recorded_at_unix" => DateTime.utc_now() |> DateTime.to_unix(),
+        "signal" => %{
+          "success" => true,
+          "pr_number" => 42,
+          "pr_url" => "https://example/pull/42",
+          "stop_point_classification" => %{"push" => "passed", "pr_create" => "passed"}
+        }
+      }
+
+      signed_payload =
+        Map.put(payload, "integrity", %{
+          "content_sha256" => integrity_content_sha256(payload),
+          "signer_key_id" => "unsigned",
+          "signature" => nil
+        })
+
+      File.write!(canary_artifact_path, Jason.encode!(signed_payload) <> "\n")
 
       approved_result =
         Mix.Tasks.Mom.parse_args([
@@ -126,6 +132,30 @@ defmodule Mom.Acceptance.MomCliReadinessGateScript do
   defp normalize(term) when is_list(term), do: Enum.map(term, &normalize/1)
   defp normalize(term) when is_atom(term), do: Atom.to_string(term)
   defp normalize(term), do: term
+
+  defp integrity_content_sha256(content) do
+    content
+    |> normalize_integrity_term()
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp normalize_integrity_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} -> {normalize_integrity_key(key), normalize_integrity_term(nested)} end)
+    |> Enum.sort_by(fn {key, _nested} -> key end)
+  end
+
+  defp normalize_integrity_term(value) when is_list(value), do: Enum.map(value, &normalize_integrity_term/1)
+
+  defp normalize_integrity_term(value) when is_atom(value) and value not in [true, false, nil],
+    do: Atom.to_string(value)
+
+  defp normalize_integrity_term(value), do: value
+
+  defp normalize_integrity_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_integrity_key(key), do: key
 end
 
 Mom.Acceptance.MomCliReadinessGateScript.run()

@@ -566,8 +566,11 @@ defmodule Mom.ConfigTest do
     first_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(1, env))
     second_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(2, env))
 
-    observed_handler_id = "mom-config-temp-worktree-observed-#{System.unique_integer([:positive])}"
+    observed_handler_id =
+      "mom-config-temp-worktree-observed-#{System.unique_integer([:positive])}"
+
     alert_handler_id = "mom-config-temp-worktree-alert-#{System.unique_integer([:positive])}"
+
     backpressure_alert_handler_id =
       "mom-config-temp-worktree-backpressure-alert-#{System.unique_integer([:positive])}"
 
@@ -654,6 +657,7 @@ defmodule Mom.ConfigTest do
     second_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(2, env))
     third_dir = Path.join(System.tmp_dir!(), Isolation.tmp_workdir_basename(3, env))
     blocked_handler_id = "mom-config-temp-worktree-blocked-#{System.unique_integer([:positive])}"
+
     backpressure_alert_handler_id =
       "mom-config-temp-worktree-backpressure-blocked-#{System.unique_integer([:positive])}"
 
@@ -728,7 +732,10 @@ defmodule Mom.ConfigTest do
       |> Enum.sort()
 
     assert statuses == [:alert, :blocked]
-    blocked_backpressure_alert = Enum.find([first_backpressure_alert, second_backpressure_alert], &(&1.status == :blocked))
+
+    blocked_backpressure_alert =
+      Enum.find([first_backpressure_alert, second_backpressure_alert], &(&1.status == :blocked))
+
     assert blocked_backpressure_alert.active_worktrees == active_count
     assert blocked_backpressure_alert.max_active_worktrees == max_active
   end
@@ -1303,6 +1310,18 @@ defmodule Mom.ConfigTest do
 
   test "requires recent incident-to-PR canary evidence for production_hardened automated PR flows" do
     workdir = isolated_workdir_fixture()
+    signing_key = "incident-to-pr-canary-signing-key"
+    previous_signing_key = Application.get_env(:mom, :incident_to_pr_artifact_signing_key)
+
+    on_exit(fn ->
+      if is_nil(previous_signing_key) do
+        Application.delete_env(:mom, :incident_to_pr_artifact_signing_key)
+      else
+        Application.put_env(:mom, :incident_to_pr_artifact_signing_key, previous_signing_key)
+      end
+    end)
+
+    Application.put_env(:mom, :incident_to_pr_artifact_signing_key, signing_key)
 
     assert {:error,
             "release gate requires recent successful incident-to-PR canary evidence with push + PR URL proof"} =
@@ -1328,18 +1347,19 @@ defmodule Mom.ConfigTest do
 
     on_exit(fn -> File.rm_rf!(artifact_path) end)
 
-    File.write!(
+    write_signed_canary_artifact!(
       artifact_path,
-      Jason.encode!(%{
-        run_id: "canary-42",
-        recorded_at_unix: DateTime.utc_now() |> DateTime.to_unix(),
-        signal: %{
-          success: true,
-          pr_number: 42,
-          pr_url: "https://example/pull/42",
-          stop_point_classification: %{push: :passed, pr_create: :passed}
+      %{
+        "run_id" => "canary-42",
+        "recorded_at_unix" => DateTime.utc_now() |> DateTime.to_unix(),
+        "signal" => %{
+          "success" => true,
+          "pr_number" => 42,
+          "pr_url" => "https://example/pull/42",
+          "stop_point_classification" => %{"push" => "passed", "pr_create" => "passed"}
         }
-      }) <> "\n"
+      },
+      signing_key
     )
 
     assert {:ok, config} =
@@ -1354,6 +1374,7 @@ defmodule Mom.ConfigTest do
                actor_id: "mom-app[bot]",
                allowed_actor_ids: ["mom-app[bot]"],
                github_credential_scopes: ["contents", "pull_requests", "issues"],
+               github_live_permission_verification: false,
                readiness_gate_approved: true,
                incident_to_pr_canary_artifact_path: artifact_path,
                incident_to_pr_canary_max_age_seconds: 600
@@ -1451,4 +1472,51 @@ defmodule Mom.ConfigTest do
     datetime = :calendar.system_time_to_local_time(unix_seconds, :second)
     :ok = :file.change_time(String.to_charlist(path), datetime)
   end
+
+  defp write_signed_canary_artifact!(path, payload, signing_key) do
+    encoded_content =
+      payload
+      |> normalize_integrity_term()
+      |> :erlang.term_to_binary()
+
+    content_sha256 = :crypto.hash(:sha256, encoded_content) |> Base.encode16(case: :lower)
+
+    key_id =
+      signing_key
+      |> then(&:crypto.hash(:sha256, &1))
+      |> Base.encode16(case: :lower)
+      |> then(&("sha256:" <> &1))
+
+    signature =
+      :crypto.mac(:hmac, :sha256, signing_key, encoded_content)
+      |> Base.encode64()
+
+    signed_payload =
+      Map.put(payload, "integrity", %{
+        "content_sha256" => content_sha256,
+        "signer_key_id" => key_id,
+        "signature" => signature
+      })
+
+    File.write!(path, Jason.encode!(signed_payload) <> "\n")
+  end
+
+  defp normalize_integrity_term(value) when is_map(value) do
+    value
+    |> Enum.map(fn {key, nested} ->
+      {normalize_integrity_key(key), normalize_integrity_term(nested)}
+    end)
+    |> Enum.sort_by(fn {key, _nested} -> key end)
+  end
+
+  defp normalize_integrity_term(value) when is_list(value),
+    do: Enum.map(value, &normalize_integrity_term/1)
+
+  defp normalize_integrity_term(value) when is_atom(value) and value not in [true, false, nil],
+    do: Atom.to_string(value)
+
+  defp normalize_integrity_term(value), do: value
+
+  defp normalize_integrity_key(key) when is_atom(key), do: Atom.to_string(key)
+  defp normalize_integrity_key(key), do: key
 end

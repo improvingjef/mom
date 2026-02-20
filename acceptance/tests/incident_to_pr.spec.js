@@ -49,3 +49,14 @@ test("incident-to-PR persists immutable stop-point summary artifact per run", as
   expect(result.payload.signal.failure_stop_point).toBe("tests");
   expect(result.payload.signal.stop_point_classification.tests).toBe("failed");
 });
+
+test("incident-to-PR replay rejects signed summary artifact tampering", async () => {
+  const { result } = runAcceptanceScript(
+    "acceptance/scripts/incident_to_pr_integrity_attestation_acceptance.exs"
+  );
+
+  expect(result.persisted).toBeTruthy();
+  expect(result.integrity_present).toBeTruthy();
+  expect(result.replay_verified).toBeTruthy();
+  expect(result.tamper_rejected).toBeTruthy();
+});

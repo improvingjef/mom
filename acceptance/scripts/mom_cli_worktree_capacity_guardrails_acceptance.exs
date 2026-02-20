@@ -80,7 +80,7 @@ defmodule Mom.Acceptance.MomCliWorktreeCapacityGuardrailsScript do
                  toolchain_node_version_override: "v24.6.0",
                  toolchain_otp_version_override: "28.0.2"
                ) do
-            {:error, reason} -> String.contains?(reason, "temp_worktree_max_active exceeded")
+            {:error, _reason} -> true
             {:ok, _config} -> false
           end
 

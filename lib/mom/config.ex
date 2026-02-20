@@ -394,6 +394,7 @@ defmodule Mom.Config do
                  execution_profile,
                  incident_to_pr_canary_artifact_path,
                  incident_to_pr_canary_max_age_seconds,
+                 startup_attestation_signing_key,
                  actor_id,
                  github_base_branch,
                  protected_branches
@@ -469,8 +470,7 @@ defmodule Mom.Config do
              queue_max_size: queue_max_size,
              tenant_queue_max_size: tenant_queue_max_size,
              temp_worktree_max_active: temp_worktree_max_active,
-             temp_worktree_alert_utilization_threshold:
-               temp_worktree_alert_utilization_threshold,
+             temp_worktree_alert_utilization_threshold: temp_worktree_alert_utilization_threshold,
              job_timeout_ms: job_timeout_ms,
              execution_watchdog_enabled: execution_watchdog_enabled,
              execution_watchdog_orphan_grace_ms: execution_watchdog_orphan_grace_ms,
@@ -1588,13 +1588,20 @@ defmodule Mom.Config do
   end
 
   defp parse_incident_to_pr_canary_artifact_path(opts, runtime) do
-    case Keyword.get(opts, :incident_to_pr_canary_artifact_path, runtime[:incident_to_pr_canary_artifact_path]) do
+    case Keyword.get(
+           opts,
+           :incident_to_pr_canary_artifact_path,
+           runtime[:incident_to_pr_canary_artifact_path]
+         ) do
       nil ->
         {:ok, nil}
 
       path when is_binary(path) ->
         trimmed = String.trim(path)
-        if trimmed == "", do: {:error, "incident_to_pr_canary_artifact_path must not be empty"}, else: {:ok, trimmed}
+
+        if trimmed == "",
+          do: {:error, "incident_to_pr_canary_artifact_path must not be empty"},
+          else: {:ok, trimmed}
 
       _other ->
         {:error, "incident_to_pr_canary_artifact_path must be a string"}
@@ -1602,7 +1609,13 @@ defmodule Mom.Config do
   end
 
   defp parse_incident_to_pr_canary_max_age_seconds(opts, runtime) do
-    case parse_int(Keyword.get(opts, :incident_to_pr_canary_max_age_seconds, runtime[:incident_to_pr_canary_max_age_seconds])) do
+    case parse_int(
+           Keyword.get(
+             opts,
+             :incident_to_pr_canary_max_age_seconds,
+             runtime[:incident_to_pr_canary_max_age_seconds]
+           )
+         ) do
       nil -> {:ok, 86_400}
       value when is_integer(value) and value > 0 -> {:ok, value}
       _ -> {:error, "incident_to_pr_canary_max_age_seconds must be a positive integer"}
@@ -1783,6 +1796,7 @@ defmodule Mom.Config do
          execution_profile,
          incident_to_pr_canary_artifact_path,
          incident_to_pr_canary_max_age_seconds,
+         startup_attestation_signing_key,
          actor_id,
          github_base_branch,
          protected_branches
@@ -1806,7 +1820,9 @@ defmodule Mom.Config do
         execution_profile == :production_hardened ->
           case Mom.IncidentToPr.validate_recent_canary_run(
                  artifact_path: incident_to_pr_canary_artifact_path,
-                 max_age_seconds: incident_to_pr_canary_max_age_seconds
+                 max_age_seconds: incident_to_pr_canary_max_age_seconds,
+                 verify_attestation: true,
+                 attestation_signing_key: startup_attestation_signing_key
                ) do
             {:ok, evidence} ->
               :ok =
