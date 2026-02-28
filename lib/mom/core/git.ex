@@ -42,15 +42,15 @@ defmodule Mom.Git do
   @spec run_tests(String.t(), Config.t()) :: :ok | {:error, term()}
   def run_tests(workdir, %Config{} = config) do
     case SpendLimiter.allow_spend?(
-           config.repo,
+           config.runtime.repo,
            :test_execution,
-           config.test_run_cost_cents,
-           config.test_spend_cap_cents_per_hour
+           config.diagnostics.test_run_cost_cents,
+           config.diagnostics.test_spend_cap_cents_per_hour
          ) do
       true ->
-        run_tests_for_profile(workdir, config.test_command_profile,
-          actor_id: config.actor_id,
-          repo: config.github_repo || config.repo
+        run_tests_for_profile(workdir, config.diagnostics.test_command_profile,
+          actor_id: config.governance.actor_id,
+          repo: config.governance.github_repo || config.runtime.repo
         )
 
       false ->

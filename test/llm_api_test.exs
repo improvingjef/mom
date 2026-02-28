@@ -14,10 +14,16 @@ defmodule Mom.LLMApiTest do
 
     config = %{
       base_config
-      | llm_provider: :api_openai,
-        llm_api_key: "key",
-        llm_api_url: "https://proxy.invalid/v1/chat/completions",
-        allowed_egress_hosts: ["api.github.com", "api.openai.com"]
+      | llm: %{
+          base_config.llm
+          | provider: :api_openai,
+            api_key: "key",
+            api_url: "https://proxy.invalid/v1/chat/completions"
+        },
+        governance: %{
+          base_config.governance
+          | allowed_egress_hosts: ["api.github.com", "api.openai.com"]
+        }
     }
 
     context = %{report: %{}, issues: [], instructions: "say ok"}

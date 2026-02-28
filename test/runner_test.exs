@@ -162,11 +162,21 @@ defmodule Mom.RunnerTest do
         )
 
       true ->
-        do_collect_burst_results_receive(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)
+        do_collect_burst_results_receive(
+          error_seen,
+          diagnostics_seen,
+          expected_error_ids,
+          deadline_ms
+        )
     end
   end
 
-  defp do_collect_burst_results_receive(error_seen, diagnostics_seen, expected_error_ids, deadline_ms) do
+  defp do_collect_burst_results_receive(
+         error_seen,
+         diagnostics_seen,
+         expected_error_ids,
+         deadline_ms
+       ) do
     receive do
       {:worker_job, :error_event, id} ->
         do_collect_burst_results(
@@ -177,7 +187,12 @@ defmodule Mom.RunnerTest do
         )
 
       {:worker_job, :diagnostics_event, _seq} ->
-        do_collect_burst_results(error_seen, diagnostics_seen + 1, expected_error_ids, deadline_ms)
+        do_collect_burst_results(
+          error_seen,
+          diagnostics_seen + 1,
+          expected_error_ids,
+          deadline_ms
+        )
 
       _other ->
         do_collect_burst_results(error_seen, diagnostics_seen, expected_error_ids, deadline_ms)

@@ -32,7 +32,9 @@ defmodule Mix.Tasks.Mom.HarnessTaskTest do
     assert opts.branch_protection_branch == "main"
     assert opts.required_checks == ["ci/exunit", "ci/playwright"]
     assert opts.min_approvals == 1
-    assert opts.branch_protection_evidence_path == "acceptance/harness_branch_protection_evidence.json"
+
+    assert opts.branch_protection_evidence_path ==
+             "acceptance/harness_branch_protection_evidence.json"
   end
 
   test "parse_args defaults traceability path" do
@@ -50,7 +52,9 @@ defmodule Mix.Tasks.Mom.HarnessTaskTest do
     assert opts.branch_protection_branch == "main"
     assert opts.required_checks == ["ci/exunit", "ci/playwright"]
     assert opts.min_approvals == 1
-    assert opts.branch_protection_evidence_path == "acceptance/harness_branch_protection_evidence.json"
+
+    assert opts.branch_protection_evidence_path ==
+             "acceptance/harness_branch_protection_evidence.json"
   end
 
   test "parse_args requires repo" do

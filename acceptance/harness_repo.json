@@ -1,18 +1,18 @@
 {
   "url": "https://github.com/improvingjef/mom-fragile-phoenix-harness",
-  "name_with_owner": "improvingjef/mom-fragile-phoenix-harness",
-  "is_private": true,
-  "visibility": "PRIVATE",
   "baseline_error_path": "priv/replay/error_path.ex",
   "baseline_diagnostics_path": "priv/replay/diagnostics_path.ex",
   "traceability_path": "acceptance/harness_traceability.json",
-  "traceability_mapped_capability_count": 10,
   "branch_protection_branch": "main",
+  "branch_protection_evidence_path": "acceptance/harness_branch_protection_evidence.json",
+  "name_with_owner": "improvingjef/mom-fragile-phoenix-harness",
+  "recorded_at": "2026-02-20T00:52:37.410520Z",
+  "traceability_mapped_capability_count": 10,
   "branch_protection_required_checks": [
     "ci/exunit",
     "ci/playwright"
   ],
   "branch_protection_min_approvals": 1,
-  "branch_protection_evidence_path": "acceptance/harness_branch_protection_evidence.json",
-  "recorded_at": "2026-02-19T22:01:42.959142Z"
+  "is_private": true,
+  "visibility": "PRIVATE"
 }

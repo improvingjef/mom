@@ -49,7 +49,8 @@ defmodule Mix.Tasks.Mom.Stress do
     {opts, _rest, _invalid} = OptionParser.parse(args, strict: option_parser_spec())
 
     with {:ok, events} <- parse_pos_int(opts, :events, @default_events),
-         {:ok, max_concurrency} <- parse_non_neg_int(opts, :max_concurrency, @default_max_concurrency),
+         {:ok, max_concurrency} <-
+           parse_non_neg_int(opts, :max_concurrency, @default_max_concurrency),
          {:ok, queue_max_size} <- parse_pos_int(opts, :queue_max_size, @default_queue_max_size),
          {:ok, overflow_policy} <- parse_overflow_policy(opts),
          {:ok, work_ms} <- parse_non_neg_int(opts, :work_ms, @default_work_ms),

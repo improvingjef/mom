@@ -201,7 +201,10 @@ defmodule Mom.GitHubAuditTest do
         allowed_actor_ids: ["machine-bot"]
       )
 
-    config = %{base_config | allowed_egress_hosts: ["api.openai.com"]}
+    config = %{
+      base_config
+      | governance: %{base_config.governance | allowed_egress_hosts: ["api.openai.com"]}
+    }
 
     assert {:error, {:egress_blocked, "api.github.com"}} =
              GitHub.create_issue(config, "title", "body")

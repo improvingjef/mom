@@ -51,8 +51,11 @@ defmodule Mom.Audit do
 
   defp apply_pii_handling_policy(metadata) do
     case pii_handling_policy() do
-      :redact -> metadata
-      :drop -> drop_sensitive_keys(metadata, MapSet.new(Enum.map(redact_keys(), &String.downcase/1)))
+      :redact ->
+        metadata
+
+      :drop ->
+        drop_sensitive_keys(metadata, MapSet.new(Enum.map(redact_keys(), &String.downcase/1)))
     end
   end
 
@@ -146,7 +149,10 @@ defmodule Mom.Audit do
   end
 
   defp stringify_keys(list) when is_list(list), do: Enum.map(list, &stringify_keys/1)
-  defp stringify_keys(tuple) when is_tuple(tuple), do: tuple |> Tuple.to_list() |> Enum.map(&stringify_keys/1)
+
+  defp stringify_keys(tuple) when is_tuple(tuple),
+    do: tuple |> Tuple.to_list() |> Enum.map(&stringify_keys/1)
+
   defp stringify_keys(value), do: value
 
   defp soc2_evidence_path do

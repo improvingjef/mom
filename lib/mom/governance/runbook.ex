@@ -6,7 +6,8 @@ defmodule Mom.Runbook do
   @required_sections [
     "Backup and Restore",
     "Credential Revocation Drill",
-    "Failover Steps"
+    "Failover Steps",
+    "Temp Worktree Saturation Response"
   ]
 
   @spec render(String.t()) :: String.t()
@@ -39,6 +40,14 @@ defmodule Mom.Runbook do
     3. Restore durable queue snapshot and replay pending jobs with bounded concurrency.
     4. Validate GitHub/LLM connectivity, telemetry export, and alert delivery.
     5. Communicate recovery status and backlog drain ETA to stakeholders.
+
+    ## Temp Worktree Saturation Response
+
+    1. Halt new mutation scheduling and inspect `temp_worktree_capacity_alert` / `temp_worktree_capacity_blocked` audit events.
+    2. Run startup pruning with strict retention and verify stale `mom-worktree-*` directories were removed.
+    3. If capacity remains saturated, raise `temp_worktree_max_active` only with incident approval and bounded rollback window.
+    4. Validate `temp_worktree_capacity_observed` utilization drops below alert threshold before resuming traffic.
+    5. Record root cause, disk metrics, and preventative retention tuning in the incident report.
     """
     |> String.trim()
     |> Kernel.<>("\n")

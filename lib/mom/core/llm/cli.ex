@@ -4,7 +4,7 @@ defmodule Mom.LLM.CLI do
   alias Mom.Config
 
   @spec call(String.t(), Config.t(), String.t()) :: {:ok, String.t()} | {:error, term()}
-  def call(prompt, %Config{llm_cmd: cmd}, default_cmd) do
+  def call(prompt, %Config{llm: %{cmd: cmd}}, default_cmd) do
     exec = cmd || default_cmd
 
     script = """

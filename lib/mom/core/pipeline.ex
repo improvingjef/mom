@@ -166,7 +166,8 @@ defmodule Mom.Pipeline do
       {nil, _active_workers} ->
         {:noreply, state}
 
-      {%{job: job, started_at: started_at, signature_key: signature_key, tenant: tenant}, active_workers} ->
+      {%{job: job, started_at: started_at, signature_key: signature_key, tenant: tenant},
+       active_workers} ->
         now = System.monotonic_time()
         measurements = %{duration: now - started_at}
 
@@ -255,7 +256,9 @@ defmodule Mom.Pipeline do
         inflight_signatures: MapSet.put(state.inflight_signatures, signature_key)
     }
 
-    metadata = common_metadata(job, tenant, next_state.queue_depth, map_size(next_state.active_workers))
+    metadata =
+      common_metadata(job, tenant, next_state.queue_depth, map_size(next_state.active_workers))
+
     telemetry(:enqueued, %{count: 1}, metadata)
     log_pipeline(:debug, "enqueued", metadata)
     {:ok, persist_queue_snapshot(next_state)}
@@ -277,7 +280,8 @@ defmodule Mom.Pipeline do
   end
 
   defp enqueue_unique(job, signature_key, tenant, %{overflow_policy: :drop_oldest} = state) do
-    {{:value, {dropped_job, dropped_signature_key, dropped_tenant}}, queue} = :queue.out(state.queue)
+    {{:value, {dropped_job, dropped_signature_key, dropped_tenant}}, queue} =
+      :queue.out(state.queue)
 
     tenant_queue_depths =
       state.tenant_queue_depths
@@ -532,7 +536,8 @@ defmodule Mom.Pipeline do
     end
   end
 
-  defp remove_first_for_tenant(entries, tenant), do: do_remove_first_for_tenant(entries, tenant, [])
+  defp remove_first_for_tenant(entries, tenant),
+    do: do_remove_first_for_tenant(entries, tenant, [])
 
   defp do_remove_first_for_tenant([], _tenant, _acc), do: :error
 
@@ -590,7 +595,12 @@ defmodule Mom.Pipeline do
   defp job_type({:diagnostics_event, _report, _issues}), do: :diagnostics_event
 
   defp common_metadata(job, tenant, queue_depth, active_workers) do
-    %{job_type: job_type(job), tenant: tenant, queue_depth: queue_depth, active_workers: active_workers}
+    %{
+      job_type: job_type(job),
+      tenant: tenant,
+      queue_depth: queue_depth,
+      active_workers: active_workers
+    }
   end
 
   defp telemetry(event, measurements, metadata) do

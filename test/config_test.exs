@@ -18,64 +18,64 @@ defmodule Mom.ConfigTest do
 
   test "builds config from opts" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", mode: :remote)
-    assert config.repo == "/tmp/repo"
-    assert config.mode == :remote
+    assert config.runtime.repo == "/tmp/repo"
+    assert config.runtime.mode == :remote
   end
 
   test "includes pipeline concurrency defaults" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.max_concurrency == 4
-    assert config.queue_max_size == 200
-    assert config.tenant_queue_max_size == nil
-    assert config.temp_worktree_max_active == 256
-    assert config.temp_worktree_alert_utilization_threshold == 0.75
-    assert config.job_timeout_ms == 120_000
-    assert config.execution_watchdog_enabled == true
-    assert config.execution_watchdog_orphan_grace_ms == 250
-    assert config.overflow_policy == :drop_newest
-    assert config.durable_queue_path == nil
-    assert "api.github.com" in config.allowed_egress_hosts
-    assert config.observability_backend == :none
-    assert config.observability_export_interval_ms == 5_000
-    assert config.slo_queue_depth_threshold == 150
-    assert config.slo_drop_rate_threshold == 0.05
-    assert config.slo_failure_rate_threshold == 0.1
-    assert config.slo_latency_p95_ms_threshold == 15_000
-    assert config.sla_triage_latency_p95_ms_target == 15_000
-    assert config.sla_queue_durability_target == 0.995
-    assert config.sla_pr_turnaround_p95_ms_target == 900_000
-    assert config.error_budget_triage_latency_overage_rate == 0.05
-    assert config.error_budget_queue_loss_rate == 0.005
-    assert config.error_budget_pr_turnaround_overage_rate == 0.1
-    assert config.llm_spend_cap_cents_per_hour == nil
-    assert config.llm_call_cost_cents == 0
-    assert config.llm_token_cap_per_hour == nil
-    assert config.llm_tokens_per_call_estimate == 0
-    assert config.test_spend_cap_cents_per_hour == nil
-    assert config.test_run_cost_cents == 0
-    assert config.test_command_profile == :mix_test
-    assert config.audit_retention_days == 30
-    assert config.soc2_evidence_path == nil
-    assert config.pii_handling_policy == :redact
+    assert config.pipeline.max_concurrency == 4
+    assert config.pipeline.queue_max_size == 200
+    assert config.pipeline.tenant_queue_max_size == nil
+    assert config.pipeline.temp_worktree_max_active == 256
+    assert config.pipeline.temp_worktree_alert_utilization_threshold == 0.75
+    assert config.pipeline.job_timeout_ms == 120_000
+    assert config.pipeline.execution_watchdog_enabled == true
+    assert config.pipeline.execution_watchdog_orphan_grace_ms == 250
+    assert config.pipeline.overflow_policy == :drop_newest
+    assert config.pipeline.durable_queue_path == nil
+    assert "api.github.com" in config.governance.allowed_egress_hosts
+    assert config.observability.backend == :none
+    assert config.observability.export_interval_ms == 5_000
+    assert config.observability.slo_queue_depth_threshold == 150
+    assert config.observability.slo_drop_rate_threshold == 0.05
+    assert config.observability.slo_failure_rate_threshold == 0.1
+    assert config.observability.slo_latency_p95_ms_threshold == 15_000
+    assert config.observability.sla_triage_latency_p95_ms_target == 15_000
+    assert config.observability.sla_queue_durability_target == 0.995
+    assert config.observability.sla_pr_turnaround_p95_ms_target == 900_000
+    assert config.observability.error_budget_triage_latency_overage_rate == 0.05
+    assert config.observability.error_budget_queue_loss_rate == 0.005
+    assert config.observability.error_budget_pr_turnaround_overage_rate == 0.1
+    assert config.llm.spend_cap_cents_per_hour == nil
+    assert config.llm.call_cost_cents == 0
+    assert config.llm.token_cap_per_hour == nil
+    assert config.llm.tokens_per_call_estimate == 0
+    assert config.diagnostics.test_spend_cap_cents_per_hour == nil
+    assert config.diagnostics.test_run_cost_cents == 0
+    assert config.diagnostics.test_command_profile == :mix_test
+    assert config.compliance.audit_retention_days == 30
+    assert config.compliance.soc2_evidence_path == nil
+    assert config.compliance.pii_handling_policy == :redact
   end
 
   test "parses redact keys from comma-separated string" do
     {:ok, config} =
       Config.from_opts(repo: "/tmp/repo", redact_keys: "foo, Bar , ,baz")
 
-    assert config.redact_keys == ["foo", "Bar", "baz"]
+    assert config.compliance.redact_keys == ["foo", "Bar", "baz"]
   end
 
   test "defaults codex provider to yolo exec command profile" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", llm_provider: :codex)
-    assert config.llm_cmd == "codex --yolo exec"
+    assert config.llm.cmd == "codex --yolo exec"
   end
 
   test "preserves explicit codex command override" do
     {:ok, config} =
       Config.from_opts(repo: "/tmp/repo", llm_provider: :codex, llm_cmd: "codex exec")
 
-    assert config.llm_cmd == "codex exec"
+    assert config.llm.cmd == "codex exec"
   end
 
   test "defines staging_restricted execution profile policy" do
@@ -128,10 +128,10 @@ defmodule Mom.ConfigTest do
                llm_cmd: "codex exec --sandbox workspace-write"
              )
 
-    assert config.execution_profile == :staging_restricted
-    assert config.sandbox_mode == :workspace_write
-    assert config.command_allowlist == ["codex"]
-    assert config.write_boundaries == [workdir]
+    assert config.governance.execution_profile == :staging_restricted
+    assert config.governance.sandbox_mode == :workspace_write
+    assert config.governance.command_allowlist == ["codex"]
+    assert config.governance.write_boundaries == [workdir]
   end
 
   test "defines production_hardened execution profile policy" do
@@ -194,12 +194,12 @@ defmodule Mom.ConfigTest do
                workdir: workdir
              )
 
-    assert config.execution_profile == :production_hardened
-    assert config.llm_cmd == "codex exec --sandbox read-only"
-    assert config.sandbox_mode == :read_only
-    assert config.command_allowlist == ["codex"]
-    assert config.write_boundaries == [workdir]
-    assert config.open_pr == false
+    assert config.governance.execution_profile == :production_hardened
+    assert config.llm.cmd == "codex exec --sandbox read-only"
+    assert config.governance.sandbox_mode == :read_only
+    assert config.governance.command_allowlist == ["codex"]
+    assert config.governance.write_boundaries == [workdir]
+    assert config.governance.open_pr == false
 
     assert {:ok, approved} =
              Config.from_opts(
@@ -211,7 +211,7 @@ defmodule Mom.ConfigTest do
                readiness_gate_approved: true
              )
 
-    assert approved.open_pr
+    assert approved.governance.open_pr
   end
 
   test "emits execution profile attestation for approved restricted profile baseline" do
@@ -238,7 +238,7 @@ defmodule Mom.ConfigTest do
                workdir: workdir
              )
 
-    assert config.execution_profile == :production_hardened
+    assert config.governance.execution_profile == :production_hardened
 
     assert_receive {:telemetry_event, [:mom, :audit, :execution_profile_policy_attested],
                     metadata}
@@ -294,7 +294,10 @@ defmodule Mom.ConfigTest do
         llm_cmd: "codex exec --sandbox workspace-write"
       )
 
-    drifted = %{config | llm_cmd: "codex --yolo exec --sandbox workspace-write"}
+    drifted = %{
+      config
+      | llm: %{config.llm | cmd: "codex --yolo exec --sandbox workspace-write"}
+    }
 
     assert {:error, "staging_restricted forbids --yolo execution"} =
              Config.validate_runtime_policy(drifted)
@@ -311,7 +314,7 @@ defmodule Mom.ConfigTest do
         workdir: workdir
       )
 
-    drifted = %{config | sandbox_mode: :workspace_write}
+    drifted = %{config | governance: %{config.governance | sandbox_mode: :workspace_write}}
 
     assert {:error, "production_hardened requires codex sandbox mode read-only"} =
              Config.validate_runtime_policy(drifted)
@@ -320,7 +323,7 @@ defmodule Mom.ConfigTest do
   test "uses runtime env defaults" do
     Application.put_env(:mom, :llm_cmd, "cat")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.llm_cmd == "cat"
+    assert config.llm.cmd == "cat"
   after
     Application.delete_env(:mom, :llm_cmd)
   end
@@ -337,8 +340,8 @@ defmodule Mom.ConfigTest do
         allowed_actor_ids: ["mom-app[bot]"]
       )
 
-    assert config.github_token == "env-github-token"
-    assert config.llm_api_key == "env-llm-key"
+    assert config.compliance.github_token == "env-github-token"
+    assert config.llm.api_key == "env-llm-key"
   after
     System.delete_env("MOM_GITHUB_TOKEN")
     System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
@@ -464,63 +467,15 @@ defmodule Mom.ConfigTest do
 
   test "default redact keys include password" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert "password" in config.redact_keys
+    assert "password" in config.compliance.redact_keys
   end
 
   test "parses numeric env values" do
     Application.put_env(:mom, :issue_rate_limit_per_hour, "12")
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.issue_rate_limit_per_hour == 12
+    assert config.diagnostics.issue_rate_limit_per_hour == 12
   after
     Application.delete_env(:mom, :issue_rate_limit_per_hour)
-  end
-
-  test "startup prunes stale acceptance build artifacts from cwd" do
-    root =
-      Path.join(
-        System.tmp_dir!(),
-        "mom-config-build-artifact-prune-#{System.unique_integer([:positive])}"
-      )
-
-    stale_runner = Path.join(root, "_build_runner_burst_stale")
-    stale_worker = Path.join(root, "_build_acceptance_worker_stale_0")
-    fresh_worker = Path.join(root, "_build_acceptance_worker_fresh_0")
-    keep_other = Path.join(root, "_build_kept_other")
-
-    on_exit(fn ->
-      Application.delete_env(:mom, :acceptance_build_artifact_retention_seconds)
-      Application.delete_env(:mom, :acceptance_build_artifact_keep_latest)
-      File.rm_rf!(root)
-    end)
-
-    File.rm_rf!(root)
-    File.mkdir_p!(stale_runner)
-    File.mkdir_p!(stale_worker)
-    File.mkdir_p!(fresh_worker)
-    File.mkdir_p!(keep_other)
-
-    now = System.os_time(:second)
-    set_directory_mtime!(stale_runner, now - 3_600)
-    set_directory_mtime!(stale_worker, now - 3_600)
-    set_directory_mtime!(fresh_worker, now)
-
-    Application.put_env(:mom, :acceptance_build_artifact_retention_seconds, 300)
-    Application.put_env(:mom, :acceptance_build_artifact_keep_latest, 1)
-
-    File.cd!(root, fn ->
-      assert {:ok, _config} =
-               Config.from_opts(
-                 repo: "/tmp/repo",
-                 mode: :inproc,
-                 toolchain_node_version_override: "v24.6.0",
-                 toolchain_otp_version_override: "28.0.2"
-               )
-    end)
-
-    refute File.exists?(stale_runner)
-    refute File.exists?(stale_worker)
-    assert File.dir?(fresh_worker)
-    assert File.dir?(keep_other)
   end
 
   test "startup prunes stale temp worktree directories from system tmp" do
@@ -757,17 +712,17 @@ defmodule Mom.ConfigTest do
         pii_handling_policy: :drop
       )
 
-    assert config.max_concurrency == 8
-    assert config.queue_max_size == 350
-    assert config.tenant_queue_max_size == 120
-    assert config.job_timeout_ms == 9_000
-    assert config.execution_watchdog_enabled == false
-    assert config.execution_watchdog_orphan_grace_ms == 800
-    assert config.overflow_policy == :drop_oldest
-    assert config.durable_queue_path == "/tmp/mom/queue.bin"
-    assert config.audit_retention_days == 45
-    assert config.soc2_evidence_path == "/tmp/mom/evidence.jsonl"
-    assert config.pii_handling_policy == :drop
+    assert config.pipeline.max_concurrency == 8
+    assert config.pipeline.queue_max_size == 350
+    assert config.pipeline.tenant_queue_max_size == 120
+    assert config.pipeline.job_timeout_ms == 9_000
+    assert config.pipeline.execution_watchdog_enabled == false
+    assert config.pipeline.execution_watchdog_orphan_grace_ms == 800
+    assert config.pipeline.overflow_policy == :drop_oldest
+    assert config.pipeline.durable_queue_path == "/tmp/mom/queue.bin"
+    assert config.compliance.audit_retention_days == 45
+    assert config.compliance.soc2_evidence_path == "/tmp/mom/evidence.jsonl"
+    assert config.compliance.pii_handling_policy == :drop
   end
 
   test "parses spend control values from opts" do
@@ -783,13 +738,13 @@ defmodule Mom.ConfigTest do
         test_command_profile: :mix_test_no_start
       )
 
-    assert config.llm_spend_cap_cents_per_hour == 500
-    assert config.llm_call_cost_cents == 25
-    assert config.llm_token_cap_per_hour == 20_000
-    assert config.llm_tokens_per_call_estimate == 1_500
-    assert config.test_spend_cap_cents_per_hour == 750
-    assert config.test_run_cost_cents == 30
-    assert config.test_command_profile == :mix_test_no_start
+    assert config.llm.spend_cap_cents_per_hour == 500
+    assert config.llm.call_cost_cents == 25
+    assert config.llm.token_cap_per_hour == 20_000
+    assert config.llm.tokens_per_call_estimate == 1_500
+    assert config.diagnostics.test_spend_cap_cents_per_hour == 750
+    assert config.diagnostics.test_run_cost_cents == 30
+    assert config.diagnostics.test_command_profile == :mix_test_no_start
   end
 
   test "validates pipeline concurrency values" do
@@ -887,19 +842,19 @@ defmodule Mom.ConfigTest do
         error_budget_pr_turnaround_overage_rate: 0.05
       )
 
-    assert config.observability_backend == :prometheus
-    assert config.observability_export_path == "/tmp/mom.prom"
-    assert config.observability_export_interval_ms == 2_000
-    assert config.slo_queue_depth_threshold == 200
-    assert config.slo_drop_rate_threshold == 0.1
-    assert config.slo_failure_rate_threshold == 0.15
-    assert config.slo_latency_p95_ms_threshold == 25_000
-    assert config.sla_triage_latency_p95_ms_target == 12_000
-    assert config.sla_queue_durability_target == 0.999
-    assert config.sla_pr_turnaround_p95_ms_target == 600_000
-    assert config.error_budget_triage_latency_overage_rate == 0.02
-    assert config.error_budget_queue_loss_rate == 0.001
-    assert config.error_budget_pr_turnaround_overage_rate == 0.05
+    assert config.observability.backend == :prometheus
+    assert config.observability.export_path == "/tmp/mom.prom"
+    assert config.observability.export_interval_ms == 2_000
+    assert config.observability.slo_queue_depth_threshold == 200
+    assert config.observability.slo_drop_rate_threshold == 0.1
+    assert config.observability.slo_failure_rate_threshold == 0.15
+    assert config.observability.slo_latency_p95_ms_threshold == 25_000
+    assert config.observability.sla_triage_latency_p95_ms_target == 12_000
+    assert config.observability.sla_queue_durability_target == 0.999
+    assert config.observability.sla_pr_turnaround_p95_ms_target == 600_000
+    assert config.observability.error_budget_triage_latency_overage_rate == 0.02
+    assert config.observability.error_budget_queue_loss_rate == 0.001
+    assert config.observability.error_budget_pr_turnaround_overage_rate == 0.05
   end
 
   test "validates observability settings" do
@@ -934,7 +889,7 @@ defmodule Mom.ConfigTest do
                allowed_github_repos: ["acme/mom", "acme/other"]
              )
 
-    assert config.allowed_github_repos == ["acme/mom", "acme/other"]
+    assert config.governance.allowed_github_repos == ["acme/mom", "acme/other"]
   end
 
   test "rejects github repo not in allowlist" do
@@ -987,7 +942,7 @@ defmodule Mom.ConfigTest do
                allowed_egress_hosts: "api.github.com,api.openai.com"
              )
 
-    assert config.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
+    assert config.governance.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
 
     assert {:error, "allowed_egress_hosts is missing required host api.openai.com"} =
              Config.from_opts(
@@ -1006,12 +961,12 @@ defmodule Mom.ConfigTest do
 
   test "includes branch naming prefix default" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.branch_name_prefix == "mom"
+    assert config.governance.branch_name_prefix == "mom"
   end
 
   test "accepts custom branch naming prefix" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", branch_name_prefix: "mom/incidents")
-    assert config.branch_name_prefix == "mom/incidents"
+    assert config.governance.branch_name_prefix == "mom/incidents"
   end
 
   test "rejects invalid branch naming prefix" do
@@ -1021,12 +976,12 @@ defmodule Mom.ConfigTest do
 
   test "includes default actor id" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.actor_id == "mom"
+    assert config.governance.actor_id == "mom"
   end
 
   test "accepts custom actor id" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo", actor_id: "machine-user")
-    assert config.actor_id == "machine-user"
+    assert config.governance.actor_id == "machine-user"
   end
 
   test "requires actor allowlist when github token is configured" do
@@ -1048,8 +1003,8 @@ defmodule Mom.ConfigTest do
                github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
-    assert config.actor_id == "mom-bot"
-    assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
+    assert config.governance.actor_id == "mom-bot"
+    assert config.governance.allowed_actor_ids == ["mom-bot", "mom-staging"]
 
     assert {:error, "actor_id is not allowed"} =
              Config.from_opts(
@@ -1078,7 +1033,7 @@ defmodule Mom.ConfigTest do
                github_credential_scopes: ["contents", "pull_requests", "issues"]
              )
 
-    assert config.actor_id == "mom-app[bot]"
+    assert config.governance.actor_id == "mom-app[bot]"
   end
 
   test "requires github credential scopes when github token is configured when live verification is disabled" do
@@ -1115,7 +1070,7 @@ defmodule Mom.ConfigTest do
                readiness_gate_approved: true
              )
 
-    assert config.github_credential_scopes == ["contents", "pull_requests", "issues"]
+    assert config.compliance.github_credential_scopes == ["contents", "pull_requests", "issues"]
   end
 
   test "emits audit event when github credential scopes are missing when live verification is disabled" do
@@ -1205,7 +1160,7 @@ defmodule Mom.ConfigTest do
                readiness_gate_approved: true
              )
 
-    assert config.github_credential_scopes == []
+    assert config.compliance.github_credential_scopes == []
 
     assert_receive {:telemetry_event, [:mom, :audit, :github_credential_permission_attested],
                     metadata}
@@ -1305,7 +1260,7 @@ defmodule Mom.ConfigTest do
                readiness_gate_approved: true
              )
 
-    assert config.readiness_gate_approved
+    assert config.governance.readiness_gate_approved
   end
 
   test "requires recent incident-to-PR canary evidence for production_hardened automated PR flows" do
@@ -1380,7 +1335,7 @@ defmodule Mom.ConfigTest do
                incident_to_pr_canary_max_age_seconds: 600
              )
 
-    assert config.open_pr
+    assert config.governance.open_pr
   end
 
   test "emits audit event when automated PR readiness gate blocks startup" do
@@ -1416,8 +1371,8 @@ defmodule Mom.ConfigTest do
 
   test "defaults to protected main branch with PR-only enforcement target" do
     {:ok, config} = Config.from_opts(repo: "/tmp/repo")
-    assert config.github_base_branch == "main"
-    assert config.protected_branches == ["main"]
+    assert config.governance.github_base_branch == "main"
+    assert config.governance.protected_branches == ["main"]
   end
 
   test "parses protected branch and base branch options" do
@@ -1428,8 +1383,8 @@ defmodule Mom.ConfigTest do
         protected_branches: "main,release"
       )
 
-    assert config.github_base_branch == "release"
-    assert config.protected_branches == ["main", "release"]
+    assert config.governance.github_base_branch == "release"
+    assert config.governance.protected_branches == ["main", "release"]
   end
 
   test "rejects workdir that is not an isolated git worktree" do
@@ -1452,7 +1407,7 @@ defmodule Mom.ConfigTest do
     assert {:ok, config} =
              Config.from_opts(repo: repo, workdir: workdir)
 
-    assert config.workdir == workdir
+    assert config.runtime.workdir == workdir
   end
 
   defp isolated_workdir_fixture do

@@ -90,12 +90,25 @@ defmodule Mom.PipelineTest do
          worker_opts: []}
       )
 
-    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 21, repo: "acme/repo-a", test_pid: self()}})
+    assert :ok ==
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 21, repo: "acme/repo-a", test_pid: self()}}
+             )
+
     assert_receive {:started, 21, worker}
-    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 22, repo: "acme/repo-a", test_pid: self()}})
+
+    assert :ok ==
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 22, repo: "acme/repo-a", test_pid: self()}}
+             )
 
     assert {:dropped, :tenant_quota} ==
-             Pipeline.enqueue(pid, {:error_event, %{id: 23, repo: "acme/repo-a", test_pid: self()}})
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 23, repo: "acme/repo-a", test_pid: self()}}
+             )
 
     send(worker, :release)
   end
@@ -138,9 +151,23 @@ defmodule Mom.PipelineTest do
          dispatch?: true, max_concurrency: 1, worker_module: TestWorker, worker_opts: []}
       )
 
-    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 1, repo: "acme/repo-a", test_pid: self()}})
-    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 2, repo: "acme/repo-a", test_pid: self()}})
-    assert :ok == Pipeline.enqueue(pid, {:error_event, %{id: 3, repo: "acme/repo-b", test_pid: self()}})
+    assert :ok ==
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 1, repo: "acme/repo-a", test_pid: self()}}
+             )
+
+    assert :ok ==
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 2, repo: "acme/repo-a", test_pid: self()}}
+             )
+
+    assert :ok ==
+             Pipeline.enqueue(
+               pid,
+               {:error_event, %{id: 3, repo: "acme/repo-b", test_pid: self()}}
+             )
 
     assert_receive {:started, 1, worker1}
     send(worker1, :release)

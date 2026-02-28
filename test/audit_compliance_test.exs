@@ -21,7 +21,10 @@ defmodule Mom.AuditComplianceTest do
 
   test "writes SOC2 evidence and enforces audit retention policy" do
     evidence_path =
-      Path.join(System.tmp_dir!(), "mom-audit-evidence-#{System.unique_integer([:positive])}.jsonl")
+      Path.join(
+        System.tmp_dir!(),
+        "mom-audit-evidence-#{System.unique_integer([:positive])}.jsonl"
+      )
 
     File.rm_rf!(evidence_path)
     now = DateTime.utc_now() |> DateTime.to_unix()

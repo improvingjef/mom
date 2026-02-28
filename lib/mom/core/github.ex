@@ -10,10 +10,8 @@ defmodule Mom.GitHub do
   @spec create_pr(Config.t(), String.t()) :: {:ok, map()} | {:error, term()}
   def create_pr(
         %Config{
-          github_token: token,
-          github_repo: repo,
-          github_base_branch: base_branch,
-          actor_id: actor_id
+          compliance: %{github_token: token},
+          governance: %{github_repo: repo, github_base_branch: base_branch, actor_id: actor_id}
         } = config,
         branch
       ) do
@@ -62,11 +60,13 @@ defmodule Mom.GitHub do
   @spec merge_pr(Config.t(), map()) :: :ok | {:error, term()}
   def merge_pr(
         %Config{
-          github_token: token,
-          github_repo: repo,
-          github_base_branch: base_branch,
-          protected_branches: protected_branches,
-          actor_id: actor_id
+          compliance: %{github_token: token},
+          governance: %{
+            github_repo: repo,
+            github_base_branch: base_branch,
+            protected_branches: protected_branches,
+            actor_id: actor_id
+          }
         } = config,
         %{number: number}
       ) do
@@ -108,7 +108,10 @@ defmodule Mom.GitHub do
 
   @spec create_issue(Config.t(), String.t(), String.t()) :: {:ok, map()} | {:error, term()}
   def create_issue(
-        %Config{github_token: token, github_repo: repo, actor_id: actor_id} = config,
+        %Config{
+          compliance: %{github_token: token},
+          governance: %{github_repo: repo, actor_id: actor_id}
+        } = config,
         title,
         body
       ) do
@@ -151,7 +154,7 @@ defmodule Mom.GitHub do
     body = Jason.encode!(payload)
     url = @github_api <> path
 
-    if Security.egress_allowed?(url, config.allowed_egress_hosts) do
+    if Security.egress_allowed?(url, config.governance.allowed_egress_hosts) do
       case http_client().request(
              method,
              {String.to_charlist(url), headers, ~c"application/json", body},

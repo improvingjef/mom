@@ -7,14 +7,14 @@ defmodule Mom.Diagnostics do
 
   @spec poll(Config.t(), non_neg_integer()) ::
           {map(), list(), boolean(), non_neg_integer()}
-  def poll(%Config{mode: :inproc} = config, last_triage_at) do
+  def poll(%Config{runtime: %{mode: :inproc}} = config, last_triage_at) do
     report = local_report()
     Logger.info("mom: diagnostics #{inspect(report)}")
     triage = maybe_triage(report, config, last_triage_at)
     {report, triage.issues, triage.trigger?, triage.now}
   end
 
-  def poll(%Config{mode: :remote, node: node} = config, last_triage_at) do
+  def poll(%Config{runtime: %{mode: :remote, node: node}} = config, last_triage_at) do
     report = :rpc.call(node, __MODULE__, :local_report, [])
     Logger.info("mom: diagnostics #{inspect(report)}")
     triage = maybe_triage(report, config, last_triage_at)
@@ -39,8 +39,8 @@ defmodule Mom.Diagnostics do
     now = System.monotonic_time(:millisecond)
 
     trigger? =
-      config.triage_on_diagnostics and issues != [] and
-        now - last_triage_at >= config.diag_cooldown_ms
+      config.diagnostics.triage_on_diagnostics and issues != [] and
+        now - last_triage_at >= config.diagnostics.diag_cooldown_ms
 
     if issues != [] do
       Logger.warning("mom: diagnostics issues #{inspect(issues)}")
@@ -57,15 +57,18 @@ defmodule Mom.Diagnostics do
     issues = []
 
     issues =
-      if run_queue > schedulers * config.diag_run_queue_mult do
-        [{:run_queue_high, run_queue, schedulers, config.diag_run_queue_mult} | issues]
+      if run_queue > schedulers * config.diagnostics.diag_run_queue_mult do
+        [
+          {:run_queue_high, run_queue, schedulers, config.diagnostics.diag_run_queue_mult}
+          | issues
+        ]
       else
         issues
       end
 
     issues =
-      if mem > config.diag_mem_high_bytes do
-        [{:memory_high, mem, config.diag_mem_high_bytes} | issues]
+      if mem > config.diagnostics.diag_mem_high_bytes do
+        [{:memory_high, mem, config.diagnostics.diag_mem_high_bytes} | issues]
       else
         issues
       end

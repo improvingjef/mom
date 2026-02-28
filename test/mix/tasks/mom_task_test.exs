@@ -13,6 +13,10 @@ defmodule Mix.Tasks.MomTaskTest do
         "333",
         "--tenant-queue-max-size",
         "111",
+        "--temp-worktree-max-active",
+        "50",
+        "--temp-worktree-alert-utilization-threshold",
+        "0.8",
         "--job-timeout-ms",
         "45000",
         "--overflow-policy",
@@ -21,13 +25,15 @@ defmodule Mix.Tasks.MomTaskTest do
         "/tmp/mom/queue.bin"
       ])
 
-    assert config.mode == :inproc
-    assert config.max_concurrency == 6
-    assert config.queue_max_size == 333
-    assert config.tenant_queue_max_size == 111
-    assert config.job_timeout_ms == 45_000
-    assert config.overflow_policy == :drop_oldest
-    assert config.durable_queue_path == "/tmp/mom/queue.bin"
+    assert config.runtime.mode == :inproc
+    assert config.pipeline.max_concurrency == 6
+    assert config.pipeline.queue_max_size == 333
+    assert config.pipeline.tenant_queue_max_size == 111
+    assert config.pipeline.temp_worktree_max_active == 50
+    assert config.pipeline.temp_worktree_alert_utilization_threshold == 0.8
+    assert config.pipeline.job_timeout_ms == 45_000
+    assert config.pipeline.overflow_policy == :drop_oldest
+    assert config.pipeline.durable_queue_path == "/tmp/mom/queue.bin"
   end
 
   test "parse_args accepts spend control flags" do
@@ -50,13 +56,13 @@ defmodule Mix.Tasks.MomTaskTest do
         "mix_test_no_start"
       ])
 
-    assert config.llm_spend_cap_cents_per_hour == 500
-    assert config.llm_call_cost_cents == 25
-    assert config.llm_token_cap_per_hour == 20_000
-    assert config.llm_tokens_per_call_estimate == 1_500
-    assert config.test_spend_cap_cents_per_hour == 750
-    assert config.test_run_cost_cents == 30
-    assert config.test_command_profile == :mix_test_no_start
+    assert config.llm.spend_cap_cents_per_hour == 500
+    assert config.llm.call_cost_cents == 25
+    assert config.llm.token_cap_per_hour == 20_000
+    assert config.llm.tokens_per_call_estimate == 1_500
+    assert config.diagnostics.test_spend_cap_cents_per_hour == 750
+    assert config.diagnostics.test_run_cost_cents == 30
+    assert config.diagnostics.test_command_profile == :mix_test_no_start
   end
 
   test "parse_args rejects invalid test command profiles" do
@@ -85,9 +91,9 @@ defmodule Mix.Tasks.MomTaskTest do
         "codex"
       ])
 
-    assert config.llm_provider == :codex
-    assert config.llm_cmd == "codex --yolo exec"
-    assert config.execution_profile == :test_relaxed
+    assert config.llm.provider == :codex
+    assert config.llm.cmd == "codex --yolo exec"
+    assert config.governance.execution_profile == :test_relaxed
   end
 
   test "parse_args accepts staging_restricted execution profile" do
@@ -104,8 +110,8 @@ defmodule Mix.Tasks.MomTaskTest do
         workdir
       ])
 
-    assert config.execution_profile == :staging_restricted
-    assert config.llm_cmd == "codex exec --sandbox workspace-write"
+    assert config.governance.execution_profile == :staging_restricted
+    assert config.llm.cmd == "codex exec --sandbox workspace-write"
   end
 
   test "parse_args accepts production_hardened execution profile" do
@@ -122,10 +128,10 @@ defmodule Mix.Tasks.MomTaskTest do
         workdir
       ])
 
-    assert config.execution_profile == :production_hardened
-    assert config.llm_cmd == "codex exec --sandbox read-only"
-    assert config.sandbox_mode == :read_only
-    assert config.open_pr == false
+    assert config.governance.execution_profile == :production_hardened
+    assert config.llm.cmd == "codex exec --sandbox read-only"
+    assert config.governance.sandbox_mode == :read_only
+    assert config.governance.open_pr == false
 
     assert {:error,
             "production_hardened requires readiness gate approval for sensitive operations"} =
@@ -151,8 +157,8 @@ defmodule Mix.Tasks.MomTaskTest do
         "acme/mom,acme/other"
       ])
 
-    assert config.github_repo == "acme/mom"
-    assert config.allowed_github_repos == ["acme/mom", "acme/other"]
+    assert config.governance.github_repo == "acme/mom"
+    assert config.governance.allowed_github_repos == ["acme/mom", "acme/other"]
   end
 
   test "parse_args accepts branch naming prefix flag" do
@@ -163,7 +169,7 @@ defmodule Mix.Tasks.MomTaskTest do
         "mom/incidents"
       ])
 
-    assert config.branch_name_prefix == "mom/incidents"
+    assert config.governance.branch_name_prefix == "mom/incidents"
   end
 
   test "parse_args accepts actor id flag" do
@@ -174,7 +180,7 @@ defmodule Mix.Tasks.MomTaskTest do
         "machine-user"
       ])
 
-    assert config.actor_id == "machine-user"
+    assert config.governance.actor_id == "machine-user"
   end
 
   test "parse_args accepts github credential scopes flag" do
@@ -185,7 +191,7 @@ defmodule Mix.Tasks.MomTaskTest do
         "contents,pull_requests,issues"
       ])
 
-    assert config.github_credential_scopes == ["contents", "pull_requests", "issues"]
+    assert config.compliance.github_credential_scopes == ["contents", "pull_requests", "issues"]
   end
 
   test "parse_args enforces actor allowlist for github credentials" do
@@ -208,7 +214,7 @@ defmodule Mix.Tasks.MomTaskTest do
                "mom-bot,mom-staging"
              ])
 
-    assert config.allowed_actor_ids == ["mom-bot", "mom-staging"]
+    assert config.governance.allowed_actor_ids == ["mom-bot", "mom-staging"]
   after
     System.delete_env("MOM_GITHUB_TOKEN")
     System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")
@@ -267,8 +273,8 @@ defmodule Mix.Tasks.MomTaskTest do
         "main,release"
       ])
 
-    assert config.github_base_branch == "release"
-    assert config.protected_branches == ["main", "release"]
+    assert config.governance.github_base_branch == "release"
+    assert config.governance.protected_branches == ["main", "release"]
   end
 
   test "parse_args accepts allowed egress hosts flag" do
@@ -281,7 +287,7 @@ defmodule Mix.Tasks.MomTaskTest do
         "api.github.com,api.openai.com"
       ])
 
-    assert config.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
+    assert config.governance.allowed_egress_hosts == ["api.github.com", "api.openai.com"]
   end
 
   test "parse_args requires readiness gate approval for automated PR flows" do
@@ -296,7 +302,9 @@ defmodule Mix.Tasks.MomTaskTest do
                "--actor-id",
                "mom-app[bot]",
                "--allowed-actor-ids",
-               "mom-app[bot]"
+               "mom-app[bot]",
+               "--github-credential-scopes",
+               "contents,pull_requests,issues"
              ])
 
     assert {:ok, config} =
@@ -308,10 +316,12 @@ defmodule Mix.Tasks.MomTaskTest do
                "mom-app[bot]",
                "--allowed-actor-ids",
                "mom-app[bot]",
+               "--github-credential-scopes",
+               "contents,pull_requests,issues",
                "--readiness-gate-approved"
              ])
 
-    assert config.readiness_gate_approved
+    assert config.governance.readiness_gate_approved
   after
     System.delete_env("MOM_GITHUB_TOKEN")
     System.delete_env("MOM_GITHUB_CREDENTIAL_SCOPES")

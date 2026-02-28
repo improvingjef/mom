@@ -18,20 +18,21 @@ defmodule Mom.Runner do
 
     pipeline_opts = [
       dispatch?: true,
-      max_concurrency: Keyword.get(opts, :max_concurrency, config.max_concurrency),
-      queue_max_size: Keyword.get(opts, :queue_max_size, config.queue_max_size),
+      max_concurrency: Keyword.get(opts, :max_concurrency, config.pipeline.max_concurrency),
+      queue_max_size: Keyword.get(opts, :queue_max_size, config.pipeline.queue_max_size),
       tenant_queue_max_size:
-        Keyword.get(opts, :tenant_queue_max_size, config.tenant_queue_max_size),
-      overflow_policy: Keyword.get(opts, :overflow_policy, config.overflow_policy),
-      durable_queue_path: Keyword.get(opts, :durable_queue_path, config.durable_queue_path),
+        Keyword.get(opts, :tenant_queue_max_size, config.pipeline.tenant_queue_max_size),
+      overflow_policy: Keyword.get(opts, :overflow_policy, config.pipeline.overflow_policy),
+      durable_queue_path:
+        Keyword.get(opts, :durable_queue_path, config.pipeline.durable_queue_path),
       worker_module: worker_module,
       worker_opts:
         Keyword.merge(
           [
             config: config,
-            job_timeout_ms: config.job_timeout_ms,
-            execution_watchdog_enabled: config.execution_watchdog_enabled,
-            execution_watchdog_orphan_grace_ms: config.execution_watchdog_orphan_grace_ms
+            job_timeout_ms: config.pipeline.job_timeout_ms,
+            execution_watchdog_enabled: config.pipeline.execution_watchdog_enabled,
+            execution_watchdog_orphan_grace_ms: config.pipeline.execution_watchdog_orphan_grace_ms
           ],
           worker_opts
         )
@@ -65,16 +66,16 @@ defmodule Mom.Runner do
   end
 
   defp maybe_set_git_ssh_command(%Config{} = config) do
-    if is_binary(config.git_ssh_command) do
-      System.put_env("GIT_SSH_COMMAND", config.git_ssh_command)
+    if is_binary(config.compliance.git_ssh_command) do
+      System.put_env("GIT_SSH_COMMAND", config.compliance.git_ssh_command)
     end
   end
 
   defp maybe_set_audit_compliance_runtime(%Config{} = config) do
-    Application.put_env(:mom, :redact_keys, config.redact_keys)
-    Application.put_env(:mom, :audit_retention_days, config.audit_retention_days)
-    Application.put_env(:mom, :soc2_evidence_path, config.soc2_evidence_path)
-    Application.put_env(:mom, :pii_handling_policy, config.pii_handling_policy)
+    Application.put_env(:mom, :redact_keys, config.compliance.redact_keys)
+    Application.put_env(:mom, :audit_retention_days, config.compliance.audit_retention_days)
+    Application.put_env(:mom, :soc2_evidence_path, config.compliance.soc2_evidence_path)
+    Application.put_env(:mom, :pii_handling_policy, config.compliance.pii_handling_policy)
   end
 
   defp loop(%Config{} = config, state) do
@@ -82,7 +83,7 @@ defmodule Mom.Runner do
     :ok = state.beam_module.attach_logger(config, self())
 
     diagnostics_ref =
-      Process.send_after(self(), :poll_diagnostics, config.poll_interval_ms)
+      Process.send_after(self(), :poll_diagnostics, config.runtime.poll_interval_ms)
 
     receive do
       {:mom_log, event} ->
@@ -98,7 +99,7 @@ defmodule Mom.Runner do
           enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, report, issues})
         end
 
-        Process.send_after(self(), :poll_diagnostics, config.poll_interval_ms)
+        Process.send_after(self(), :poll_diagnostics, config.runtime.poll_interval_ms)
         last_triage_at = if triage?, do: now, else: state.last_triage_at
         loop(config, %{state | last_triage_at: last_triage_at})
 
@@ -124,9 +125,12 @@ defmodule Mom.Runner do
     end
   end
 
-  defp ensure_connection(%Config{mode: :inproc}, _beam_module), do: :ok
+  defp ensure_connection(%Config{runtime: %{mode: :inproc}}, _beam_module), do: :ok
 
-  defp ensure_connection(%Config{mode: :remote, node: node, cookie: cookie}, beam_module) do
+  defp ensure_connection(
+         %Config{runtime: %{mode: :remote, node: node, cookie: cookie}},
+         beam_module
+       ) do
     with :ok <- beam_module.ensure_node_started(cookie),
          true <- is_atom(node),
          true <- Node.connect(node) do
@@ -137,22 +141,24 @@ defmodule Mom.Runner do
     end
   end
 
-  defp maybe_start_observability(%Config{observability_backend: :none}), do: :ok
+  defp maybe_start_observability(%Config{observability: %{backend: :none}}), do: :ok
 
-  defp maybe_start_observability(%Config{observability_backend: :prometheus} = config) do
+  defp maybe_start_observability(%Config{observability: %{backend: :prometheus}} = config) do
     case Observability.start_link(
-           export_path: config.observability_export_path,
-           export_interval_ms: config.observability_export_interval_ms,
-           queue_depth_threshold: config.slo_queue_depth_threshold,
-           drop_rate_threshold: config.slo_drop_rate_threshold,
-           failure_rate_threshold: config.slo_failure_rate_threshold,
-           latency_p95_ms_threshold: config.slo_latency_p95_ms_threshold,
-           triage_latency_p95_ms_target: config.sla_triage_latency_p95_ms_target,
-           queue_durability_target: config.sla_queue_durability_target,
-           pr_turnaround_p95_ms_target: config.sla_pr_turnaround_p95_ms_target,
-           triage_latency_overage_budget_rate: config.error_budget_triage_latency_overage_rate,
-           queue_loss_budget_rate: config.error_budget_queue_loss_rate,
-           pr_turnaround_overage_budget_rate: config.error_budget_pr_turnaround_overage_rate
+           export_path: config.observability.export_path,
+           export_interval_ms: config.observability.export_interval_ms,
+           queue_depth_threshold: config.observability.slo_queue_depth_threshold,
+           drop_rate_threshold: config.observability.slo_drop_rate_threshold,
+           failure_rate_threshold: config.observability.slo_failure_rate_threshold,
+           latency_p95_ms_threshold: config.observability.slo_latency_p95_ms_threshold,
+           triage_latency_p95_ms_target: config.observability.sla_triage_latency_p95_ms_target,
+           queue_durability_target: config.observability.sla_queue_durability_target,
+           pr_turnaround_p95_ms_target: config.observability.sla_pr_turnaround_p95_ms_target,
+           triage_latency_overage_budget_rate:
+             config.observability.error_budget_triage_latency_overage_rate,
+           queue_loss_budget_rate: config.observability.error_budget_queue_loss_rate,
+           pr_turnaround_overage_budget_rate:
+             config.observability.error_budget_pr_turnaround_overage_rate
          ) do
       {:ok, _pid} -> :ok
       {:error, reason} -> {:error, reason}

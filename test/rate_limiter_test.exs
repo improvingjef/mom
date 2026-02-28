@@ -24,7 +24,7 @@ defmodule Mom.RateLimiterTest do
   end
 
   property "enforces limits for any small N" do
-    check all n <- StreamData.integer(1..5) do
+    check all(n <- StreamData.integer(1..5)) do
       Mom.TestHelper.reset_rate_limiter()
       assert Enum.all?(1..n, fn _ -> RateLimiter.allow?(:llm, n, 1_000_000) end)
       refute RateLimiter.allow?(:llm, n, 1_000_000)

@@ -13,7 +13,6 @@ defmodule Mom.DiagnosticsTest do
         diag_cooldown_ms: 0
       )
 
-    config = %{config | triage_on_diagnostics: true}
     last = System.monotonic_time(:millisecond) - 10_000
     {_report, issues, trigger?, _now} = Diagnostics.poll(config, last)
     assert issues != []
@@ -38,6 +37,7 @@ defmodule Mom.DiagnosticsTest do
   test "hot_processes returns tuples" do
     list = Diagnostics.hot_processes(3)
     assert is_list(list)
+
     Enum.each(list, fn {pid, reductions, qlen, current} ->
       assert is_pid(pid)
       assert is_integer(reductions)

@@ -7,7 +7,7 @@ defmodule Mom.Isolation do
   @default_worktree_run_id "runtime"
 
   @spec prepare_workdir(Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def prepare_workdir(%Config{repo: repo, workdir: workdir} = config) do
+  def prepare_workdir(%Config{runtime: %{repo: repo, workdir: workdir}} = config) do
     cond do
       is_binary(workdir) ->
         if isolated_worktree?(workdir) do
@@ -19,7 +19,10 @@ defmodule Mom.Isolation do
       true ->
         with {:ok, tmp} <- unique_tmp_workdir(),
              :ok <-
-               Git.add_worktree(repo, tmp, actor_id: config.actor_id, repo: target_repo(config)) do
+               Git.add_worktree(repo, tmp,
+                 actor_id: config.governance.actor_id,
+                 repo: target_repo(config)
+               ) do
           {:ok, tmp}
         end
     end
@@ -37,8 +40,8 @@ defmodule Mom.Isolation do
     end
   end
 
-  defp target_repo(%Config{github_repo: nil, repo: repo}), do: repo
-  defp target_repo(%Config{github_repo: github_repo}), do: github_repo
+  defp target_repo(%Config{governance: %{github_repo: nil}, runtime: %{repo: repo}}), do: repo
+  defp target_repo(%Config{governance: %{github_repo: github_repo}}), do: github_repo
 
   @spec tmp_workdir_basename(non_neg_integer(), map()) :: String.t()
   def tmp_workdir_basename(attempt, env \\ System.get_env())
@@ -105,6 +108,18 @@ defmodule Mom.Isolation do
          removed: Enum.sort(removed),
          failed: Enum.sort_by(failed, &elem(&1, 0))
        }}
+    end
+  end
+
+  @spec count_ephemeral_tmp_worktrees(binary()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def count_ephemeral_tmp_worktrees(root_path) when is_binary(root_path) do
+    with {:ok, entries} <- File.ls(root_path) do
+      count =
+        entries
+        |> Enum.flat_map(&tmp_worktree_candidate(root_path, &1))
+        |> length()
+
+      {:ok, count}
     end
   end
 

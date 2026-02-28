@@ -9,19 +9,22 @@ defmodule Mom.Engine do
   def handle_log(event, %Config{} = config) do
     Logger.info("mom: triaging error")
 
-    sanitized_event = Security.sanitize(event, config.redact_keys)
+    sanitized_event = Security.sanitize(event, config.compliance.redact_keys)
     _ = record_issue_for_error(sanitized_event, config)
 
     with {:ok, workdir} <- Isolation.prepare_workdir(config),
          {:ok, context} <- build_context(sanitized_event, config, workdir),
          {:ok, patch} <- LLM.generate_patch(context, config),
          :ok <-
-           Git.apply_patch(workdir, patch, actor_id: config.actor_id, repo: target_repo(config)),
+           Git.apply_patch(workdir, patch,
+             actor_id: config.governance.actor_id,
+             repo: target_repo(config)
+           ),
          :ok <- ensure_test_patch(event, config, workdir),
          :ok <- Git.run_tests(workdir, config),
          {:ok, branch} <-
-           Git.commit_changes(workdir, "mom: fix error", config.branch_name_prefix,
-             actor_id: config.actor_id,
+           Git.commit_changes(workdir, "mom: fix error", config.governance.branch_name_prefix,
+             actor_id: config.governance.actor_id,
              repo: target_repo(config)
            ),
          {:ok, pr} <- maybe_open_pr(workdir, branch, config),
@@ -36,13 +39,13 @@ defmodule Mom.Engine do
   end
 
   @spec handle_diagnostics(map(), list(), Config.t()) :: :ok
-  def handle_diagnostics(report, issues, %Config{triage_mode: :report} = config) do
-    sanitized_report = Security.sanitize(report, config.redact_keys)
-    sanitized_issues = Security.sanitize(issues, config.redact_keys)
+  def handle_diagnostics(report, issues, %Config{diagnostics: %{triage_mode: :report}} = config) do
+    sanitized_report = Security.sanitize(report, config.compliance.redact_keys)
+    sanitized_issues = Security.sanitize(issues, config.compliance.redact_keys)
     _ = record_issue_for_diagnostics(sanitized_report, sanitized_issues, config)
 
     context = %{
-      repo: config.repo,
+      repo: config.runtime.repo,
       report: sanitized_report,
       issues: sanitized_issues,
       hot_processes: fetch_hot_processes(config),
@@ -58,13 +61,13 @@ defmodule Mom.Engine do
     :ok
   end
 
-  def handle_diagnostics(report, issues, %Config{triage_mode: :fix} = config) do
-    sanitized_report = Security.sanitize(report, config.redact_keys)
-    sanitized_issues = Security.sanitize(issues, config.redact_keys)
+  def handle_diagnostics(report, issues, %Config{diagnostics: %{triage_mode: :fix}} = config) do
+    sanitized_report = Security.sanitize(report, config.compliance.redact_keys)
+    sanitized_issues = Security.sanitize(issues, config.compliance.redact_keys)
     _ = record_issue_for_diagnostics(sanitized_report, sanitized_issues, config)
 
     context = %{
-      repo: config.repo,
+      repo: config.runtime.repo,
       report: sanitized_report,
       issues: sanitized_issues,
       hot_processes: fetch_hot_processes(config),
@@ -77,14 +80,17 @@ defmodule Mom.Engine do
         with {:ok, workdir} <- Isolation.prepare_workdir(config),
              :ok <-
                Git.apply_patch(workdir, patch,
-                 actor_id: config.actor_id,
+                 actor_id: config.governance.actor_id,
                  repo: target_repo(config)
                ),
              :ok <- ensure_test_patch(%{diagnostics: report, issues: issues}, config, workdir),
              :ok <- Git.run_tests(workdir, config),
              {:ok, branch} <-
-               Git.commit_changes(workdir, "mom: diagnostics fix", config.branch_name_prefix,
-                 actor_id: config.actor_id,
+               Git.commit_changes(
+                 workdir,
+                 "mom: diagnostics fix",
+                 config.governance.branch_name_prefix,
+                 actor_id: config.governance.actor_id,
                  repo: target_repo(config)
                ),
              {:ok, pr} <- maybe_open_pr(workdir, branch, config),
@@ -103,7 +109,7 @@ defmodule Mom.Engine do
     end
   end
 
-  defp build_context(event, %Config{repo: repo} = _config, workdir) do
+  defp build_context(event, %Config{runtime: %{repo: repo}} = _config, workdir) do
     {:ok,
      %{
        repo: repo,
@@ -114,11 +120,11 @@ defmodule Mom.Engine do
      }}
   end
 
-  defp fetch_hot_processes(%Config{mode: :inproc}) do
+  defp fetch_hot_processes(%Config{runtime: %{mode: :inproc}}) do
     Mom.Diagnostics.hot_processes()
   end
 
-  defp fetch_hot_processes(%Config{mode: :remote, node: node}) do
+  defp fetch_hot_processes(%Config{runtime: %{mode: :remote, node: node}}) do
     :rpc.call(node, Mom.Diagnostics, :hot_processes, [])
   end
 
@@ -129,9 +135,9 @@ defmodule Mom.Engine do
 
       false ->
         context = %{
-          repo: config.repo,
+          repo: config.runtime.repo,
           workdir: workdir,
-          event: Security.sanitize(event, config.redact_keys),
+          event: Security.sanitize(event, config.compliance.redact_keys),
           instructions:
             "Add a minimal ExUnit regression test for the error. Return a unified diff only."
         }
@@ -139,7 +145,7 @@ defmodule Mom.Engine do
         with {:ok, patch} <- LLM.generate_patch(context, config),
              :ok <-
                Git.apply_patch(workdir, patch,
-                 actor_id: config.actor_id,
+                 actor_id: config.governance.actor_id,
                  repo: target_repo(config)
                ) do
           :ok
@@ -147,17 +153,20 @@ defmodule Mom.Engine do
     end
   end
 
-  defp maybe_open_pr(_workdir, _branch, %Config{open_pr: false}), do: {:ok, nil}
+  defp maybe_open_pr(_workdir, _branch, %Config{governance: %{open_pr: false}}), do: {:ok, nil}
 
   defp maybe_open_pr(workdir, branch, %Config{} = config) do
     with :ok <-
-           Git.push_branch(workdir, branch, actor_id: config.actor_id, repo: target_repo(config)),
+           Git.push_branch(workdir, branch,
+             actor_id: config.governance.actor_id,
+             repo: target_repo(config)
+           ),
          {:ok, pr} <- GitHub.create_pr(config, branch) do
       {:ok, pr}
     end
   end
 
-  defp maybe_merge(_pr, %Config{merge_pr: false}), do: :ok
+  defp maybe_merge(_pr, %Config{governance: %{merge_pr: false}}), do: :ok
   defp maybe_merge(nil, _config), do: :ok
   defp maybe_merge(pr, %Config{} = config), do: GitHub.merge_pr(config, pr)
 
@@ -197,13 +206,13 @@ defmodule Mom.Engine do
     maybe_create_issue(config, title, body, signature)
   end
 
-  defp maybe_create_issue(%Config{github_token: nil}, _title, _body, _sig), do: :ok
-  defp maybe_create_issue(%Config{github_repo: nil}, _title, _body, _sig), do: :ok
+  defp maybe_create_issue(%Config{compliance: %{github_token: nil}}, _title, _body, _sig), do: :ok
+  defp maybe_create_issue(%Config{governance: %{github_repo: nil}}, _title, _body, _sig), do: :ok
 
   defp maybe_create_issue(%Config{} = config, title, body, signature) do
     allowed? =
-      RateLimiter.allow?(:issue, config.issue_rate_limit_per_hour, 3_600_000) and
-        RateLimiter.allow_issue_signature?(signature, config.issue_dedupe_window_ms)
+      RateLimiter.allow?(:issue, config.diagnostics.issue_rate_limit_per_hour, 3_600_000) and
+        RateLimiter.allow_issue_signature?(signature, config.diagnostics.issue_dedupe_window_ms)
 
     if not allowed? do
       Logger.warning("mom: issue creation skipped (rate limit or dedupe)")
@@ -221,6 +230,6 @@ defmodule Mom.Engine do
     end
   end
 
-  defp target_repo(%Config{github_repo: nil, repo: repo}), do: repo
-  defp target_repo(%Config{github_repo: github_repo}), do: github_repo
+  defp target_repo(%Config{governance: %{github_repo: nil}, runtime: %{repo: repo}}), do: repo
+  defp target_repo(%Config{governance: %{github_repo: github_repo}}), do: github_repo
 end

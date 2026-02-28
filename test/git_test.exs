@@ -201,7 +201,7 @@ defmodule Mom.GitTest do
 
   test "prepare_workdir rejects explicit non-worktree path" do
     repo = Mom.TestHelper.create_repo()
-    config = %Config{repo: repo, workdir: repo}
+    config = %Config{runtime: %Mom.Governance.Configs.Runtime{repo: repo, workdir: repo}}
 
     assert {:error, :workdir_must_be_isolated_worktree} = Isolation.prepare_workdir(config)
   end

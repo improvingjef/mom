@@ -10,6 +10,7 @@ defmodule Mom.RunbookTest do
     assert String.contains?(markdown, "## Backup and Restore")
     assert String.contains?(markdown, "## Credential Revocation Drill")
     assert String.contains?(markdown, "## Failover Steps")
+    assert String.contains?(markdown, "## Temp Worktree Saturation Response")
     assert String.contains?(markdown, "Generated on: 2026-02-19")
   end
 
@@ -25,5 +26,6 @@ defmodule Mom.RunbookTest do
 
     assert "Credential Revocation Drill" in missing
     assert "Failover Steps" in missing
+    assert "Temp Worktree Saturation Response" in missing
   end
 end

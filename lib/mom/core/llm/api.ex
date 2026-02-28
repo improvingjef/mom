@@ -8,9 +8,9 @@ defmodule Mom.LLM.API do
   @openai_url "https://api.openai.com/v1/chat/completions"
 
   @spec call_anthropic(String.t(), Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def call_anthropic(prompt, %Config{llm_api_key: key} = config) when is_binary(key) do
-    url = config.llm_api_url || @anthropic_url
-    model = config.llm_model || "claude-3-7-sonnet-latest"
+  def call_anthropic(prompt, %Config{llm: %{api_key: key}} = config) when is_binary(key) do
+    url = config.llm.api_url || @anthropic_url
+    model = config.llm.model || "claude-3-7-sonnet-latest"
 
     payload = %{
       "model" => model,
@@ -39,9 +39,9 @@ defmodule Mom.LLM.API do
   def call_anthropic(_prompt, _config), do: {:error, "llm_api_key is required"}
 
   @spec call_openai(String.t(), Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def call_openai(prompt, %Config{llm_api_key: key} = config) when is_binary(key) do
-    url = config.llm_api_url || @openai_url
-    model = config.llm_model || "gpt-4.1-mini"
+  def call_openai(prompt, %Config{llm: %{api_key: key}} = config) when is_binary(key) do
+    url = config.llm.api_url || @openai_url
+    model = config.llm.model || "gpt-4.1-mini"
 
     payload = %{
       "model" => model,
@@ -73,7 +73,7 @@ defmodule Mom.LLM.API do
       {~c"content-type", ~c"application/json"}
     ]
 
-    if Security.egress_allowed?(url, config.allowed_egress_hosts) do
+    if Security.egress_allowed?(url, config.governance.allowed_egress_hosts) do
       body = Jason.encode!(payload)
       url_char = String.to_charlist(url)
 

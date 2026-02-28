@@ -40,7 +40,9 @@ defmodule Mom.RateLimiter do
     key = {:issue_signature, signature}
 
     case :ets.lookup(@table, key) do
-      [{^key, ts}] when now - ts <= window_ms -> false
+      [{^key, ts}] when now - ts <= window_ms ->
+        false
+
       _ ->
         :ets.insert(@table, {key, now})
         true

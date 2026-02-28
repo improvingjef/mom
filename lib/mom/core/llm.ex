@@ -6,11 +6,11 @@ defmodule Mom.LLM do
   require Logger
 
   @spec generate_patch(map(), Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def generate_patch(context, %Config{llm_provider: provider} = config) do
+  def generate_patch(context, %Config{llm: %{provider: provider}} = config) do
     prompt = build_prompt(context)
 
     with :ok <- Config.validate_runtime_policy(config),
-         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000),
+         true <- RateLimiter.allow?(:llm, config.llm.rate_limit_per_hour, 3_600_000),
          :ok <- enforce_llm_budget(config) do
       call_provider(prompt, provider, config)
     else
@@ -27,11 +27,11 @@ defmodule Mom.LLM do
   end
 
   @spec generate_text(map(), Config.t()) :: {:ok, String.t()} | {:error, term()}
-  def generate_text(context, %Config{llm_provider: provider} = config) do
+  def generate_text(context, %Config{llm: %{provider: provider}} = config) do
     prompt = build_prompt(context)
 
     with :ok <- Config.validate_runtime_policy(config),
-         true <- RateLimiter.allow?(:llm, config.llm_rate_limit_per_hour, 3_600_000),
+         true <- RateLimiter.allow?(:llm, config.llm.rate_limit_per_hour, 3_600_000),
          :ok <- enforce_llm_budget(config) do
       call_provider(prompt, provider, config)
     else
@@ -87,7 +87,7 @@ defmodule Mom.LLM do
   end
 
   defp call_codex(prompt, %Config{} = config) do
-    cmd = config.llm_cmd || "codex --yolo exec"
+    cmd = config.llm.cmd || "codex --yolo exec"
     started_at = System.monotonic_time()
     Logger.info("mom: codex invocation started cmd=#{cmd}")
 
@@ -116,17 +116,17 @@ defmodule Mom.LLM do
 
   defp enforce_llm_budget(%Config{} = config) do
     case SpendLimiter.allow_spend?(
-           config.repo,
+           config.runtime.repo,
            :llm_cost,
-           config.llm_call_cost_cents,
-           config.llm_spend_cap_cents_per_hour
+           config.llm.call_cost_cents,
+           config.llm.spend_cap_cents_per_hour
          ) do
       true ->
         case SpendLimiter.allow_spend?(
-               config.repo,
+               config.runtime.repo,
                :llm_tokens,
-               config.llm_tokens_per_call_estimate,
-               config.llm_token_cap_per_hour
+               config.llm.tokens_per_call_estimate,
+               config.llm.token_cap_per_hour
              ) do
           true -> :ok
           false -> {:budget_error, :llm_token_cap_exceeded}

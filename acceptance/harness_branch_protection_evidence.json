@@ -1,0 +1,31 @@
+{
+  "branch": "main",
+  "repo": "improvingjef/mom-fragile-phoenix-harness",
+  "required_checks": [
+    "ci/exunit",
+    "ci/playwright"
+  ],
+  "ci_workflow_verification": {
+    "required_checks": [
+      "ci/exunit",
+      "ci/playwright"
+    ],
+    "workflows_path": ".github/workflows",
+    "matched_checks": [
+      "ci/exunit",
+      "ci/playwright"
+    ],
+    "playwright_concurrency_artifact_uploaded": true,
+    "playwright_concurrency_report_path_set": true,
+    "playwright_fail_on_flaky": true,
+    "toolchain_drift_gate_enforced": true
+  },
+  "observed_checks": [
+    "ci/exunit",
+    "ci/playwright"
+  ],
+  "observed_min_approvals": 1,
+  "required_min_approvals": 1,
+  "verified": true,
+  "verified_at": "2026-02-20T00:52:46.947261Z"
+}

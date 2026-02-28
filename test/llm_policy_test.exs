@@ -29,7 +29,10 @@ defmodule Mom.LLMPolicyTest do
         llm_rate_limit_per_hour: 10
       )
 
-    drifted = %{config | llm_cmd: "codex --yolo exec --sandbox workspace-write"}
+    drifted = %{
+      config
+      | llm: %{config.llm | cmd: "codex --yolo exec --sandbox workspace-write"}
+    }
     context = %{report: %{status: :ok}, issues: [], instructions: "summarize"}
 
     assert {:error, {:policy_violation, "staging_restricted forbids --yolo execution"}} =

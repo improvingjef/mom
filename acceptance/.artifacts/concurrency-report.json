@@ -1,0 +1,3749 @@
+[
+  {
+    "attempt_id": "pw13120-0-a1-10c44889e927",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-0-a1-56cf346e10e1",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-0-a1-747cc5ab4a14",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-0-a1-ba78e52d3ca8",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-1-a1-11b33570b0a2",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-1-a1-900a276fd197",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-1-a1-ab6477f2ef21",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-1-a1-dbda74e083b5",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-2-a1-454d154620f2",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-2-a1-9c0a21204406",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-2-a1-f04a5fce37b5",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-3-a1-17fda2dbf1ce",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-3-a1-28020e529dfa",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-3-a1-44ebaf14f157",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-3-a1-b491b12e3885",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-4-a1-21f8192646a8",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-4-a1-4e0d895c69b9",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-4-a1-5e4a052da812",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-4-a1-9a36b3849e36",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-5-a1-3e457dade97e",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-5-a1-6e8a9850948e",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-5-a1-884289be1777",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-5-a1-ff7199b0d743",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-6-a1-021ef0d7201d",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-6-a1-0db0909e1304",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-6-a1-54357ffcdf2c",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw13120-6-a1-6d2300776362",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-6-a1-8f69c78042a2",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-6-a2-6e0c6c7f6346",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw13120-7-a1-4ace4b045374",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-7-a1-923e2900d3f0",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-7-a1-af237e85a54e",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw13120-7-a1-d8138b9a9c90",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-232d54382998",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-36ff3e0a81ac",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-3b9a1cf1a927",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_bump_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-ceb39055df4c",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-cf58365bc8bd",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-0-a1-e14624bbc5dc",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-199fe9179b50",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-2dd01c93dc93",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-3a552dbe4fb0",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-881c8c7592b7",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-9b75a20a9377",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-1-a1-da858d95c61a",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-2-a1-48a86ed113af",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-2-a1-6dba68d5fa22",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-2-a1-c6892ffb5c40",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-2-a1-c6b485c6c95c",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-2-a1-cb1ed2582a92",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-3-a1-084d298cb668",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-3-a1-0d2334ccf08b",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-3-a1-8996e2a5d718",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-3-a1-c3f80703196d",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-280e6fdd9c26",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-42c907f926ca",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-5b15fb0c5e98",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-6bf627450fd1",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-91e6eafc2ea2",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-4-a1-f9e5156f267e",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-5-a1-0337bcfddb93",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-5-a1-7f8d3a0f9e1b",
+    "script_path": "acceptance/scripts/mom_cli_worker_lifecycle_watchdog_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-5-a1-cced9bc655d2",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-5-a1-f0a75508f7d1",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-0cb959da72aa",
+    "script_path": "acceptance/scripts/mom_cli_worktree_capacity_guardrails_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-47fa761bdbba",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-7be602d9af6e",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-adbf4d79a6ce",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-c1fc8959ced2",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-6-a1-dc65f46667c3",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-0359d18f4126",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-3724b3caffc3",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-399194de5066",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-5e9a10c00e4b",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-6dca621eaf01",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a1-7bb8e2b9225c",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw17049-7-a1-e24f7e1d469a",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw17049-7-a2-62ff1cd46971",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw19627-0-a1-015d0d0d5a2b",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-0-a1-343e799f348c",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-0-a1-3cd65a26070f",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-0-a1-3f69e9c98de2",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-0-a1-cca18aa8d5d3",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-0-a1-f849014ac1c2",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-1-a1-1d95a5de7033",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-1-a1-6627c916181c",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-1-a1-aa8f7b2aeb98",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-1-a1-bdeedd518d14",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-1-a1-cb50b0eab2ea",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-2-a1-27d3c2c9c5d8",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-2-a1-6e8e3662ea24",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-2-a1-715a96a05d45",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-2-a1-bb2c780bbedb",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-2-a1-d567b54b34b9",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-3-a1-03c0dbb29540",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-3-a1-40b4412e1beb",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-3-a1-44bac75f9834",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-3-a1-acecf2a18e50",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-3-a1-d7877c4e9162",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-4-a1-4712bed776ce",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-4-a1-4832073050c0",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-4-a1-55f53535e163",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-4-a1-9ad88eba8480",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-4-a1-be49be5252aa",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-5-a1-18348c153426",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-5-a1-89851ab045a4",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-5-a1-964a21db0853",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-5-a1-a4bc2e08ed6a",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-5-a1-afc82b00e6ee",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-6-a1-00e329aaf1e7",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-6-a1-48aaeeaf3e62",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-6-a1-4bc68101f2ec",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-6-a1-8877ec3cc03c",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-6-a1-f9edaded1d25",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a1-0cf09917b48d",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a1-12f1955681df",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a1-61179c439595",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a1-8e73a800ce4f",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw19627-7-a1-9a807e8cf307",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a1-c941fb375591",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw19627-7-a2-b8caade5c006",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw22428-0-a1-1c5126c0ddb6",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-54813dbc8b95",
+    "script_path": "acceptance/scripts/mom_cli_worktree_capacity_guardrails_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-6259d00e8c57",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-65922d86980b",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-763e0b68651d",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-bc835cfdcd10",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-0-a1-fe3dbfa1b759",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-18fe26ecc231",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-56cf8a69de16",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-5a55cfe595e9",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-94fa89bc491d",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-c5be2909464f",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-1-a1-ebcb4449c04b",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a1-29c2829799f4",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 130000,
+    "timeout_forensics": {
+      "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+      "attempt": 1,
+      "classification": "monitor_attach_race",
+      "timeout_signal": "etimedout",
+      "process_snapshot": []
+    }
+  },
+  {
+    "attempt_id": "pw22428-2-a1-2e23ec926819",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a1-647752cfe3b0",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a1-af7398afcc05",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a1-b0dace31ca7b",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a1-f0c5f7bce942",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-2-a2-f8e27f17dc84",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": true,
+    "timeout_budget_ms": 160000
+  },
+  {
+    "attempt_id": "pw22428-2-a2-f8e27f17dc84",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 160000
+  },
+  {
+    "attempt_id": "pw22428-3-a1-16ecdce209d2",
+    "script_path": "acceptance/scripts/incident_to_pr_success_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-3-a1-98799d796a6d",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-3-a1-be82c49e1609",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-3-a1-c9ed2877a91f",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-3-a1-d6ea0bd15277",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-4-a1-38dc5c52e9ab",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-4-a1-a36fdcee4c2a",
+    "script_path": "acceptance/scripts/mom_cli_worker_lifecycle_watchdog_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-4-a1-aa008fd1e810",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-4-a1-b15d74a19642",
+    "script_path": "acceptance/scripts/incident_to_pr_failure_classification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-4-a1-cc8589c50cc8",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-4380bdc52f27",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_bump_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-bb5c6948c0b5",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-ccc2d4170a24",
+    "script_path": "acceptance/scripts/incident_to_pr_summary_artifact_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-d097385e691c",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-e8d375f4e7b2",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-5-a1-fb05ac67b91a",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-6-a1-0fc39e131375",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-6-a2-0fe4c2958d18",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-092d4513d495",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-0a6432630f48",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-13843e62bad0",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-562aaebe6125",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-7b9a4a171095",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-8-a1-ec31bfb52f48",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-30edfc3c8f2c",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-404efa152f1f",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 165000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-53dd15689573",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-9f3c139c1488",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-c128821d3367",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw22428-9-a1-e46f53585595",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw37338-0-a1-041b9d35f61d",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-0-a1-2a7333325cb4",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-0-a1-600d013c98b7",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-0-a1-8325f34bd03f",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-0-a1-c16097c37daf",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-1-a1-005d31998f56",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-1-a1-03a4ed973066",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-1-a1-6d280fbbd0fe",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-1-a1-7274c759306b",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-2-a1-2ca00bd494fe",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-2-a1-2d475b751ef1",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-2-a1-4bbf845e4d80",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-2-a1-54f5bd061082",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-2-a1-8ca4f1fce3e6",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-3-a1-25a93499a48c",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-3-a1-28c9ec17ea15",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-3-a1-473e0b9dd46f",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-3-a1-70cea4973f42",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-4-a1-3845e2b8b8cf",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-4-a1-660228388cba",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-4-a1-8378921e9e56",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-4-a1-b66f6558becf",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-4-a1-ff3edae7c78e",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-5-a1-369e4efd7a7a",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-5-a1-3dcce91a5254",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-5-a1-789737e75eb4",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-5-a1-9977b6a98a70",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "non_retryable"
+  },
+  {
+    "attempt_id": "pw37338-6-a1-85358c18c039",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-6-a1-a128813803be",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-6-a1-c80eb80731d2",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-6-a1-d28e0b035305",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-7-a1-3fee50313b6c",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-7-a1-5cae639c647d",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-7-a1-750b2bcd0ba1",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw37338-7-a1-8f7ac63ca8b5",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-7-a1-c4d6461c0ab3",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw37338-7-a2-5ad040f064d5",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw39502-0-a1-4cfcb2f0c409",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-0-a1-5b6d449e7899",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_bump_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-0-a1-87a383d2d164",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-0-a1-c869af9f0d13",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-0-a1-cd3644f68d4f",
+    "script_path": "acceptance/scripts/mom_cli_worktree_capacity_guardrails_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-0d75fea69e13",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-799f51f650df",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-8eb3873a02c8",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-9c460ed8f675",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-c2d87f4997a7",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-1-a1-f5e346223ebb",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-09754ae618bf",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-19f7cb25cbc5",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-45015ca1ec69",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 130000,
+    "timeout_forensics": {
+      "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+      "attempt": 1,
+      "classification": "monitor_attach_race",
+      "timeout_signal": "etimedout",
+      "process_snapshot": []
+    }
+  },
+  {
+    "attempt_id": "pw39502-2-a1-51ca531163b6",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-7444b86210ab",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-a6646fa8b582",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-de8105b64653",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a1-eeff44647f17",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-2-a2-4b49e9061ea0",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": true,
+    "timeout_budget_ms": 160000
+  },
+  {
+    "attempt_id": "pw39502-3-a1-2bfbd86efb13",
+    "script_path": "acceptance/scripts/incident_to_pr_success_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-3-a1-2cdcf8b1661c",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-3-a1-5b08e868ea90",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-3-a1-6dd8593e9869",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-3-a1-7d04c8b8b806",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-4-a1-4dd469aae78d",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-4-a1-527b6c1a4638",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-4-a1-54ab4a3c4d91",
+    "script_path": "acceptance/scripts/mom_cli_worker_lifecycle_watchdog_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-4-a1-5864ec44a348",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-4-a1-6904d3501b24",
+    "script_path": "acceptance/scripts/incident_to_pr_failure_classification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-1b849ef54144",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-49ddd2e8a17d",
+    "script_path": "acceptance/scripts/incident_to_pr_summary_artifact_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-52dd2daf9a97",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-5cf737b47e55",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-99e2f750d8b9",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-5-a1-fa5b39619416",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-06e2917ea4cc",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-a83d19cf0096",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-b6c2b5d3134e",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-b70a1cf3925c",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-ded9f3ec8ec7",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-6-a1-f67def7112bb",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-0a5a1e368996",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-447a8e89a1ea",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-4d70f060f76b",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 155000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-5713b523dacd",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-63f5f81f2c58",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-7952d24a0da8",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a1-b6722ef7e0b8",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false,
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw39502-7-a2-8b72b2cf1fc3",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race",
+    "timeout_budget_ms": 120000
+  },
+  {
+    "attempt_id": "pw54640-0-a1-2055b1c0a457",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-0-a1-39709d569512",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-0-a1-6049fded5aa4",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-0-a1-92b7f35dcea9",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-1-a1-4e699074819d",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-1-a1-53e641f1472e",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-1-a1-5fb4e818f876",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-1-a1-fa8da5aa908d",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-2-a1-0ddad75927ec",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-2-a1-59ce334de36f",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-2-a1-95d02410d734",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-2-a1-9ac59256aa20",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-3-a1-0bb625295eba",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-3-a1-994db2895316",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-3-a1-eadb837a4633",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-3-a1-ebdb017df627",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-4-a1-2752ca269558",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-4-a1-8ffab54d3070",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-4-a1-d77cfa6c98a5",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-4-a1-fe9ecb80c50b",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-5-a1-137b1998ab78",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-5-a1-29052189c3a0",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-5-a1-29179380d277",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-5-a1-6e889e487b62",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-5-a1-6f56630717ef",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-6-a1-4ff20fe66952",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-6-a1-cd21a0e3c8c9",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-6-a1-eb13451cc4a4",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-0caf78a1a6b5",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-0cc5bac45abf",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-8a9ff4a04594",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-b32c19388905",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-d5bdf7b9df6b",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw54640-7-a1-eb53164998bd",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw54640-7-a2-8f817e84bea0",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw73250-0-a1-28c428de55a3",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-0-a1-62030b486f18",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-0-a1-8e5fe04d9ca9",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-0-a1-d0ff2533784f",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-0-a1-f0d36f4be6ef",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-0c3ca473e621",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-10586af0f08d",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-2c8cd2c67bc6",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-2e3c0cb9a3d1",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-9c441cecba65",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-1-a1-ccc564b94c35",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-2-a1-4db2875e0cde",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-2-a1-52ddffa59a70",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-2-a1-707173b0f2ab",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-2-a1-a2fbff0d480d",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-2-a1-eb409a65773e",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-3-a1-4188cfcf409e",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-3-a1-8552dde0565d",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-3-a1-8d67fe368f81",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-3-a1-eed29b107e78",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-4-a1-6348c1d970b2",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-4-a1-70d1d166290b",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "non_retryable"
+  },
+  {
+    "attempt_id": "pw73250-4-a1-71fbc525d255",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-4-a1-7937b54f8fbd",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-4-a1-896b532ddd04",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-4-a1-e58c6027c8fa",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-8c76957bbca1",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-94bc40eb22d2",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-95fbe5c43d4c",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-ce86257d53fc",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-d02e7a782b05",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-5-a1-e7579ef95d5a",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-6-a1-010e4b4acb3b",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-6-a1-03a6b54225aa",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-6-a1-11af91cf71eb",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-6-a1-3302404d75ed",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-6-a1-d332e846a6f7",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-7-a1-26eda2ee3522",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-7-a1-2ff349d0a734",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-7-a1-37724c4eafc5",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-7-a1-5fb63a38fcd6",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw73250-7-a1-d4d4a12956b1",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw73250-7-a2-e5e04982e5dc",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw91633-0-a1-1c92f28b6722",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-0-a1-62e27d0427c3",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-0-a1-695249ca85f0",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-0-a1-81ae3e3b783e",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-0-a1-9418689e1638",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-1-a1-4c33775a61c0",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-1-a1-602b58f7da17",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-1-a1-8e3cfbc63c84",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-1-a1-aeda39a1c56d",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-1-a1-f8b6fcda7e05",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-3f9908c2f05d",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-5e14c850ab3b",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-7aaf47121746",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-8afc64ea6de0",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-c2d0b9ce9e41",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-2-a1-fa4062fd5956",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-3-a1-077c6c1dc6b1",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-3-a1-5b7bc47e3dd4",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-3-a1-d8aa5f3b96de",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-3-a1-df5db34470ca",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-3-a1-e3c359e3b1ff",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-4-a1-0df949bcc012",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-4-a1-5e699aa4043e",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-4-a1-6254015811e8",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-4-a1-7bc1e755aee9",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-4-a1-8e67ee655643",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-5-a1-89fefa762582",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-5-a1-8d156f7ef6d9",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-5-a1-f1dfba7ad4eb",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-5-a1-f6fb51ae5bdd",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-5-a1-feb89d107a55",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-6-a1-2f978cc385c5",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-6-a1-5ad57063b377",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-6-a1-7c53f4303e03",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-6-a1-a50d831f6a96",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-6-a1-bfad08325c38",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a1-18e7a5281a63",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw91633-7-a1-3f3fb38af57a",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a1-aed01f52114c",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a1-ca86aea652fb",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a1-e7d2d0f94816",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a1-ebac023757f9",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw91633-7-a2-9ab567385767",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw93708-0-a1-52f75115635a",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-0-a1-9eb19aa3889e",
+    "script_path": "acceptance/scripts/mom_cli_ci_workflow_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-0-a1-a656eddeb910",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-0-a1-c1d3a732ca57",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-0-a1-f8fd61c484f5",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-1-a1-648f2fdfbac9",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-1-a1-6e8fda232a08",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_policy_alignment_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-1-a1-99f33a8d1b6e",
+    "script_path": "acceptance/scripts/mom_cli_github_scope_verification_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-1-a1-a44156fa83ba",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-1-a1-c79cec8cc6be",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-2-a1-31fd7fdc3d12",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-2-a1-706ef0c47f07",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-2-a1-ae9412783272",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-2-a1-ddd521bf5732",
+    "script_path": "acceptance/scripts/mom_cli_runbook_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-2-a1-f193fed5e06d",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-3-a1-26eb61a783f2",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_doctor_bootstrap_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-3-a1-485d52df46fb",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-3-a1-b02807bb7c77",
+    "script_path": "acceptance/scripts/mom_cli_github_permission_evidence_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-3-a1-be50d8ab182d",
+    "script_path": "acceptance/scripts/mom_cli_worktree_temp_path_lifecycle_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-3-a1-faba8dc4afd8",
+    "script_path": "acceptance/scripts/mom_cli_test_command_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-4-a1-23a99f66aec7",
+    "script_path": "acceptance/scripts/mom_cli_build_artifact_cleanup_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-4-a1-84b2a97eb394",
+    "script_path": "acceptance/scripts/mom_cli_execution_profile_drift_attestation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-4-a1-a1d5fe2be8cf",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-4-a1-e94c85c5927f",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-4-a1-f5eb8ef0a540",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-5-a1-2cf683db6422",
+    "script_path": "acceptance/scripts/mom_cli_toolchain_prerequisites_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-5-a1-36b721419e8f",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-5-a1-6b0df1c5d29b",
+    "script_path": "acceptance/scripts/pipeline_multi_tenant_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-5-a1-76ba07221c2f",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-5-a1-9a8adacbe75e",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-6-a1-170f310a501a",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-6-a1-7368b270e1d1",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-6-a1-a0d5fece5516",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-6-a1-a34eba01e500",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-6-a1-f95b278e4246",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-11adda25f1c2",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw93708-7-a1-3db17aa0bad7",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-4289fc0bbf46",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-57f2cde9636c",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-c2ab95ef5cbc",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-ce6f4bc31dbc",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a1-de3dbb3e0b1b",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw93708-7-a2-abe7db98819b",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw99736-0-a1-044103e28de0",
+    "script_path": "acceptance/scripts/mom_cli_machine_identity_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-0-a1-11c6d616e20a",
+    "script_path": "acceptance/scripts/pipeline_durable_queue_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-0-a1-c004adddd45a",
+    "script_path": "acceptance/scripts/mom_cli_codex_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-0-a1-c082d27415ee",
+    "script_path": "acceptance/scripts/mom_cli_compliance_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-1-a1-04eac932eb1f",
+    "script_path": "acceptance/scripts/pipeline_telemetry_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-1-a1-d1b9f0b592d5",
+    "script_path": "acceptance/scripts/mom_cli_branch_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-1-a1-f56719323eed",
+    "script_path": "acceptance/scripts/runner_burst_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-2-a1-1c433ba715a7",
+    "script_path": "acceptance/scripts/mom_cli_staging_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-2-a1-21a5bdf902e1",
+    "script_path": "acceptance/scripts/mom_cli_config_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-2-a1-8da1a1bcae30",
+    "script_path": "acceptance/scripts/pipeline_timeout_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-2-a1-f1edc246efb4",
+    "script_path": "acceptance/scripts/mom_cli_readiness_gate_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-3-a1-31b3babe7d46",
+    "script_path": "acceptance/scripts/mom_cli_secret_handling_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-3-a1-6e8c17bf929f",
+    "script_path": "acceptance/scripts/pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-3-a1-7d5379934ba2",
+    "script_path": "acceptance/scripts/mom_cli_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-3-a1-7e3d72564610",
+    "script_path": "acceptance/scripts/mom_stress_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-4-a1-03398d731405",
+    "script_path": "acceptance/scripts/mom_cli_workdir_isolation_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-4-a1-05172eee42d5",
+    "script_path": "acceptance/scripts/mom_cli_egress_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-4-a1-1eafdbcca909",
+    "script_path": "acceptance/scripts/github_audit_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-4-a1-5952fd480217",
+    "script_path": "acceptance/scripts/observability_prometheus_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-6-a1-295d64f358e0",
+    "script_path": "acceptance/scripts/llm_codex_logging_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-6-a1-39212c73f214",
+    "script_path": "acceptance/scripts/mom_cli_fail_closed_policy_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-6-a1-3f8d73e9e860",
+    "script_path": "acceptance/scripts/pipeline_inflight_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-6-a1-9f23eaf80ff9",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "retrying",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw99736-6-a1-cdb89d629604",
+    "script_path": "acceptance/scripts/runner_pipeline_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-6-a2-ceee67a630b8",
+    "script_path": "acceptance/scripts/fake_acceptance.exs",
+    "attempt": 2,
+    "retry_budget": 1,
+    "status": "failed",
+    "classification": "monitor_attach_race"
+  },
+  {
+    "attempt_id": "pw99736-7-a1-102979c48d32",
+    "script_path": "acceptance/scripts/mom_cli_production_profile_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-7-a1-5bec00959ad8",
+    "script_path": "acceptance/scripts/mom_cli_harness_repo_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-7-a1-63792ae33ad8",
+    "script_path": "acceptance/scripts/mom_cli_pr_only_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-8-a1-144273b1e734",
+    "script_path": "acceptance/scripts/mom_cli_actor_allowlist_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-8-a1-3e488dbc5481",
+    "script_path": "acceptance/scripts/pipeline_dispatch_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  },
+  {
+    "attempt_id": "pw99736-8-a1-9b8e691b8804",
+    "script_path": "acceptance/scripts/mom_cli_spend_caps_acceptance.exs",
+    "attempt": 1,
+    "retry_budget": 1,
+    "status": "passed",
+    "flaky": false
+  }
+]

@@ -82,7 +82,10 @@ defmodule Mix.Tasks.Mom.Harness do
     record_path = Keyword.get(opts, :record_path, "acceptance/harness_repo.json")
     baseline_error_path = Keyword.get(opts, :baseline_error_path)
     baseline_diagnostics_path = Keyword.get(opts, :baseline_diagnostics_path)
-    traceability_path = Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
+
+    traceability_path =
+      Keyword.get(opts, :traceability_path, "acceptance/harness_traceability.json")
+
     branch_protection_branch =
       Keyword.get(opts, :branch_protection_branch, @default_branch_protection_branch)
 
@@ -118,17 +121,17 @@ defmodule Mix.Tasks.Mom.Harness do
 
       true ->
         {:ok,
-          %{
-            repo: repo,
-            record_path: record_path,
-            baseline_error_path: baseline_error_path,
-            baseline_diagnostics_path: baseline_diagnostics_path,
-            traceability_path: traceability_path,
-            branch_protection_branch: branch_protection_branch,
-            required_checks: required_checks,
-            min_approvals: min_approvals,
-            branch_protection_evidence_path: branch_protection_evidence_path
-          }}
+         %{
+           repo: repo,
+           record_path: record_path,
+           baseline_error_path: baseline_error_path,
+           baseline_diagnostics_path: baseline_diagnostics_path,
+           traceability_path: traceability_path,
+           branch_protection_branch: branch_protection_branch,
+           required_checks: required_checks,
+           min_approvals: min_approvals,
+           branch_protection_evidence_path: branch_protection_evidence_path
+         }}
     end
   end
 
