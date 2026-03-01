@@ -1,7 +1,7 @@
 defmodule Mom.Governance.Policies.LLM do
   @moduledoc false
 
-  @type provider :: :claude_code | :codex | :api_anthropic | :api_openai
+  @type provider :: :claude_code | :codex | :api_anthropic | :api_openai | :ollama
   @type execution_profile :: :test_relaxed | :staging_restricted | :production_hardened
 
   defstruct [

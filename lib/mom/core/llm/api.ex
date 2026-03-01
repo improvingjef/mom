@@ -67,6 +67,31 @@ defmodule Mom.LLM.API do
 
   def call_openai(_prompt, _config), do: {:error, "llm_api_key is required"}
 
+  @spec call_ollama(String.t(), Config.t()) :: {:ok, String.t()} | {:error, term()}
+  def call_ollama(prompt, %Config{} = config) do
+    url = config.llm.api_url || "http://localhost:11434/v1/chat/completions"
+    model = config.llm.model || "qwen2.5-coder:1.5b"
+
+    payload = %{
+      "model" => model,
+      "messages" => [
+        %{"role" => "user", "content" => prompt}
+      ],
+      "temperature" => 0.2,
+      "stream" => false
+    }
+
+    # Ollama needs no auth, but we still use the shared request/decode path
+    request_local(url, payload, fn body ->
+      with {:ok, data} <- Jason.decode(body),
+           [%{"message" => %{"content" => text}} | _] <- data["choices"] do
+        {:ok, text}
+      else
+        _ -> {:error, :invalid_ollama_response}
+      end
+    end)
+  end
+
   defp request(url, headers, payload, %Config{} = config, decode_fun) do
     base_headers = [
       {~c"user-agent", ~c"mom"},
@@ -84,6 +109,19 @@ defmodule Mom.LLM.API do
     else
       {:error, {:egress_blocked, Security.url_host(url)}}
     end
+  end
+
+  defp request_local(url, payload, decode_fun) do
+    body = Jason.encode!(payload)
+    url_char = String.to_charlist(url)
+
+    headers = [
+      {~c"user-agent", ~c"mom"},
+      {~c"content-type", ~c"application/json"}
+    ]
+
+    :inets.start()
+    do_request(url_char, headers, body, decode_fun, 0)
   end
 
   defp do_request(url, headers, body, decode_fun, attempt) when attempt < 3 do

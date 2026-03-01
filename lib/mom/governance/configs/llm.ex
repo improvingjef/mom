@@ -3,7 +3,7 @@ defmodule Mom.Governance.Configs.LLM do
 
   alias Mom.Governance.Configs.Merge
 
-  @type provider :: :claude_code | :codex | :api_anthropic | :api_openai
+  @type provider :: :claude_code | :codex | :api_anthropic | :api_openai | :ollama
 
   defstruct [
     :provider,

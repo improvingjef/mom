@@ -83,6 +83,7 @@ defmodule Mom.LLM do
       :claude_code -> CLI.call(prompt, config, "claude")
       :api_anthropic -> API.call_anthropic(prompt, config)
       :api_openai -> API.call_openai(prompt, config)
+      :ollama -> API.call_ollama(prompt, config)
     end
   end
 

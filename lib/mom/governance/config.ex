@@ -24,7 +24,7 @@ defmodule Mom.Config do
 
   require Logger
 
-  @type llm_provider :: :claude_code | :codex | :api_anthropic | :api_openai
+  @type llm_provider :: :claude_code | :codex | :api_anthropic | :api_openai | :ollama
 
   defstruct [
     :runtime,
