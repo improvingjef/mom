@@ -318,7 +318,7 @@ defmodule Mom.Governance.Configs.Governance do
     trimmed = String.trim(host)
 
     trimmed == host and Regex.match?(~r/^[A-Za-z0-9.-]+$/, trimmed) and
-      String.contains?(trimmed, ".")
+      (String.contains?(trimmed, ".") or trimmed == "localhost")
   end
 
   defp valid_host?(_), do: false
