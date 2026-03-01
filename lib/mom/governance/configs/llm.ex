@@ -93,7 +93,8 @@ defmodule Mom.Governance.Configs.LLM do
 
   defp valid_host?(host) when is_binary(host) do
     trimmed = String.trim(host)
-    trimmed == host and Regex.match?(~r/^[A-Za-z0-9.-]+$/, trimmed) and String.contains?(trimmed, ".")
+    trimmed == host and Regex.match?(~r/^[A-Za-z0-9.-]+$/, trimmed) and
+      (String.contains?(trimmed, ".") or trimmed == "localhost")
   end
 
   defp valid_host?(_), do: false
