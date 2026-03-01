@@ -4,6 +4,8 @@ defmodule Mom.Security do
   @spec sanitize(term(), [String.t()]) :: term()
   def sanitize(value, redact_keys) do
     do_sanitize(value, MapSet.new(Enum.map(redact_keys, &String.downcase/1)))
+  rescue
+    _ -> value
   end
 
   @spec signature(term()) :: String.t()
@@ -27,6 +29,12 @@ defmodule Mom.Security do
   end
 
   def url_host(_url), do: nil
+
+  defp do_sanitize(%{__struct__: _} = struct, redact_keys) do
+    struct
+    |> Map.from_struct()
+    |> do_sanitize(redact_keys)
+  end
 
   defp do_sanitize(map, redact_keys) when is_map(map) do
     map

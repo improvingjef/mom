@@ -53,6 +53,14 @@ defmodule Mom.Runner do
       spawn_link(fn ->
         Process.flag(:trap_exit, true)
 
+        # Connect and install all handlers once up front
+        :ok = ensure_connection(config, beam_module)
+        :ok = beam_module.attach_logger(config, self())
+        :ok = beam_module.attach_telemetry(config, self())
+        :ok = beam_module.monitor_node(config)
+
+        Logger.info("mom: event-driven loop started, listening for telemetry + logs")
+
         loop(config, %{
           last_triage_at: 0,
           pipeline: pipeline,
@@ -79,34 +87,104 @@ defmodule Mom.Runner do
   end
 
   defp loop(%Config{} = config, state) do
-    :ok = ensure_connection(config, state.beam_module)
-    :ok = state.beam_module.attach_logger(config, self())
-
-    diagnostics_ref =
-      Process.send_after(self(), :poll_diagnostics, config.runtime.poll_interval_ms)
-
     receive do
+      # === Error logs from RemoteLoggerHandler ===
       {:mom_log, event} ->
         Logger.debug("mom: received error log")
         enqueue_job(state.pipeline_module, state.pipeline, {:error_event, event})
         loop(config, state)
 
-      :poll_diagnostics ->
-        {report, issues, triage?, now} =
-          state.diagnostics_module.poll(config, state.last_triage_at)
+      # === VM telemetry — memory and run queue from telemetry_poller ===
+      {:mom_telemetry, %{event: [:vm, _]} = event} ->
+        {_issues, trigger?, now} =
+          state.diagnostics_module.evaluate_vm_event(event, config, state.last_triage_at)
 
-        if triage? do
-          enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, report, issues})
+        state = if trigger? do
+          enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, event, []})
+          %{state | last_triage_at: now}
+        else
+          state
         end
 
-        Process.send_after(self(), :poll_diagnostics, config.runtime.poll_interval_ms)
-        last_triage_at = if triage?, do: now, else: state.last_triage_at
-        loop(config, %{state | last_triage_at: last_triage_at})
+        loop(config, state)
+
+      # === Phoenix exceptions ===
+      {:mom_telemetry, %{event: [:phoenix, :router_dispatch, :exception]} = event} ->
+        {_issues, trigger?, now} =
+          state.diagnostics_module.evaluate_exception(event, config, state.last_triage_at)
+
+        state = if trigger? do
+          enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, event, []})
+          %{state | last_triage_at: now}
+        else
+          state
+        end
+
+        loop(config, state)
+
+      # === Slow Ecto queries ===
+      {:mom_telemetry, %{event: [:latte, :repo, :query]} = event} ->
+        {_issues, trigger?, _now} =
+          state.diagnostics_module.evaluate_query(event, config, state.last_triage_at)
+
+        if trigger? do
+          enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, event, []})
+        end
+
+        loop(config, state)
+
+      # === Oban job failures ===
+      {:mom_telemetry, %{event: [:oban, :job, :exception]} = event} ->
+        Logger.warning("mom: oban job exception")
+        enqueue_job(state.pipeline_module, state.pipeline, {:error_event, event})
+        loop(config, state)
+
+      # === Other telemetry — pass through silently ===
+      {:mom_telemetry, _event} ->
+        loop(config, state)
+
+      # === System monitor events (long GC, busy ports) ===
+      {:mom_system_monitor, event} ->
+        Logger.warning("mom: system_monitor #{event.type}")
+
+        {_issues, trigger?, now} =
+          state.diagnostics_module.evaluate_system_monitor(event, config, state.last_triage_at)
+
+        state = if trigger? do
+          enqueue_job(state.pipeline_module, state.pipeline, {:diagnostics_event, event, []})
+          %{state | last_triage_at: now}
+        else
+          state
+        end
+
+        loop(config, state)
+
+      # === Distributed Erlang heartbeat failure ===
+      {:nodedown, node} ->
+        Logger.error("mom: node down #{inspect(node)}, attempting reconnect")
+        reconnect(config, state)
 
       {:EXIT, _pid, reason} ->
         Logger.warning("mom: exit #{inspect(reason)}")
-        _ = diagnostics_ref
         loop(config, state)
+    end
+  end
+
+  defp reconnect(%Config{} = config, state) do
+    # Use poll_interval_ms as retry backoff
+    Process.sleep(config.runtime.poll_interval_ms)
+
+    try do
+      :ok = ensure_connection(config, state.beam_module)
+      :ok = state.beam_module.attach_logger(config, self())
+      :ok = state.beam_module.attach_telemetry(config, self())
+      :ok = state.beam_module.monitor_node(config)
+      Logger.info("mom: reconnected to #{inspect(config.runtime.node)}")
+      loop(config, state)
+    rescue
+      _ ->
+        Logger.warning("mom: reconnect failed, retrying in #{config.runtime.poll_interval_ms}ms")
+        reconnect(config, state)
     end
   end
 

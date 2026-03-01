@@ -1,13 +1,13 @@
 defmodule Mom.Beam do
   @moduledoc false
 
-  alias Mom.{Config, RemoteLoggerHandler}
+  alias Mom.{Config, RemoteLoggerHandler, RemoteTelemetryHandler}
 
   @spec ensure_node_started(atom() | nil) :: :ok
   def ensure_node_started(nil), do: :ok
 
   def ensure_node_started(cookie) when is_atom(cookie) do
-    :ok = Node.set_cookie(cookie)
+    Node.set_cookie(cookie)
 
     case Node.alive?() do
       true ->
@@ -38,6 +38,24 @@ defmodule Mom.Beam do
       %{mom_pid: pid, min_level: min_level}
     ])
 
+    :ok
+  end
+
+  @spec attach_telemetry(Config.t(), pid()) :: :ok
+  def attach_telemetry(%Config{runtime: %{mode: :inproc}}, _pid), do: :ok
+
+  def attach_telemetry(%Config{runtime: %{mode: :remote, node: node}}, pid) do
+    {mod, bin, file} = :code.get_object_code(RemoteTelemetryHandler)
+    :rpc.call(node, :code, :load_binary, [mod, file, bin])
+    :rpc.call(node, RemoteTelemetryHandler, :attach, [pid])
+    :ok
+  end
+
+  @spec monitor_node(Config.t()) :: :ok
+  def monitor_node(%Config{runtime: %{mode: :inproc}}), do: :ok
+
+  def monitor_node(%Config{runtime: %{mode: :remote, node: node}}) do
+    Node.monitor(node, true)
     :ok
   end
 end

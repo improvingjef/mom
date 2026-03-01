@@ -38,6 +38,26 @@ defmodule Mom.SecurityTest do
     end
   end
 
+  test "sanitize handles OTP logger events with exception structs and stacktraces" do
+    # Logger events from OTP contain structs (e.g. BadMapError) and charlist stacktraces.
+    # The sanitizer must not crash on these shapes.
+    logger_event = %{
+      level: :error,
+      msg: {:report, %{label: {:proc_lib, :crash}}},
+      meta: %{
+        crash_reason: {
+          %BadMapError{term: nil},
+          [{Enum, :map, 2, [file: ~c"lib/enum.ex", line: 1688]}]
+        },
+        pid: self(),
+        gl: self()
+      }
+    }
+
+    result = Security.sanitize(logger_event, ["password", "token"])
+    assert is_map(result)
+  end
+
   test "signature is deterministic" do
     value = %{a: 1, b: [2, 3]}
     assert Security.signature(value) == Security.signature(value)

@@ -6,11 +6,25 @@ defmodule Mom.RunnerTest do
   defmodule FakeBeam do
     def ensure_node_started(_cookie), do: :ok
     def attach_logger(_config, _pid), do: :ok
+    def attach_telemetry(_config, _pid), do: :ok
+    def monitor_node(_config), do: :ok
   end
 
   defmodule FakeDiagnostics do
-    def poll(_config, _last_triage_at) do
-      {%{source: :diagnostics}, [:cpu_high], true, System.monotonic_time(:millisecond)}
+    def evaluate_vm_event(_event, _config, _last_triage_at) do
+      {[:cpu_high], true, System.monotonic_time(:millisecond)}
+    end
+
+    def evaluate_exception(_event, _config, _last_triage_at) do
+      {[:request_error], true, System.monotonic_time(:millisecond)}
+    end
+
+    def evaluate_query(_event, _config, _last_triage_at) do
+      {[], false, 0}
+    end
+
+    def evaluate_system_monitor(_event, _config, _last_triage_at) do
+      {[:long_gc], true, System.monotonic_time(:millisecond)}
     end
   end
 
@@ -22,15 +36,19 @@ defmodule Mom.RunnerTest do
   end
 
   defmodule BurstDiagnostics do
-    def poll(_config, last_triage_at) do
+    def evaluate_vm_event(_event, _config, last_triage_at) do
       seq = last_triage_at + 1
 
       if seq <= 2 do
-        {%{source: :diagnostics, seq: seq}, [:cpu_high], true, seq}
+        {[:cpu_high], true, seq}
       else
-        {%{source: :diagnostics, seq: seq}, [], false, last_triage_at}
+        {[], false, last_triage_at}
       end
     end
+
+    def evaluate_exception(_event, _config, _last_triage_at), do: {[], false, 0}
+    def evaluate_query(_event, _config, _last_triage_at), do: {[], false, 0}
+    def evaluate_system_monitor(_event, _config, _last_triage_at), do: {[], false, 0}
   end
 
   defmodule BurstCaptureWorker do
@@ -45,13 +63,13 @@ defmodule Mom.RunnerTest do
       :ok
     end
 
-    def perform({:diagnostics_event, report, _issues}, opts) do
-      send(Keyword.fetch!(opts, :test_pid), {:worker_job, :diagnostics_event, report.seq})
+    def perform({:diagnostics_event, _event, _issues}, opts) do
+      send(Keyword.fetch!(opts, :test_pid), {:worker_job, :diagnostics_event})
       :ok
     end
   end
 
-  test "routes log and diagnostics events through pipeline workers" do
+  test "routes log and telemetry events through pipeline workers" do
     {:ok, config} =
       Config.from_opts(
         repo: "/tmp/repo",
@@ -73,7 +91,16 @@ defmodule Mom.RunnerTest do
     Process.unlink(pid)
     on_exit(fn -> Process.exit(pid, :kill) end)
 
+    # Send a log event
     send(pid, {:mom_log, %{id: "err-1"}})
+
+    # Send a VM telemetry event (replaces the old poll)
+    send(pid, {:mom_telemetry, %{
+      event: [:vm, :memory],
+      measurements: %{total: 500_000_000},
+      node: :test@localhost,
+      at: System.system_time(:millisecond)
+    }})
 
     assert_eventually_seen([:error_event, :diagnostics_event], fn ->
       receive do
@@ -113,6 +140,16 @@ defmodule Mom.RunnerTest do
 
     Enum.each(error_ids, fn id ->
       send(pid, {:mom_log, %{id: id}})
+    end)
+
+    # Send VM telemetry events to trigger diagnostics path
+    Enum.each(1..5, fn _ ->
+      send(pid, {:mom_telemetry, %{
+        event: [:vm, :memory],
+        measurements: %{total: 500_000_000},
+        node: :test@localhost,
+        at: System.system_time(:millisecond)
+      }})
     end)
 
     {error_seen, diagnostics_seen} =
@@ -186,7 +223,7 @@ defmodule Mom.RunnerTest do
           deadline_ms
         )
 
-      {:worker_job, :diagnostics_event, _seq} ->
+      {:worker_job, :diagnostics_event} ->
         do_collect_burst_results(
           error_seen,
           diagnostics_seen + 1,
