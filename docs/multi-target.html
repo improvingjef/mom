@@ -161,4 +161,43 @@ Tests.</li>
 SSM. Then Latte.</li>
 <li>Revivehub, after a look at its setup.</li>
 </ol>
+<h2 id="as-built-2026-11-09">As built (2026-11-09)</h2>
+<ul>
+<li><strong>Server:</strong> EC2 <code>mom</code>,
+<code>i-02b2026cb5aec4329</code>, t4g.small, Ubuntu 24.04 ARM, private
+address 172.30.2.115, key <code>~/.ssh/mom.pem</code>, security group
+<code>mom</code> (<code>sg-05c15f95d565f3965</code>: 4400 from the load
+balancer, 22 from the admin address), IAM role <code>mom-ec2</code>
+(read <code>/mom/*</code> in SSM only).</li>
+<li><strong>Erlang and Elixir:</strong> Hex's prebuilt builds in
+<code>/opt/erlang</code> (OTP 28.5.0.8) and <code>/opt/elixir</code>
+(1.19.7), checked against their published SHA-256.</li>
+<li><strong>Deploy:</strong> <code>infra/deploy.sh</code> (rsync, build
+on the server, restart); <code>SYNC_UNIT=1</code> also installs
+<code>infra/mom.service</code> and <code>infra/fetch-env.sh</code>,
+which writes <code>/opt/mom-env/.env</code> from SSM <code>/mom/*</code>
+at each start. Data (tokens) in <code>/var/lib/mom</code>.</li>
+<li><strong>Settings in SSM <code>/mom/*</code>:</strong>
+<code>MOM_TARGETS</code>, <code>MOM_TARGET_COOKIE_SCHOOL</code>,
+<code>MOM_TARGET_COOKIE_LATTE</code>, <code>RELEASE_*</code>,
+<code>MOM_PORT</code>, <code>MOM_DATA_DIR</code>,
+<code>MOM_TRUST_PROXY</code>, and three toolchain overrides
+(<code>MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE=28.0.2</code>,
+<code>MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE=1.19.4</code>,
+<code>MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE=22.0.0</code>).
+<code>Mom.Config</code> pins exact versions for reproducible fixes; with
+triage <code>off</code> nothing is built, so the pins are overridden.
+Before a target uses <code>report</code> or <code>fix</code>, install
+the pinned toolchain or relax the pins.</li>
+<li><strong>Apps:</strong> School (<code>school@172.30.2.137</code>) and
+Latte (<code>latte@172.30.2.120</code>) run named nodes with
+distribution on 9100 to 9105, cookies from their own SSM settings, and
+<code>:mom_info</code>; their security groups accept 4369 and 9100 to
+9105 from <code>mom</code> only.</li>
+<li><strong>Endpoint:</strong> load balancer <code>ttr-lb</code>, rule
+13, host <code>mom.reviveschool.org</code>, target group
+<code>mom-tg</code> (port 4400, health <code>/health</code>). DNS: a
+CNAME at GoDaddy to
+<code>ttr-lb-1667854674.us-east-1.elb.amazonaws.com</code>.</li>
+</ul>
 </main></body></html>

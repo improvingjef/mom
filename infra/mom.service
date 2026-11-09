@@ -1,0 +1,22 @@
+[Unit]
+Description=Mom: one monitor for School, Latte and revivehub (docs/multi-target.md)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/mom
+ExecStartPre=+/opt/mom-env/fetch-env.sh
+EnvironmentFile=-/opt/mom-env/.env
+Environment=HOME=/home/ubuntu
+ExecStart=/opt/mom/bin/mom start
+Restart=on-failure
+RestartSec=5
+ProtectSystem=strict
+ReadWritePaths=/opt/mom /var/lib/mom /tmp
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

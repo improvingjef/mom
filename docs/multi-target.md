@@ -128,3 +128,33 @@ uses it.
 2. The server, security groups, DNS and the load balancer rule.
 3. School: named node, fixed ports, `:mom_info`, cookie in SSM. Then Latte.
 4. Revivehub, after a look at its setup.
+
+## As built (2026-11-09)
+
+- **Server:** EC2 `mom`, `i-02b2026cb5aec4329`, t4g.small, Ubuntu 24.04 ARM,
+  private address 172.30.2.115, key `~/.ssh/mom.pem`, security group `mom`
+  (`sg-05c15f95d565f3965`: 4400 from the load balancer, 22 from the admin
+  address), IAM role `mom-ec2` (read `/mom/*` in SSM only).
+- **Erlang and Elixir:** Hex's prebuilt builds in `/opt/erlang` (OTP
+  28.5.0.8) and `/opt/elixir` (1.19.7), checked against their published
+  SHA-256.
+- **Deploy:** `infra/deploy.sh` (rsync, build on the server, restart);
+  `SYNC_UNIT=1` also installs `infra/mom.service` and `infra/fetch-env.sh`,
+  which writes `/opt/mom-env/.env` from SSM `/mom/*` at each start. Data
+  (tokens) in `/var/lib/mom`.
+- **Settings in SSM `/mom/*`:** `MOM_TARGETS`, `MOM_TARGET_COOKIE_SCHOOL`,
+  `MOM_TARGET_COOKIE_LATTE`, `RELEASE_*`, `MOM_PORT`, `MOM_DATA_DIR`,
+  `MOM_TRUST_PROXY`, and three toolchain overrides
+  (`MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE=28.0.2`,
+  `MOM_TOOLCHAIN_ELIXIR_VERSION_OVERRIDE=1.19.4`,
+  `MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE=22.0.0`). `Mom.Config` pins exact
+  versions for reproducible fixes; with triage `off` nothing is built, so the
+  pins are overridden. Before a target uses `report` or `fix`, install the
+  pinned toolchain or relax the pins.
+- **Apps:** School (`school@172.30.2.137`) and Latte (`latte@172.30.2.120`)
+  run named nodes with distribution on 9100 to 9105, cookies from their own
+  SSM settings, and `:mom_info`; their security groups accept 4369 and 9100
+  to 9105 from `mom` only.
+- **Endpoint:** load balancer `ttr-lb`, rule 13, host `mom.reviveschool.org`,
+  target group `mom-tg` (port 4400, health `/health`). DNS: a CNAME at GoDaddy
+  to `ttr-lb-1667854674.us-east-1.elb.amazonaws.com`.
