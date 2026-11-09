@@ -31,6 +31,16 @@ defmodule Mom.Pipeline do
     GenServer.call(server, {:enqueue, job})
   end
 
+  @doc """
+  Replaces the `:config` that workers receive for jobs dispatched from now on.
+  Used when a target's project info (for example its repository) changes on
+  reconnect.
+  """
+  @spec put_worker_config(pid() | atom(), term()) :: :ok
+  def put_worker_config(server, config) do
+    GenServer.call(server, {:put_worker_config, config})
+  end
+
   @spec dequeue(pid() | atom()) :: {:ok, supported_job()} | :empty
   def dequeue(server) do
     GenServer.call(server, :dequeue)
@@ -115,6 +125,10 @@ defmodule Mom.Pipeline do
     else
       {:reply, {:error, :invalid_job}, state}
     end
+  end
+
+  def handle_call({:put_worker_config, config}, _from, state) do
+    {:reply, :ok, %{state | worker_opts: Keyword.put(state.worker_opts, :config, config)}}
   end
 
   def handle_call(:dequeue, _from, %{queue_depth: 0} = state) do
