@@ -96,6 +96,63 @@ You can set defaults via environment variables:
 - `MOM_ALLOWED_ACTOR_IDS`
 - `MOM_REDACT_KEYS`
 
+## Service: several targets (release)
+
+One Mom can watch several apps and answer a short status over HTTP. Design:
+`docs/multi-target.md`. Build and run:
+
+```bash
+MIX_ENV=prod mix release mom
+_build/prod/rel/mom/bin/mom start
+```
+
+The service runs only in the prod release (`config :mom, :service, true`);
+`mix mom` and the tests do not start it. Environment variables, read by
+`config/runtime.exs` at start:
+
+- `MOM_TARGETS` JSON list of targets, for example
+  `[{"name":"school","node":"school@172.30.2.137","triage":"off"},{"name":"latte","node":"latte@172.30.2.120","triage":"report","agent":"claude_code"}]`.
+  `triage` is `off` (default; record errors, call no agent), `report` or `fix`.
+  `agent` is `claude_code` (default) or `codex`.
+- `MOM_TARGET_COOKIE_<NAME>` Cookie of one target (`<NAME>` in upper case,
+  `-` as `_`, for example `MOM_TARGET_COOKIE_SCHOOL`). Set for that node only;
+  Mom's own cookie stays `RELEASE_COOKIE`.
+- `MOM_PORT` HTTP port. Default `4400`.
+- `MOM_DATA_DIR` Directory for `tokens.json` and target checkouts
+  (`checkouts/<name>`). Default `$RELEASE_ROOT/var`.
+- `MOM_TRUST_PROXY` `true` behind the load balancer: the client address is the
+  last address of `X-Forwarded-For`. Default `false`.
+- `MOM_SERVICE` `false` to start the release without the service. Default
+  `true` in a release.
+- `RELEASE_DISTRIBUTION=name`, `RELEASE_NODE=mom@<private ip>`,
+  `RELEASE_COOKIE` Mom's own node name and cookie (standard release variables).
+- `MOM_TOOLCHAIN_OTP_VERSION_OVERRIDE` (for example `28.0.2`) Needed in a
+  release: `Mom.Config` reads the OTP patch version from
+  `releases/<otp>/OTP_VERSION`, which an Elixir release does not contain.
+  Without it every target shows `down` with a `config:` note.
+- `MOM_TOOLCHAIN_NODE_VERSION_OVERRIDE` Needed when Node.js is not installed on
+  the server: `Mom.Config` checks `node --version` for every target.
+
+Each app declares its project info, read on each connect:
+`config :mom_info, name: ..., repo: "owner/name", env: ..., release: ..., commit: ...`.
+Its `repo` is the GitHub repository for that target's issues and fixes.
+
+Endpoint:
+
+- `GET /health` `ok`, no token.
+- `GET /status` one line per target; `GET /status?format=json`.
+- `GET /status/<target>` recent errors of one target (24 h, at most 200).
+- `/status*` needs `Authorization: Bearer <token>`; 401 otherwise, 429 after
+  10 failed attempts a minute from one address.
+
+Tokens (the text is shown once; only its SHA-256 hash is stored):
+
+```bash
+bin/mom rpc '{:ok, t} = Mom.Tokens.new("claude-loop"); IO.puts(t)'
+bin/mom rpc 'Mom.Tokens.revoke("claude-loop") |> IO.inspect()'
+bin/mom rpc 'Mom.Tokens.list() |> IO.inspect()'
+```
+
 ## How It Works
 
 1. Connects to a BEAM node and installs a minimal logger handler.

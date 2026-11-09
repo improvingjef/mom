@@ -250,3 +250,24 @@ config :mom,
       error_budget_pr_turnaround_overage_rate: 0.1
     }
   }
+
+# === Multi-target service (docs/multi-target.md) ===
+# Only in prod, and by default only inside a release (`bin/mom start`), so
+# `mix mom` keeps its single-target behaviour. MOM_SERVICE overrides.
+if config_env() == :prod do
+  in_release? = System.get_env("RELEASE_NAME") != nil
+
+  config :mom,
+    service: System.get_env("MOM_SERVICE", to_string(in_release?)) in ~w(true 1),
+    targets_json: System.get_env("MOM_TARGETS"),
+    target_cookies:
+      for(
+        {"MOM_TARGET_COOKIE_" <> key, value} <- System.get_env(),
+        value != "",
+        into: %{},
+        do: {key, value}
+      ),
+    port: String.to_integer(System.get_env("MOM_PORT", "4400")),
+    data_dir: System.get_env("MOM_DATA_DIR"),
+    trust_proxy: System.get_env("MOM_TRUST_PROXY", "false") in ~w(true 1)
+end
