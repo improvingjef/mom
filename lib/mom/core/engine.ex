@@ -5,6 +5,31 @@ defmodule Mom.Engine do
 
   require Logger
 
+  @doc """
+  Report an error without fixing it (a target with triage `report`): open
+  the issue as `handle_log/2` does, and log the agent's diagnosis. No
+  workdir, no patch, no branch.
+  """
+  @spec report_log(map(), Config.t()) :: :ok
+  def report_log(event, %Config{} = config) do
+    sanitized_event = Security.sanitize(event, config.compliance.redact_keys)
+    _ = record_issue_for_error(sanitized_event, config)
+
+    context = %{
+      repo: config.runtime.repo,
+      event: sanitized_event,
+      instructions:
+        "Provide a concise diagnosis of this production error and suggested next steps. Do not include a diff."
+    }
+
+    case LLM.generate_text(context, config) do
+      {:ok, text} -> Logger.warning("mom: error triage report\n#{text}")
+      {:error, reason} -> Logger.error("mom: error triage failed #{inspect(reason)}")
+    end
+
+    :ok
+  end
+
   @spec handle_log(map(), Config.t()) :: :ok
   def handle_log(event, %Config{} = config) do
     Logger.info("mom: triaging error")

@@ -20,7 +20,7 @@ defmodule Mom.Targets.Watcher do
   use GenServer
 
   alias Mom.{Config, Runner, Status}
-  alias Mom.Targets.{RecordOnly, Target}
+  alias Mom.Targets.{RecordOnly, ReportOnly, Target}
 
   require Logger
 
@@ -139,12 +139,18 @@ defmodule Mom.Targets.Watcher do
 
   # --- internals ---
 
-  defp runner_opts(%Target{} = target, opts) do
+  @doc false
+  # Public for tests: what each triage mode gives the pipeline.
+  def runner_opts(%Target{} = target, opts) do
     {base_ms, max_ms} =
       Keyword.get(opts, :backoff, Application.get_env(:mom, :target_backoff_ms, @default_backoff))
 
     worker_opts =
-      if target.triage == :off, do: [worker_module: RecordOnly], else: []
+      case target.triage do
+        :off -> [worker_module: RecordOnly]
+        :report -> [worker_opts: [engine_module: ReportOnly]]
+        :fix -> []
+      end
 
     worker_opts ++
       [
