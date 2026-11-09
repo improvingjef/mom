@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mom multi-target</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700&display=swap">
+<style>
+:root { --navy:#022c53; --blue:#165590; --ink:#1b2430; --muted:rgba(27,36,48,.62); --rule:rgba(27,36,48,.12); --wash:rgba(22,85,144,.06); --paper:#f5f8fa; }
+* { box-sizing:border-box } body { margin:0; background:var(--paper); color:var(--ink); font-family:'Barlow',system-ui,sans-serif; font-size:1.0625rem; line-height:1.6 }
+main { max-width:52rem; margin:0 auto; padding:2rem 1rem 5rem }
+h1 { font-size:clamp(1.7rem,1.2rem+2vw,2.4rem); line-height:1.15; margin:0 0 1rem } h2 { font-size:1.35rem; margin:2.5rem 0 .75rem }
+h3 { font-size:1.05rem; margin-top:1.6rem }
+p { margin:0 0 1em } .lede { background:var(--wash); border-radius:1rem; padding:1rem 1.25rem; font-style:italic }
+.box { background:var(--wash); border-radius:1rem; padding:1rem 1.25rem; margin:1rem 0 1.5rem }
+.box p:last-child { margin-bottom:0 }
+code { background:var(--wash); padding:.05em .35em; border-radius:.3em; font-size:.9em }
+pre { background:rgba(127,127,127,0.08); padding:.9rem 1rem; border-radius:8px; overflow-x:auto; font-size:.85em; line-height:1.45 }
+pre code { background:none; padding:0 }
+.scroll { overflow-x:auto }
+table { width:100%; border-collapse:collapse; margin:1rem 0 1.5rem; font-size:.92rem; background:#fff; border-radius:.75rem; overflow:hidden }
+th,td { text-align:left; padding:.55rem .7rem; border-top:1px solid var(--rule); vertical-align:top } th { background:var(--wash); border-top:0; font-size:.78rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
+ol li, ul li { margin:.5rem 0 } ol li strong { color:var(--navy) }
+.steps { counter-reset:step; list-style:none; padding:0 }
+.steps > li { counter-increment:step; background:#fff; border-radius:.75rem; padding:1rem 1.25rem; margin:.75rem 0 }
+.steps > li::before { content:counter(step); display:inline-grid; place-items:center; width:1.7rem; height:1.7rem; border-radius:50%; background:var(--navy); color:#fff; font-weight:700; font-size:.9rem; margin-right:.6rem }
+.steps > li > strong { color:var(--navy) }
+.stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(9rem,1fr)); gap:.75rem; margin:1rem 0 1.5rem }
+.stat { background:#fff; border-radius:.75rem; padding:.8rem 1rem }
+.stat b { display:block; font-size:1.6rem; color:var(--navy); line-height:1.1 }
+.stat span { color:var(--muted); font-size:.85rem }
+footer { color:var(--muted); font-size:.85rem; margin-top:3rem }
+</style></head><body><main>
+<h1 id="mom-one-monitor-for-several-projects-design-2026-11-09">Mom: one
+monitor for several projects (design, 2026-11-09)</h1>
+<p>Approved by Jef on 2026-11-09.</p>
+<h2 id="goal">Goal</h2>
+<p>One Mom, on a small server of its own, watches School, Latte and
+revivehub. Each project tells Mom what it is (repository, release,
+commit). An agent, remote (for example Claude Code with
+<code>/loop</code>) or local on the Mom server, checks the health of all
+projects through one short answer. Only holders of a valid token can
+read it.</p>
+<h2 id="what-stays">What stays</h2>
+<ul>
+<li>Mom watches an app from outside, over Erlang distribution (Jef:
+"Everything is elixir, so the erlang ports seem simplest. We don't
+reinvent that part."). <code>Mom.Beam</code> still installs the logger
+and telemetry handlers in the app; events still come to Mom without
+polling.</li>
+<li>The pipeline, triage worker, governance and rate limits stay as they
+are. Each target gets its own <code>Mom.Config</code>.</li>
+</ul>
+<h2 id="1-the-server">1. The server</h2>
+<ul>
+<li>A new EC2 t4g.small (ARM, 2 GB) in <code>vpc-6db4550b</code>, the
+network of the apps. Name <code>mom</code>. Security group
+<code>mom</code>.</li>
+<li>Mom runs as an OTP release under systemd (<code>mom.service</code>),
+like School. Settings come from SSM Parameter Store,
+<code>/mom/*</code>, at start.</li>
+</ul>
+<h2 id="2-connections-to-the-apps">2. Connections to the apps</h2>
+<ul>
+<li>Each app runs its release as a named node on its private address
+(<code>RELEASE_DISTRIBUTION=name</code>,
+<code>RELEASE_NODE=&lt;app&gt;@&lt;private ip&gt;</code>), with the
+distribution port fixed:
+<code>-kernel inet_dist_listen_min 9100 inet_dist_listen_max 9105</code>.</li>
+<li>Each app's security group accepts TCP 4369 (epmd) and 9100 to 9105
+from the <code>mom</code> security group only.</li>
+<li>Each app keeps its own cookie. Mom reads the cookies from SSM
+(<code>/mom/targets/&lt;app&gt;/cookie</code>) and sets them per node
+with <code>:erlang.set_cookie(node, cookie)</code>. Mom's own cookie is
+a separate secret.</li>
+</ul>
+<h2 id="3-targets">3. Targets</h2>
+<p>A target is one app Mom watches. The list is configuration, read at
+start (<code>/mom/targets</code>, a JSON list), for example:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ot">[</span><span class="fu">{</span><span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;school&quot;</span><span class="fu">,</span> <span class="dt">&quot;node&quot;</span><span class="fu">:</span> <span class="st">&quot;school@172.30.2.137&quot;</span><span class="fu">,</span> <span class="dt">&quot;triage&quot;</span><span class="fu">:</span> <span class="st">&quot;off&quot;</span><span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a> <span class="fu">{</span><span class="dt">&quot;name&quot;</span><span class="fu">:</span> <span class="st">&quot;latte&quot;</span><span class="fu">,</span> <span class="dt">&quot;node&quot;</span><span class="fu">:</span> <span class="st">&quot;latte@172.30.2.120&quot;</span><span class="fu">,</span> <span class="dt">&quot;triage&quot;</span><span class="fu">:</span> <span class="st">&quot;report&quot;</span><span class="fu">,</span> <span class="dt">&quot;agent&quot;</span><span class="fu">:</span> <span class="st">&quot;claude_code&quot;</span><span class="fu">}</span><span class="ot">]</span></span></code></pre></div>
+<ul>
+<li>A supervisor (<code>Mom.Targets.Supervisor</code>) runs one watcher
+per target. A watcher is the present <code>Mom.Runner</code> loop with
+that target's config.</li>
+<li>A watcher that cannot reach its node retries with backoff and
+reports <code>down</code>. A node that goes away and comes back gets its
+handlers installed again, and its project info read again.</li>
+<li><code>triage</code> is <code>off</code>, <code>report</code> or
+<code>fix</code>; <code>agent</code> is <code>claude_code</code> or
+<code>codex</code>. <code>off</code> records errors and does not call an
+agent.</li>
+</ul>
+<h2 id="4-project-info">4. Project info</h2>
+<p>Each app declares, in its own runtime configuration:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode elixir"><code class="sourceCode elixir"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>config <span class="va">:mom_info</span>,</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="va">name:</span> <span class="st">&quot;school&quot;</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="va">repo:</span> <span class="st">&quot;improvingjef/school&quot;</span>,</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="va">env:</span> <span class="st">&quot;production&quot;</span>,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="va">release:</span> <span class="st">&quot;0.1.0&quot;</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="va">commit:</span> <span class="cn">System</span><span class="op">.</span>get_env<span class="fu">(</span><span class="st">&quot;RELEASE_COMMIT&quot;</span><span class="fu">)</span>   <span class="co"># written by the deploy script</span></span></code></pre></div>
+<p>Mom reads it over the connection
+(<code>:rpc.call(node, Application, :get_all_env, [:mom_info])</code>)
+when it connects and after each reconnect. The target's
+<code>repo</code> from here is the repository Mom uses for issues and
+fixes. An app without <code>:mom_info</code> still works; its info shows
+as unknown.</p>
+<h2 id="5-status">5. Status</h2>
+<p><code>Mom.Status</code> keeps, per target, in ETS:</p>
+<ul>
+<li>state: <code>ok</code> (connected, no error in the last hour),
+<code>warn</code> (errors in the last hour), <code>down</code> (not
+connected), <code>unknown</code> (not yet connected);</li>
+<li>the project info, connected since, last event;</li>
+<li>the errors of the last 24 hours (time, kind, short message,
+fingerprint), at most 200 per target.</li>
+</ul>
+<h2 id="6-the-endpoint">6. The endpoint</h2>
+<p>Bandit and Plug, on port 4400, behind the existing load balancer
+<code>ttr-lb</code> with a host rule for
+<code>mom.reviveschool.org</code> (working name), so the answer is HTTPS
+with the existing certificate.</p>
+<ul>
+<li><p><code>GET /status</code> (text, one line per target):</p>
+<pre><code>school  ok    0.1.0 4db6647  errors 1h: 0
+latte   warn  0.1.0 9f2c1aa  errors 1h: 3  last 13:52 Postgrex timeout
+revivehub down                connected: no since 12:10</code></pre></li>
+<li><p><code>GET /status?format=json</code>: the same data as
+JSON.</p></li>
+<li><p><code>GET /status/&lt;target&gt;</code>: the recent errors of one
+target.</p></li>
+<li><p><code>GET /health</code>: no token, answers <code>ok</code> for
+the load balancer only.</p></li>
+</ul>
+<h2 id="7-authentication">7. Authentication</h2>
+<ul>
+<li>Each agent gets its own token, sent as
+<code>Authorization: Bearer &lt;token&gt;</code>. Mom stores only the
+SHA-256 hash of each token, with its name and the time it was made (a
+small file under the release's data directory).</li>
+<li>A token is made and revoked on the Mom server:
+<code>bin/mom rpc 'Mom.Tokens.new("claude-loop")'</code>,
+<code>Mom.Tokens.revoke/1</code>. The token text is shown once.</li>
+<li>Wrong or missing token: 401, and failed attempts are limited per
+address (10 a minute).</li>
+<li>The endpoint is reached only through the load balancer: the
+<code>mom</code> security group accepts port 4400 from the load balancer
+only.</li>
+</ul>
+<h2 id="8-a-local-agent">8. A local agent</h2>
+<p>The <code>triage</code> and <code>agent</code> settings of a target
+make the agent on the Mom server triage that target's errors, as Mom
+does now. The agent's command line (<code>claude</code> or
+<code>codex</code>) is installed on the Mom server only when a target
+uses it.</p>
+<h2 id="order-of-work">Order of work</h2>
+<ol type="1">
+<li>Mom: targets, project info, status, endpoint, tokens, release.
+Tests.</li>
+<li>The server, security groups, DNS and the load balancer rule.</li>
+<li>School: named node, fixed ports, <code>:mom_info</code>, cookie in
+SSM. Then Latte.</li>
+<li>Revivehub, after a look at its setup.</li>
+</ol>
+</main></body></html>
